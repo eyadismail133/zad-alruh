@@ -1,0 +1,49 @@
+name: zad_alruh
+description: "Zad Alruh - Islamic Spiritual Companion"
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.3
+  timezone: 0.11.1
+  flutter_riverpod: ^2.6.1
+  sqflite: ^2.4.4
+  path: ^1.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  sqflite_common_ffi: ^2.4.3
+  fake_async: 1.3.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/branding/logo.png
+    - assets/fonts/Amiri-OFL.txt
+    - assets/fonts/IBM-Plex-LICENSE.txt
+
+  fonts:
+    - family: IBM Plex Sans Arabic
+      fonts:
+        - asset: assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf
+          weight: 700
+    - family: Amiri Quran
+      fonts:
+        - asset: assets/fonts/Amiri-Quran-Regular.ttf
+          weight: 400

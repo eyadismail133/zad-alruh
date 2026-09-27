@@ -1,0 +1,5 @@
+* text=auto
+assets/content/** -text
+*.png binary
+*.ttf binary
+*.zip binary

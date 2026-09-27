@@ -16,4 +16,6 @@ ios/Flutter/flutter_export_environment.sh
 *.env
 .DS_Store
 .local/
+.idea/
+*.iml
 assets/content/private/
