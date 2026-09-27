@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
+import '../../quran/presentation/controllers/quran_navigation_controller.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateTab;
@@ -17,7 +18,9 @@ class HomeScreen extends ConsumerWidget {
     bool? dailyDuaCompleted,
   }) async {
     try {
-      await ref.read(dailyProgressControllerProvider(today).notifier).toggleTask(
+      await ref
+          .read(dailyProgressControllerProvider(today).notifier)
+          .toggleTask(
             quranCompleted: quranCompleted,
             dailyDuaCompleted: dailyDuaCompleted,
           );
@@ -26,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade800,
-            content: Text('تعذر حفظ التقدم اليومي: $e'),
+            content: const Text('تعذر حفظ التقدم اليومي.'),
             action: SnackBarAction(
               label: 'إعادة المحاولة',
               textColor: Colors.white,
@@ -71,7 +74,9 @@ class HomeScreen extends ConsumerWidget {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkCardBorder : AppColors.forestSoftTint,
+                            color: isDark
+                                ? AppColors.darkCardBorder
+                                : AppColors.forestSoftTint,
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: Image.asset(
@@ -93,14 +98,18 @@ class HomeScreen extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textDark,
                                 ),
                               ),
                               Text(
                                 'خلّي يومك أقرب للسكينة',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                  color: isDark
+                                      ? AppColors.darkTextMuted
+                                      : AppColors.textMuted,
                                 ),
                               ),
                             ],
@@ -111,18 +120,38 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.amber.withAlpha(40) : AppColors.goldPill,
+                      color: isDark
+                          ? Colors.amber.withAlpha(40)
+                          : AppColors.goldPill,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(
-                      '☀ نور يومي',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.darkGoldAccent : AppColors.goldDark,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.wb_sunny_outlined,
+                          size: 13,
+                          color: isDark
+                              ? AppColors.darkGoldAccent
+                              : AppColors.goldDark,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'نور يومي',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? AppColors.darkGoldAccent
+                                : AppColors.goldDark,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -153,14 +182,19 @@ class HomeScreen extends ConsumerWidget {
                             Text(
                               'وِردك اليومي',
                               style: TextStyle(
-                                color: isDark ? AppColors.darkGoldAccent : AppColors.goldAccent,
+                                color: isDark
+                                    ? AppColors.darkGoldAccent
+                                    : AppColors.goldAccent,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const Text(
-                              '✦',
-                              style: TextStyle(color: Colors.white70, fontSize: 16),
+                            Icon(
+                              Icons.auto_awesome,
+                              color: isDark
+                                  ? AppColors.darkGoldAccent
+                                  : Colors.white70,
+                              size: 16,
                             ),
                           ],
                         ),
@@ -184,18 +218,31 @@ class HomeScreen extends ConsumerWidget {
                         const SizedBox(height: 14),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? AppColors.darkGoldAccent : AppColors.goldSoftTint,
+                            backgroundColor: isDark
+                                ? AppColors.darkGoldAccent
+                                : AppColors.goldSoftTint,
                             foregroundColor: AppColors.textDark,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
                           ),
-                          onPressed: () => onNavigateTab?.call(1),
+                          onPressed: () {
+                            ref
+                                .read(quranNavigationProvider.notifier)
+                                .openReader(reading.lastPage);
+                            onNavigateTab?.call(1);
+                          },
                           child: const Text(
                             'كمّل وِردك  ←',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -205,16 +252,23 @@ class HomeScreen extends ConsumerWidget {
                 loading: () => Container(
                   height: 140,
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                    color: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.cardSurface,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Center(
-                    child: Text('جاري تحميل الوِرد...', style: TextStyle(color: AppColors.textMuted)),
+                    child: Text(
+                      'جاري تحميل الوِرد...',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
                   ),
                 ),
                 error: (err, _) => RetryableErrorView(
-                  message: err.toString(),
-                  onRetry: () => ref.read(readingProgressControllerProvider.notifier).retry(),
+                  message: 'تعذر تحميل موضع القراءة السابق.',
+                  onRetry: () => ref
+                      .read(readingProgressControllerProvider.notifier)
+                      .retry(),
                 ),
               ),
 
@@ -226,10 +280,14 @@ class HomeScreen extends ConsumerWidget {
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : AppColors.cardSurface,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
+                        color: isDark
+                            ? AppColors.darkCardBorder
+                            : AppColors.cardBorder,
                       ),
                     ),
                     child: Column(
@@ -246,7 +304,9 @@ class HomeScreen extends ConsumerWidget {
                                     'إنجازك اليوم',
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                      color: isDark
+                                          ? AppColors.darkTextMuted
+                                          : AppColors.textMuted,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -255,7 +315,9 @@ class HomeScreen extends ConsumerWidget {
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                                      color: isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textDark,
                                     ),
                                   ),
                                 ],
@@ -269,7 +331,9 @@ class HomeScreen extends ConsumerWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: isDark ? AppColors.darkGoldAccent : AppColors.goldAccent,
+                                  color: isDark
+                                      ? AppColors.darkGoldAccent
+                                      : AppColors.goldAccent,
                                   width: 3.5,
                                 ),
                               ),
@@ -279,7 +343,9 @@ class HomeScreen extends ConsumerWidget {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                                    color: isDark
+                                        ? AppColors.darkGoldAccent
+                                        : AppColors.forestPrimary,
                                   ),
                                 ),
                               ),
@@ -293,9 +359,13 @@ class HomeScreen extends ConsumerWidget {
                           child: LinearProgressIndicator(
                             value: daily.completionRatio,
                             minHeight: 6,
-                            backgroundColor: isDark ? AppColors.darkCardBorder : const Color(0xFFD9DFCC),
+                            backgroundColor: isDark
+                                ? AppColors.darkCardBorder
+                                : const Color(0xFFD9DFCC),
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              isDark ? AppColors.darkForestPrimary : AppColors.forestLight,
+                              isDark
+                                  ? AppColors.darkForestPrimary
+                                  : AppColors.forestLight,
                             ),
                           ),
                         ),
@@ -304,7 +374,9 @@ class HomeScreen extends ConsumerWidget {
                           '${daily.completedTasksCount} من ٥ خطوات يومية مكتملة',
                           style: TextStyle(
                             fontSize: 10,
-                            color: isDark ? AppColors.darkTextMuted : AppColors.textSubtle,
+                            color: isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textSubtle,
                           ),
                         ),
                         const Divider(height: 18),
@@ -313,7 +385,12 @@ class HomeScreen extends ConsumerWidget {
                           title: 'وِرد القرآن (${daily.quranGoalPages} صفحات)',
                           value: daily.quranCompleted,
                           onChanged: (val) {
-                            _toggleTask(context, ref, today, quranCompleted: val);
+                            _toggleTask(
+                              context,
+                              ref,
+                              today,
+                              quranCompleted: val,
+                            );
                           },
                           isDark: isDark,
                         ),
@@ -330,7 +407,8 @@ class HomeScreen extends ConsumerWidget {
                           isDark: isDark,
                         ),
                         _buildTaskCheckbox(
-                          title: 'أذكار بعد الصلاة (تُحتسب آلياً مع اكتمال الورد)',
+                          title:
+                              'أذكار بعد الصلاة (تُحتسب آلياً مع اكتمال الورد)',
                           value: daily.postPrayerDhikrCompleted,
                           onChanged: null,
                           isDark: isDark,
@@ -339,7 +417,12 @@ class HomeScreen extends ConsumerWidget {
                           title: 'دعاء اليوم',
                           value: daily.dailyDuaCompleted,
                           onChanged: (val) {
-                            _toggleTask(context, ref, today, dailyDuaCompleted: val);
+                            _toggleTask(
+                              context,
+                              ref,
+                              today,
+                              dailyDuaCompleted: val,
+                            );
                           },
                           isDark: isDark,
                         ),
@@ -350,7 +433,9 @@ class HomeScreen extends ConsumerWidget {
                 loading: () => const SizedBox.shrink(),
                 error: (err, _) => RetryableErrorView(
                   message: err.toString(),
-                  onRetry: () => ref.read(dailyProgressControllerProvider(today).notifier).retry(),
+                  onRetry: () => ref
+                      .read(dailyProgressControllerProvider(today).notifier)
+                      .retry(),
                 ),
               ),
 
@@ -362,10 +447,14 @@ class HomeScreen extends ConsumerWidget {
                   return Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : AppColors.cardSurface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
+                        color: isDark
+                            ? AppColors.darkCardBorder
+                            : AppColors.cardBorder,
                       ),
                     ),
                     child: Column(
@@ -382,15 +471,32 @@ class HomeScreen extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textDark,
                               ),
                             ),
-                            Text(
-                              '📍 ${prefs.selectedCity}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark ? AppColors.darkGoldAccent : AppColors.forestMedium,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 13,
+                                  color: isDark
+                                      ? AppColors.darkGoldAccent
+                                      : AppColors.forestMedium,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  prefs.selectedCity,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? AppColors.darkGoldAccent
+                                        : AppColors.forestMedium,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -398,7 +504,9 @@ class HomeScreen extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkBackground : AppColors.forestSoftTint,
+                            color: isDark
+                                ? AppColors.darkBackground
+                                : AppColors.forestSoftTint,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -406,7 +514,9 @@ class HomeScreen extends ConsumerWidget {
                               Icon(
                                 Icons.info_outline,
                                 size: 18,
-                                color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                                color: isDark
+                                    ? AppColors.darkGoldAccent
+                                    : AppColors.forestPrimary,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -415,7 +525,9 @@ class HomeScreen extends ConsumerWidget {
                                   style: TextStyle(
                                     fontSize: 10,
                                     height: 1.4,
-                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                    color: isDark
+                                        ? AppColors.darkTextMuted
+                                        : AppColors.textMuted,
                                   ),
                                 ),
                               ),
@@ -440,18 +552,31 @@ class HomeScreen extends ConsumerWidget {
                       onTap: () => onNavigateTab?.call(3), // Dhikr Tab
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurface : AppColors.goldSoftTint,
+                          color: isDark
+                              ? AppColors.darkSurface
+                              : AppColors.goldSoftTint,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isDark ? AppColors.darkCardBorder : const Color(0xFFF0DFBB),
+                            color: isDark
+                                ? AppColors.darkCardBorder
+                                : const Color(0xFFF0DFBB),
                           ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('☀', style: TextStyle(fontSize: 14)),
+                            Icon(
+                              Icons.wb_sunny_outlined,
+                              size: 15,
+                              color: isDark
+                                  ? AppColors.darkGoldAccent
+                                  : AppColors.goldDark,
+                            ),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
@@ -461,7 +586,9 @@ class HomeScreen extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? AppColors.darkGoldAccent : AppColors.goldDark,
+                                  color: isDark
+                                      ? AppColors.darkGoldAccent
+                                      : AppColors.goldDark,
                                 ),
                               ),
                             ),
@@ -476,18 +603,31 @@ class HomeScreen extends ConsumerWidget {
                       onTap: () => onNavigateTab?.call(4), // More Tab
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurface : AppColors.forestSoftTint,
+                          color: isDark
+                              ? AppColors.darkSurface
+                              : AppColors.forestSoftTint,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isDark ? AppColors.darkCardBorder : const Color(0xFFD7E7D9),
+                            color: isDark
+                                ? AppColors.darkCardBorder
+                                : const Color(0xFFD7E7D9),
                           ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('✧', style: TextStyle(fontSize: 14)),
+                            Icon(
+                              Icons.auto_awesome,
+                              size: 15,
+                              color: isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.forestPrimary,
+                            ),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
@@ -497,7 +637,9 @@ class HomeScreen extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? AppColors.darkTextPrimary : AppColors.forestPrimary,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.forestPrimary,
                                 ),
                               ),
                             ),
@@ -531,7 +673,9 @@ class HomeScreen extends ConsumerWidget {
             width: 24,
             child: Checkbox(
               value: value,
-              activeColor: isDark ? AppColors.darkForestPrimary : AppColors.forestPrimary,
+              activeColor: isDark
+                  ? AppColors.darkForestPrimary
+                  : AppColors.forestPrimary,
               onChanged: onChanged == null
                   ? null
                   : (val) {

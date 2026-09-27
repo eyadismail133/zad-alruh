@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 import '../../../core/database/app_database.dart';
@@ -8,10 +9,38 @@ import 'models/favorite.dart';
 import 'models/reading_progress.dart';
 import 'models/user_preferences.dart';
 
+typedef QuranVersePageValidator =
+    FutureOr<bool> Function({
+      required int pageNumber,
+      required int surahNumber,
+      required int verseNumber,
+    });
+
 class ProgressRepository {
   final AppDatabase _database;
+  QuranVersePageValidator? _versePageValidator;
 
-  ProgressRepository(this._database);
+  ProgressRepository(
+    this._database, {
+    QuranVersePageValidator? versePageValidator,
+  }) : _versePageValidator = versePageValidator;
+
+  void setVersePageValidator(QuranVersePageValidator? validator) {
+    _versePageValidator = validator;
+  }
+
+  Future<bool> isValidVerseOnPage({
+    required int pageNumber,
+    required int surahNumber,
+    required int verseNumber,
+  }) async {
+    if (_versePageValidator == null) return false;
+    return _versePageValidator!(
+      pageNumber: pageNumber,
+      surahNumber: surahNumber,
+      verseNumber: verseNumber,
+    );
+  }
 
   Future<Database> get _db => _database.database;
 
@@ -28,7 +57,11 @@ class ProgressRepository {
     );
     if (results.isEmpty) {
       const initial = ReadingProgress();
-      await db.insert('reading_progress', initial.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+        'reading_progress',
+        initial.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
       return initial;
     }
     return ReadingProgress.fromMap(results.first);
@@ -36,7 +69,33 @@ class ProgressRepository {
 
   Future<void> saveReadingProgress(ReadingProgress progress) async {
     if (progress.lastPage < 1 || progress.lastPage > 604) {
-      throw ArgumentError.value(progress.lastPage, 'lastPage', 'Must be between 1 and 604');
+      throw ArgumentError.value(
+        progress.lastPage,
+        'lastPage',
+        'Must be between 1 and 604',
+      );
+    }
+    if (progress.selectedSurah != null || progress.selectedVerse != null) {
+      if (progress.selectedSurah == null || progress.selectedVerse == null) {
+        throw ArgumentError(
+          'selectedSurah and selectedVerse must both be specified or both null',
+        );
+      }
+      if (_versePageValidator == null) {
+        throw StateError(
+          'Verse validation unavailable; cannot persist unverified verse reference',
+        );
+      }
+      final isValid = await _versePageValidator!(
+        pageNumber: progress.lastPage,
+        surahNumber: progress.selectedSurah!,
+        verseNumber: progress.selectedVerse!,
+      );
+      if (!isValid) {
+        throw ArgumentError(
+          'Invalid verse ${progress.selectedSurah}:${progress.selectedVerse} for page ${progress.lastPage}',
+        );
+      }
     }
     final db = await _db;
     await db.insert(
@@ -57,7 +116,33 @@ class ProgressRepository {
     int? verseNumber,
   }) async {
     if (pageNumber < 1 || pageNumber > 604) {
-      throw ArgumentError.value(pageNumber, 'pageNumber', 'Page must be between 1 and 604');
+      throw ArgumentError.value(
+        pageNumber,
+        'pageNumber',
+        'Page must be between 1 and 604',
+      );
+    }
+    if (surahNumber != null || verseNumber != null) {
+      if (surahNumber == null || verseNumber == null) {
+        throw ArgumentError(
+          'surahNumber and verseNumber must both be specified or both null',
+        );
+      }
+      if (_versePageValidator == null) {
+        throw StateError(
+          'Verse validation unavailable; cannot persist unverified verse reference',
+        );
+      }
+      final isValid = await _versePageValidator!(
+        pageNumber: pageNumber,
+        surahNumber: surahNumber,
+        verseNumber: verseNumber,
+      );
+      if (!isValid) {
+        throw ArgumentError(
+          'Invalid verse $surahNumber:$verseNumber for page $pageNumber',
+        );
+      }
     }
     final db = await _db;
     final bookmark = Bookmark(
@@ -81,7 +166,33 @@ class ProgressRepository {
       throw ArgumentError('Bookmark id cannot be null on update');
     }
     if (bookmark.pageNumber < 1 || bookmark.pageNumber > 604) {
-      throw ArgumentError.value(bookmark.pageNumber, 'pageNumber', 'Page must be between 1 and 604');
+      throw ArgumentError.value(
+        bookmark.pageNumber,
+        'pageNumber',
+        'Page must be between 1 and 604',
+      );
+    }
+    if (bookmark.surahNumber != null || bookmark.verseNumber != null) {
+      if (bookmark.surahNumber == null || bookmark.verseNumber == null) {
+        throw ArgumentError(
+          'surahNumber and verseNumber must both be specified or both null',
+        );
+      }
+      if (_versePageValidator == null) {
+        throw StateError(
+          'Verse validation unavailable; cannot persist unverified verse reference',
+        );
+      }
+      final isValid = await _versePageValidator!(
+        pageNumber: bookmark.pageNumber,
+        surahNumber: bookmark.surahNumber!,
+        verseNumber: bookmark.verseNumber!,
+      );
+      if (!isValid) {
+        throw ArgumentError(
+          'Invalid verse ${bookmark.surahNumber}:${bookmark.verseNumber} for page ${bookmark.pageNumber}',
+        );
+      }
     }
     final db = await _db;
     await db.update(
@@ -168,7 +279,9 @@ class ProgressRepository {
         limit: 1,
       );
       if (existing.isNotEmpty) {
-        throw StateError('Dhikr session $sessionId already exists and cannot be overwritten');
+        throw StateError(
+          'Dhikr session $sessionId already exists and cannot be overwritten',
+        );
       }
 
       final now = DateTime.now();
@@ -190,14 +303,10 @@ class ProgressRepository {
       );
 
       if (setActive) {
-        await txn.update(
-          'user_preferences',
-          {
-            'active_dhikr_session_id': sessionId,
-            'updated_at': now.toIso8601String(),
-          },
-          where: 'id = 1',
-        );
+        await txn.update('user_preferences', {
+          'active_dhikr_session_id': sessionId,
+          'updated_at': now.toIso8601String(),
+        }, where: 'id = 1');
       }
 
       return session;
@@ -214,17 +323,15 @@ class ProgressRepository {
         limit: 1,
       );
       if (existing.isEmpty) {
-        throw StateError('Cannot set active session: session $sessionId not found');
+        throw StateError(
+          'Cannot set active session: session $sessionId not found',
+        );
       }
     }
-    await db.update(
-      'user_preferences',
-      {
-        'active_dhikr_session_id': sessionId,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      where: 'id = 1',
-    );
+    await db.update('user_preferences', {
+      'active_dhikr_session_id': sessionId,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, where: 'id = 1');
   }
 
   Future<void> clearActiveDhikrSession() async {
@@ -241,7 +348,10 @@ class ProgressRepository {
     return rows.map((r) => DhikrSession.fromMap(r)).toList();
   }
 
-  Future<DhikrSession> incrementDhikrSession(String sessionId, {int step = 1}) async {
+  Future<DhikrSession> incrementDhikrSession(
+    String sessionId, {
+    int step = 1,
+  }) async {
     final db = await _db;
     return await db.transaction<DhikrSession>((txn) async {
       final rows = await txn.query(
@@ -307,7 +417,9 @@ class ProgressRepository {
 
   Future<List<DhikrSession>> getDhikrSessionsForDate(String dateBucket) async {
     final db = await _db;
-    final bareDate = dateBucket.contains('|') ? dateBucket.split('|').last : dateBucket;
+    final bareDate = dateBucket.contains('|')
+        ? dateBucket.split('|').last
+        : dateBucket;
     final rows = await db.query(
       'dhikr_sessions',
       where: 'date_bucket = ? OR date_bucket = ?',
@@ -323,7 +435,9 @@ class ProgressRepository {
 
   Future<DailyProgress> getDailyProgress(String dateBucket) async {
     final db = await _db;
-    final bareDate = dateBucket.contains('|') ? dateBucket.split('|').last : dateBucket;
+    final bareDate = dateBucket.contains('|')
+        ? dateBucket.split('|').last
+        : dateBucket;
     final rows = await db.query(
       'daily_progress',
       where: 'date_bucket = ? OR date_bucket = ?',
@@ -353,7 +467,9 @@ class ProgressRepository {
   }) async {
     final db = await _db;
     return await db.transaction<DailyProgress>((txn) async {
-      final bareDate = dateBucket.contains('|') ? dateBucket.split('|').last : dateBucket;
+      final bareDate = dateBucket.contains('|')
+          ? dateBucket.split('|').last
+          : dateBucket;
       final rows = await txn.query(
         'daily_progress',
         where: 'date_bucket = ? OR date_bucket = ?',
@@ -364,7 +480,11 @@ class ProgressRepository {
 
       final DailyProgress current;
       if (rows.isEmpty) {
-        final prefsRows = await txn.query('user_preferences', where: 'id = 1', limit: 1);
+        final prefsRows = await txn.query(
+          'user_preferences',
+          where: 'id = 1',
+          limit: 1,
+        );
         final defaultGoal = prefsRows.isNotEmpty
             ? ((prefsRows.first['quran_default_goal'] as num?)?.toInt() ?? 2)
             : 2;
@@ -380,9 +500,12 @@ class ProgressRepository {
       final updated = current.copyWith(
         dateBucket: dateBucket,
         quranCompleted: quranCompleted ?? current.quranCompleted,
-        morningDhikrCompleted: morningDhikrCompleted ?? current.morningDhikrCompleted,
-        eveningDhikrCompleted: eveningDhikrCompleted ?? current.eveningDhikrCompleted,
-        postPrayerDhikrCompleted: postPrayerDhikrCompleted ?? current.postPrayerDhikrCompleted,
+        morningDhikrCompleted:
+            morningDhikrCompleted ?? current.morningDhikrCompleted,
+        eveningDhikrCompleted:
+            eveningDhikrCompleted ?? current.eveningDhikrCompleted,
+        postPrayerDhikrCompleted:
+            postPrayerDhikrCompleted ?? current.postPrayerDhikrCompleted,
         dailyDuaCompleted: dailyDuaCompleted ?? current.dailyDuaCompleted,
         quranGoalPages: quranGoalPages ?? current.quranGoalPages,
         quranPagesRead: quranPagesRead ?? current.quranPagesRead,
@@ -414,14 +537,14 @@ class ProgressRepository {
 
   Future<UserPreferences> getPreferences() async {
     final db = await _db;
-    final rows = await db.query(
-      'user_preferences',
-      where: 'id = 1',
-      limit: 1,
-    );
+    final rows = await db.query('user_preferences', where: 'id = 1', limit: 1);
     if (rows.isEmpty) {
       const initial = UserPreferences();
-      await db.insert('user_preferences', initial.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+        'user_preferences',
+        initial.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
       return initial;
     }
     return UserPreferences.fromMap(rows.first);

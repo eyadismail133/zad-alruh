@@ -174,6 +174,32 @@ class QuranRepository {
     return v;
   }
 
+  /// Checks whether a given verse exists and belongs to the specified page number.
+  bool isValidVerseOnPage({
+    required int pageNumber,
+    required int surahNumber,
+    required int verseNumber,
+  }) {
+    if (pageNumber < 1 || pageNumber > 604) return false;
+    if (surahNumber < 1 || surahNumber > 114) return false;
+    final verse = _verseLookup['$surahNumber:$verseNumber'];
+    if (verse == null) return false;
+    return verse.pageNumber == pageNumber;
+  }
+
+  /// Returns the first page number for a given Surah (1 to 114).
+  int getPageForSurah(int surahNumber) {
+    final verses = getVersesForSurah(surahNumber);
+    return verses.first.pageNumber;
+  }
+
+  /// Returns the first page number for a given Juz (1 to 30).
+  int getPageForJuz(int juzNumber) {
+    final juz = getJuz(juzNumber);
+    final verse = getVerse(juz.startSurahNumber, juz.startVerseNumber);
+    return verse.pageNumber;
+  }
+
   /// Searches verses matching the query string.
   ///
   /// The search normalizes both the query and the verses (removing diacritics,

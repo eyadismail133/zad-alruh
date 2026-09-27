@@ -36,7 +36,7 @@ Bookmarks can be named/deleted; search result opens the mapped page. Page naviga
 
 ## Execution workflow
 
-Codex owns investigation, briefs, actual verification and acceptance. Antigravity via `agy-delegate` and global implement lane owns implementation; default model; no commit or further delegation. Astra reviews actual diff with APPROVED or CHANGES_REQUESTED plus evidence. Delta briefs return to the recorded Antigravity conversation. Codex only commits reviewed changes. Do not bypass Antigravity permissions, change global allow rules, publish, push, pay for services, create owner accounts, or fabricate credentials.
+Codex owns investigation, briefs, actual verification and acceptance. Antigravity via `agy-delegate` and global implement lane owns implementation; default model; no commit or further delegation. GPT-6 Sol reviews the actual Antigravity diff with APPROVED or CHANGES_REQUESTED plus evidence, per the owner's updated instruction. Previous Astra approvals remain historical evidence; no further Astra review is dispatched. Use small implementation briefs and focused verification during each repair, then complete stage gates before landing. Delta briefs return to the recorded Antigravity conversation. Codex only commits reviewed changes. Do not bypass Antigravity permissions, change global allow rules, publish, push, pay for services, create owner accounts, or fabricate credentials.
 
 ## Verification and delivery
 

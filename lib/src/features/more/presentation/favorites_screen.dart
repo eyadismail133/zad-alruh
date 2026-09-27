@@ -3,11 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
+import '../../quran/presentation/quran_reader_screen.dart';
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 
-  Future<void> _deleteBookmark(BuildContext context, WidgetRef ref, int id) async {
+  Future<void> _deleteBookmark(
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     try {
       await ref.read(bookmarksControllerProvider.notifier).deleteBookmark(id);
     } catch (e) {
@@ -15,7 +20,7 @@ class FavoritesScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade800,
-            content: Text('تعذر حذف العلامة: $e'),
+            content: const Text('تعذر حذف العلامة.'),
             action: SnackBarAction(
               label: 'إعادة المحاولة',
               textColor: Colors.white,
@@ -27,15 +32,22 @@ class FavoritesScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _removeFavorite(BuildContext context, WidgetRef ref, String kind, String stableId) async {
+  Future<void> _removeFavorite(
+    BuildContext context,
+    WidgetRef ref,
+    String kind,
+    String stableId,
+  ) async {
     try {
-      await ref.read(favoritesControllerProvider.notifier).removeFavorite(kind, stableId);
+      await ref
+          .read(favoritesControllerProvider.notifier)
+          .removeFavorite(kind, stableId);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade800,
-            content: Text('تعذر إزالة العنصر من المفضلة: $e'),
+            content: const Text('تعذر إزالة العنصر من المفضلة.'),
             action: SnackBarAction(
               label: 'إعادة المحاولة',
               textColor: Colors.white,
@@ -76,7 +88,9 @@ class FavoritesScreen extends ConsumerWidget {
                       child: Text(
                         'لا توجد علامات مرجعية محفوظة بعد.',
                         style: TextStyle(
-                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          color: isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted,
                           fontSize: 13,
                         ),
                       ),
@@ -90,15 +104,37 @@ class FavoritesScreen extends ConsumerWidget {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: const Icon(Icons.bookmark, color: AppColors.goldAccent),
-                          title: Text(b.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text('صفحة ${b.pageNumber} من ٦٠٤', style: const TextStyle(fontSize: 11)),
+                          leading: const Icon(
+                            Icons.bookmark,
+                            color: AppColors.goldAccent,
+                          ),
+                          title: Text(
+                            b.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'صفحة ${b.pageNumber} من ٦٠٤',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, size: 20),
                             onPressed: b.id != null
                                 ? () => _deleteBookmark(context, ref, b.id!)
                                 : null,
                           ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => QuranReaderScreen(
+                                  initialPage: b.pageNumber,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       );
                     },
@@ -106,8 +142,9 @@ class FavoritesScreen extends ConsumerWidget {
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, _) => RetryableErrorView(
-                  message: err.toString(),
-                  onRetry: () => ref.read(bookmarksControllerProvider.notifier).retry(),
+                  message: 'تعذر تحميل العلامات المرجعية.',
+                  onRetry: () =>
+                      ref.read(bookmarksControllerProvider.notifier).retry(),
                 ),
               ),
 
@@ -119,7 +156,9 @@ class FavoritesScreen extends ConsumerWidget {
                       child: Text(
                         'لا توجد عناصر مفضلة محفوظة بعد.',
                         style: TextStyle(
-                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          color: isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted,
                           fontSize: 13,
                         ),
                       ),
@@ -133,15 +172,29 @@ class FavoritesScreen extends ConsumerWidget {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: const Icon(Icons.favorite, color: Colors.redAccent),
-                          title: Text(fav.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          leading: const Icon(
+                            Icons.favorite,
+                            color: Colors.redAccent,
+                          ),
+                          title: Text(
+                            fav.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                           subtitle: Text(
                             fav.subtitle ?? 'النوع: ${fav.contentKind}',
                             style: const TextStyle(fontSize: 11),
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, size: 20),
-                            onPressed: () => _removeFavorite(context, ref, fav.contentKind, fav.stableId),
+                            onPressed: () => _removeFavorite(
+                              context,
+                              ref,
+                              fav.contentKind,
+                              fav.stableId,
+                            ),
                           ),
                         ),
                       );
@@ -150,8 +203,9 @@ class FavoritesScreen extends ConsumerWidget {
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, _) => RetryableErrorView(
-                  message: err.toString(),
-                  onRetry: () => ref.read(favoritesControllerProvider.notifier).retry(),
+                  message: 'تعذر تحميل العناصر المفضلة.',
+                  onRetry: () =>
+                      ref.read(favoritesControllerProvider.notifier).retry(),
                 ),
               ),
             ],

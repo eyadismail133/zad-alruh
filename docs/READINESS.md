@@ -7,7 +7,8 @@ This record separates implemented work, verified work and external prerequisites
 | Design | Supplied archive, logo, Arabic fonts and original licenses retained; actual foundation widget renders inspected | Compare subsequent screens with design and verify accessibility on devices |
 | Tooling | Flutter3.47.5/Dart3.13.4, AndroidAPI36/NDK28 installed; debug and profile APKs built | iOS requires macOS/Xcode; native16KB RELRO finding and runtime tests remain |
 | Foundation | Astra APPROVED Task1; analyze and24tests passed; approved commit03b57a7 | Later feature/schema/native milestones require separate review |
-| Quran source/domain | Astra APPROVED Task2A; canonical hashes,114chapters/6236verses/604boundaries/30juz; analyze and89tests passed; debug APK source hashes verified | Task2B reader/search/bookmark UI integration; content/image/religious review |
+| Quran source/domain | Historical Astra APPROVED Task2A; canonical hashes,114chapters/6236verses/604boundaries/30juz; original assets verified unchanged in latest debug APK | Content/image/religious review |
+| Quran interface | GPT-6 Sol APPROVED Task2B; offline index/search/reader/explicit stop/bookmarks/favorites/source notices; full113tests and analyze passed, fresh debug build14.0s | Physical-device accessibility and image-mode acceptance when approved604images are supplied |
 | Mushaf images | No approved images supplied | Quran Foundation access/permission,604images, alignment and human review |
 | Global cities | Original GeoNames cities15000 snapshot34149records and CC BY4.0 attribution acquired | Offline search and timezone-aware prayer calculator/UI |
 | Dhikr/duas/hadith | No licensed digital corpus imported | Exact-edition rights, referenced records and qualified human review |
@@ -19,6 +20,8 @@ This record separates implemented work, verified work and external prerequisites
 ## Verified foundation
 
 Independent Astra verdict and bounded acceptance are recorded in [FOUNDATION-REVIEW.md](FOUNDATION-REVIEW.md). Local evidence: foundation-fix07 analyze/test logs and fresh debug APK build10.4s. Task2A has separate independent approval, recorded in [QURAN-REVIEW.md](QURAN-REVIEW.md). Its89tests and fresh debug build do not approve subsequent UI/native/store milestones.
+
+Task2B was separately approved by GPT-6 Sol on2026-09-28 after the actual production/test diff and final113-test/analyzer/build/source-integrity evidence were reviewed. See [QURAN-UI-REVIEW.md](QURAN-UI-REVIEW.md). Future reviews use GPT-6 Sol, as requested by the owner.
 
 ## Native compatibility
 
