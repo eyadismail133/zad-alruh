@@ -4,7 +4,7 @@ publish_to: "none"
 version: 0.1.0+1
 
 environment:
-  sdk: ">=3.10.0 <4.0.0"
+  sdk: ">=3.11.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -16,6 +16,8 @@ dependencies:
   flutter_riverpod: ^2.6.1
   sqflite: ^2.4.4
   path: ^1.9.1
+  crypto: 3.0.7
+  xml: 7.0.1
 
 dev_dependencies:
   flutter_test:
@@ -31,6 +33,11 @@ flutter:
     - assets/branding/logo.png
     - assets/fonts/Amiri-OFL.txt
     - assets/fonts/IBM-Plex-LICENSE.txt
+    - assets/content/manifest.json
+    - assets/content/quran/quran-uthmani.txt
+    - assets/content/quran/quran-data.xml
+    - assets/content/cities/cities15000.txt
+    - assets/content/cities/GEONAMES-LICENSE-README.txt
 
   fonts:
     - family: IBM Plex Sans Arabic

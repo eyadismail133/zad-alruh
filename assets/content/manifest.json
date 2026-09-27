@@ -1,0 +1,121 @@
+{
+  "manifest_version": "1.0.0",
+  "schema_version": 1,
+  "acquisition_date": "2026-09-27",
+  "description": "Zad Alruh Trusted Content Manifest and Provenance Registry",
+  "corpora": {
+    "quran_text": {
+      "path": "assets/content/quran/quran-uthmani.txt",
+      "sha256": "7f30c647331a61100ebf24a80507dc0fcdd9f2df97f1312b5b2dfcb982a7f326",
+      "source_url": "https://tanzil.net/pub/download/index.php?quranType=uthmani&outType=txt-2&marks=true&sajdah=true&rub=true&alef=true&tatweel=true&agree=true",
+      "edition": "Tanzil Uthmani v1.1",
+      "license": "Creative Commons Attribution 3.0 (CC-BY 3.0)",
+      "attribution": "Tanzil Project (tanzil.net)",
+      "terms_url": "https://tanzil.net/docs/Text_License",
+      "evidence_doc": "docs/sources/TANZIL.md",
+      "expected_verses": 6236,
+      "expected_chapters": 114,
+      "status": "bundled"
+    },
+    "quran_metadata": {
+      "path": "assets/content/quran/quran-data.xml",
+      "sha256": "8867c1d88191472adec9db694b3cd9f135b1a2ef580574d32cf888dcb22c5c7a",
+      "source_url": "https://tanzil.net/res/text/metadata/quran-data.xml",
+      "edition": "Tanzil Metadata 1.0",
+      "license": "cc-by",
+      "precise_license_version": "unspecified",
+      "precise_rights_status": "pending_clarification",
+      "attribution": "Tanzil.info",
+      "terms_url": "https://tanzil.net/docs/Quran_Metadata",
+      "evidence_doc": "docs/sources/TANZIL.md",
+      "expected_chapters": 114,
+      "expected_pages": 604,
+      "expected_juzs": 30,
+      "status": "bundled"
+    }
+  },
+  "provenance": {
+    "geonames": {
+      "source": "GeoNames",
+      "url": "https://download.geonames.org/export/dump/cities15000.zip",
+      "license": "Creative Commons Attribution 4.0 (CC-BY 4.0)",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "acquisition_date": "2026-09-27",
+      "evidence_doc": "docs/sources/GEONAMES.md",
+      "data_file": {
+        "path": "assets/content/cities/cities15000.txt",
+        "sha256": "c8e0a782e44ba580a2c0f0e3c9538051351629b442d4e6ff244aa609bd790a8d",
+        "expected_records": 34149
+      },
+      "readme_file": {
+        "path": "assets/content/cities/GEONAMES-LICENSE-README.txt",
+        "sha256": "b1957379b6c1242c700c98ac9a8aa0a09f56c3c0a50ee72175527005f48ef2c5"
+      }
+    },
+    "tanzil": {
+      "source": "Tanzil Project",
+      "url": "https://tanzil.net",
+      "evidence_doc": "docs/sources/TANZIL.md",
+      "text_terms": {
+        "url": "https://tanzil.net/docs/Text_License",
+        "license": "Creative Commons Attribution 3.0 (CC-BY 3.0)",
+        "verbatim_required": true,
+        "copyright_block_preserved": true
+      },
+      "metadata_terms": {
+        "url": "https://tanzil.net/docs/Quran_Metadata",
+        "license": "cc-by",
+        "precise_license_version": "unspecified",
+        "precise_rights_status": "pending_clarification"
+      }
+    }
+  },
+  "pending_registries": {
+    "quran_images": {
+      "status": "missing",
+      "expected_count": 604,
+      "mushaf_type": "Medina Mushaf",
+      "source_reference": "Quran Foundation APIs / approved CDN (https://api-docs.quran.com/legal/developer-terms/)",
+      "rights_status": "pending_account_and_terms",
+      "alignment_status": "pending_human_verification",
+      "blocker_reason": "Owner has no page-image developer account or access. Source attribution, rights evidence, and Medina Mushaf visual image alignment remain pending.",
+      "pages": []
+    },
+    "dhikr_duas": {
+      "status": "missing",
+      "source_target": "Hisn al-Muslim (Fortress of the Muslim)",
+      "rights_status": "pending_digital_edition_permission",
+      "records_count": 0,
+      "items": [],
+      "blocker_reason": "Documented Hisn al-Muslim edition, digital reuse permission, references and repetition counts are pending acquisition."
+    },
+    "hadith": {
+      "status": "missing",
+      "source_target": "HadeethEnc (Encyclopedia of Prophetic Hadiths)",
+      "target_count": 100,
+      "records_count": 0,
+      "items": [],
+      "rights_status": "pending_corpus_acquisition",
+      "blocker_reason": "100 authentic records from HadeethEnc with reference, authenticity grading, and documented Arabic reuse rights are pending."
+    },
+    "adhan_audio": {
+      "status": "missing",
+      "expected_voices_count": 3,
+      "voices": [],
+      "notification_clips": [],
+      "rights_status": "pending_licensing",
+      "blocker_reason": "Owner has no audio recordings or bundling licenses. Real performer names, 3 distinct voices including Fajr, and permitted short excerpt rights are pending."
+    },
+    "human_review": {
+      "status": "pending",
+      "approved": false,
+      "reviewer_name": null,
+      "reviewer_qualifications": null,
+      "review_date": null,
+      "evidence_path": null,
+      "evidence_sha256": null,
+      "reviewed_hashes": {},
+      "blocker_reason": "Qualified human reviewer must inspect religious corpus and approve exact SHA-256 hashes of bundled text, metadata, and assets."
+    }
+  }
+}
