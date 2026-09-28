@@ -27,6 +27,7 @@ Future<void> main(List<String> args) async {
   final result = await ContentValidator.validate(
     workspaceRoot: workspaceRoot,
     isDevelopmentMode: isDevelopment,
+    strictImageHashes: true,
   );
 
   stdout.write(result.toReport(isDevelopment: isDevelopment));

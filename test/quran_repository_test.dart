@@ -1,16 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart' show AssetBundle;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zad_alruh/src/features/quran/data/parsers/quran_parser.dart';
 import 'package:zad_alruh/src/features/quran/data/quran_repository.dart';
+import 'package:zad_alruh/src/features/quran/data/sources/kfqc_mushaf_catalog.dart';
 import 'package:zad_alruh/src/features/quran/data/sources/quran_asset_loader.dart';
 import 'package:zad_alruh/src/features/quran/data/sources/quran_source_verifier.dart';
 
 void main() {
   late Uint8List textBytes;
   late Uint8List xmlBytes;
+  late Uint8List boundsBytes;
   late String textContent;
   late String xmlMetadataContent;
   late QuranRepository repo;
@@ -18,13 +21,19 @@ void main() {
   setUpAll(() async {
     final textFile = File('assets/content/quran/quran-uthmani.txt');
     final xmlFile = File('assets/content/quran/quran-data.xml');
+    final boundsFile = File('assets/content/quran/kfqc-page-bounds.json');
 
     textBytes = await textFile.readAsBytes();
     xmlBytes = await xmlFile.readAsBytes();
+    boundsBytes = await boundsFile.readAsBytes();
     textContent = utf8.decode(textBytes);
     xmlMetadataContent = utf8.decode(xmlBytes);
 
-    repo = QuranRepository.fromBytes(textBytes: textBytes, xmlBytes: xmlBytes);
+    repo = QuranRepository.fromBytes(
+      textBytes: textBytes,
+      xmlBytes: xmlBytes,
+      boundsBytes: boundsBytes,
+    );
   });
 
   group('QuranRepository - Bundled Corpus Counts & Literal Boundaries', () {
@@ -635,6 +644,7 @@ void main() {
           final bundle = _TestAssetBundle({
             QuranAssetLoader.textAssetPath: ByteData.sublistView(textBytes),
             QuranAssetLoader.xmlAssetPath: ByteData.sublistView(xmlBytes),
+            QuranAssetLoader.boundsAssetPath: ByteData.sublistView(boundsBytes),
           });
 
           final repoFromLoader = await QuranAssetLoader.loadBundledRepository(
@@ -656,6 +666,7 @@ void main() {
               alteredTextBytes,
             ),
             QuranAssetLoader.xmlAssetPath: ByteData.sublistView(xmlBytes),
+            QuranAssetLoader.boundsAssetPath: ByteData.sublistView(boundsBytes),
           });
 
           expect(
@@ -682,6 +693,7 @@ void main() {
             QuranAssetLoader.xmlAssetPath: ByteData.sublistView(
               alteredXmlBytes,
             ),
+            QuranAssetLoader.boundsAssetPath: ByteData.sublistView(boundsBytes),
           });
 
           expect(
@@ -698,6 +710,228 @@ void main() {
       );
     },
   );
+
+  group('QuranRepository - KFQC 604-Page Medina Mushaf Alignment & Integrity', () {
+    test('exhaustively validates all 604 pages and 6236 verses against KFQC catalog', () {
+      final pages = repo.getPages();
+      expect(pages.length, 604);
+
+      int cumulativeVerses = 0;
+      for (int i = 0; i < 604; i++) {
+        final p = i + 1;
+        final kfqc = KfqcMushafCatalog.pages[i];
+        final page = repo.getPage(p);
+
+        expect(page.pageNumber, p);
+        expect(page.startSurahNumber, kfqc.startSurah);
+        expect(page.startVerseNumber, kfqc.startAyah);
+
+        final versesOnPage = repo.getVersesForPage(p);
+        expect(versesOnPage.length, kfqc.verseCount);
+        expect(versesOnPage.first.surahNumber, kfqc.startSurah);
+        expect(versesOnPage.first.verseNumber, kfqc.startAyah);
+        expect(versesOnPage.last.surahNumber, kfqc.endSurah);
+        expect(versesOnPage.last.verseNumber, kfqc.endAyah);
+
+        for (final v in versesOnPage) {
+          expect(v.pageNumber, p);
+          expect(
+            repo.isValidVerseOnPage(
+              pageNumber: p,
+              surahNumber: v.surahNumber,
+              verseNumber: v.verseNumber,
+            ),
+            isTrue,
+          );
+        }
+
+        cumulativeVerses += versesOnPage.length;
+      }
+
+      expect(cumulativeVerses, 6236);
+    });
+
+    test('verifies all 25 boundary differences from Tanzil XML strictly match KFQC', () {
+      expect(KfqcMushafCatalog.differingPageNumbers.length, 25);
+
+      // Verify specific known differences
+      // Page 121: KFQC 5:78 vs Tanzil 5:77
+      expect(repo.getPage(121).startSurahNumber, 5);
+      expect(repo.getPage(121).startVerseNumber, 78);
+      expect(repo.getVerse(5, 77).pageNumber, 120);
+      expect(repo.getVerse(5, 78).pageNumber, 121);
+
+      // Page 122: KFQC 5:84 vs Tanzil 5:83
+      expect(repo.getPage(122).startSurahNumber, 5);
+      expect(repo.getPage(122).startVerseNumber, 84);
+
+      // Page 123: KFQC 5:91 vs Tanzil 5:90
+      expect(repo.getPage(123).startSurahNumber, 5);
+      expect(repo.getPage(123).startVerseNumber, 91);
+
+      // Page 145: KFQC 6:131 vs Tanzil 6:132
+      expect(repo.getPage(145).startSurahNumber, 6);
+      expect(repo.getPage(145).startVerseNumber, 131);
+
+      // Page 600: KFQC 100:6 vs Tanzil 100:10
+      expect(repo.getPage(600).startSurahNumber, 100);
+      expect(repo.getPage(600).startVerseNumber, 6);
+      expect(repo.getVerse(100, 5).pageNumber, 599);
+      expect(repo.getVerse(100, 6).pageNumber, 600);
+
+      // All 25 differing pages assert start boundary matches catalog
+      for (final p in KfqcMushafCatalog.differingPageNumbers) {
+        final kfqc = KfqcMushafCatalog.pages[p - 1];
+        final page = repo.getPage(p);
+        expect(page.startSurahNumber, kfqc.startSurah);
+        expect(page.startVerseNumber, kfqc.startAyah);
+      }
+    });
+
+    test('verifies bundled asset files integrity, size, and pinned hashes', () async {
+      // 1. Bounds file
+      final boundsFile = File('assets/content/quran/kfqc-page-bounds.json');
+      expect(await boundsFile.exists(), isTrue);
+      final boundsBytes = await boundsFile.readAsBytes();
+      final boundsSha = sha256.convert(boundsBytes).toString();
+      expect(boundsSha, KfqcMushafCatalog.expectedBoundsSha256);
+
+      // 2. Digests file
+      final digestsFile = File('assets/content/quran/quran-pages-digests.json');
+      expect(await digestsFile.exists(), isTrue);
+      final digestsBytes = await digestsFile.readAsBytes();
+      final digestsSha = sha256.convert(digestsBytes).toString();
+      expect(digestsSha, KfqcMushafCatalog.expectedDigestsSha256);
+
+      // 3. Page 1 & Page 604 WebP hashes
+      final p1File = File(KfqcMushafCatalog.pageAssetPath(1));
+      expect(await p1File.exists(), isTrue);
+      final p1Sha = sha256.convert(await p1File.readAsBytes()).toString();
+      expect(p1Sha, KfqcMushafCatalog.page1WebpSha256);
+
+      final p604File = File(KfqcMushafCatalog.pageAssetPath(604));
+      expect(await p604File.exists(), isTrue);
+      final p604Sha = sha256.convert(await p604File.readAsBytes()).toString();
+      expect(p604Sha, KfqcMushafCatalog.page604WebpSha256);
+
+      // 4. File count & total size
+      final pagesDir = Directory('assets/content/quran/pages');
+      expect(await pagesDir.exists(), isTrue);
+      final webpFiles = pagesDir.listSync().whereType<File>().toList();
+      expect(webpFiles.length, 604);
+
+      int totalBytes = 0;
+      for (final f in webpFiles) {
+        totalBytes += f.lengthSync();
+      }
+      expect(totalBytes, KfqcMushafCatalog.expectedTotalBytes);
+    });
+
+    test('verifies parseKfqcPageBounds rejects corrupted or out-of-order bounds', () {
+      expect(
+        () => QuranParser.parseKfqcPageBounds(''),
+        throwsA(isA<QuranValidationException>()),
+      );
+
+      expect(
+        () => QuranParser.parseKfqcPageBounds('{"pages": []}'),
+        throwsA(isA<QuranValidationException>()),
+      );
+
+      // Corrupted page index
+      final corruptBounds = jsonEncode({
+        'pages': [
+          {'page': 2, 'start': {'surah': 1, 'ayah': 1}, 'verse_count': 7},
+        ],
+      });
+      expect(
+        () => QuranParser.parseKfqcPageBounds(corruptBounds),
+        throwsA(isA<QuranValidationException>()),
+      );
+    });
+
+    test('fails loader clearly when packaged bounds asset is missing', () async {
+      final textByteData = ByteData.sublistView(
+        await File('assets/content/quran/quran-uthmani.txt').readAsBytes(),
+      );
+      final xmlByteData = ByteData.sublistView(
+        await File('assets/content/quran/quran-data.xml').readAsBytes(),
+      );
+      final bundle = _TestAssetBundle({
+        QuranAssetLoader.textAssetPath: textByteData,
+        QuranAssetLoader.xmlAssetPath: xmlByteData,
+        // boundsAssetPath intentionally omitted
+      });
+
+      expect(
+        () => QuranAssetLoader.loadBundledRepository(bundle: bundle),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('fails loader and fromBytes when packaged bounds bytes have invalid SHA-256', () async {
+      final textBytes = await File('assets/content/quran/quran-uthmani.txt').readAsBytes();
+      final xmlBytes = await File('assets/content/quran/quran-data.xml').readAsBytes();
+      final corruptBoundsBytes = Uint8List.fromList(utf8.encode('{"pages": []}'));
+
+      expect(
+        () => QuranRepository.fromBytes(
+          textBytes: textBytes,
+          xmlBytes: xmlBytes,
+          boundsBytes: corruptBoundsBytes,
+        ),
+        throwsA(
+          isA<QuranValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('KFQC bounds byte hash mismatch'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects altered JSON in parseKfqcPageBounds even when it has 604 entries', () async {
+      final validJsonStr = await File('assets/content/quran/kfqc-page-bounds.json').readAsString();
+      final decoded = jsonDecode(validJsonStr) as Map<String, dynamic>;
+      final pagesList = (decoded['pages'] as List).cast<Map<String, dynamic>>();
+
+      // Alter start ayah on page 121
+      final alteredPages = pagesList.map((p) {
+        if (p['page'] == 121) {
+          final altered = Map<String, dynamic>.from(p);
+          altered['start'] = {'surah': 5, 'ayah': 99};
+          return altered;
+        }
+        return p;
+      }).toList();
+
+      final alteredJson = jsonEncode({'pages': alteredPages});
+      expect(
+        () => QuranParser.parseKfqcPageBounds(alteredJson),
+        throwsA(
+          isA<QuranValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('KFQC page 121 boundary mismatch against canonical catalog'),
+          ),
+        ),
+      );
+    });
+
+    test('preserves deliberate test-only fromContent behavior without bounds JSON', () async {
+      final textContent = await File('assets/content/quran/quran-uthmani.txt').readAsString();
+      final xmlContent = await File('assets/content/quran/quran-data.xml').readAsString();
+
+      final repo = QuranRepository.fromContent(
+        textContent: textContent,
+        xmlMetadataContent: xmlContent,
+      );
+
+      expect(repo.getPages().length, 604);
+      expect(repo.getVerses().length, 6236);
+      expect(repo.getVerse(5, 77).pageNumber, 120);
+    });
+  });
 }
 
 class _TestAssetBundle extends AssetBundle {

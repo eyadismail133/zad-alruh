@@ -855,7 +855,12 @@ void main() {
 
           // Test with Riverpod container
           final container = ProviderContainer(
-            overrides: [progressRepositoryProvider.overrideWithValue(repo)],
+            overrides: [
+              quranRepositoryProvider.overrideWith(
+                (ref) => Future.value(quranRepo),
+              ),
+              progressRepositoryProvider.overrideWithValue(repo),
+            ],
           );
           addTearDown(container.dispose);
 

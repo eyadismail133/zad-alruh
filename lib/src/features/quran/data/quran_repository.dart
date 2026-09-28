@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import '../domain/models/juz.dart';
 import '../domain/models/quran_page.dart';
 import '../domain/models/surah.dart';
 import '../domain/models/verse.dart';
 import '../domain/utils/arabic_normalizer.dart';
 import 'parsers/quran_parser.dart';
+import 'sources/kfqc_mushaf_catalog.dart';
 import 'sources/quran_source_verifier.dart';
 
 /// Trusted offline repository for the Holy Quran.
@@ -42,14 +45,26 @@ class QuranRepository {
   factory QuranRepository.fromBytes({
     required Uint8List textBytes,
     required Uint8List xmlBytes,
+    Uint8List? boundsBytes,
   }) {
     final verified = QuranSourceVerifier.verifyBytes(
       textBytes: textBytes,
       xmlBytes: xmlBytes,
     );
+    String? boundsContent;
+    if (boundsBytes != null) {
+      final actualSha = sha256.convert(boundsBytes).toString().toLowerCase();
+      if (actualSha != KfqcMushafCatalog.expectedBoundsSha256) {
+        throw QuranValidationException(
+          'KFQC bounds byte hash mismatch! Expected ${KfqcMushafCatalog.expectedBoundsSha256}, actual $actualSha',
+        );
+      }
+      boundsContent = utf8.decode(boundsBytes);
+    }
     return QuranRepository.fromContent(
       textContent: verified.textContent,
       xmlMetadataContent: verified.xmlMetadataContent,
+      kfqcPageBoundsJson: boundsContent,
     );
   }
 
@@ -59,10 +74,12 @@ class QuranRepository {
   factory QuranRepository.fromContent({
     required String textContent,
     required String xmlMetadataContent,
+    String? kfqcPageBoundsJson,
   }) {
     final parsed = QuranParser.parse(
       textContent: textContent,
       xmlMetadataContent: xmlMetadataContent,
+      kfqcPageBoundsJson: kfqcPageBoundsJson,
     );
     return QuranRepository(parsed);
   }

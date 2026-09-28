@@ -107,18 +107,65 @@
         "path": "assets/content/hisn/hisn-muslim.json",
         "sha256": "8655afe53935baf74fed92164fedb9f0ba7e989c23818f82bd231ebd6d7a773d"
       }
+    },
+    "kfqc_mushaf": {
+      "source": "مجمع الملك فهد لطباعة المصحف الشريف بالمدينة المنورة (King Fahd Glorious Quran Printing Complex - KFQC)",
+      "url": "https://qurancomplex.gov.sa",
+      "guide_url": "https://qurancomplex.gov.sa/wp-content/uploads/isdarat/booklets/complextechguide.pdf",
+      "edition": "مصحف المدينة النبوية لأعمال الطباعة - رواية حفص عن عاصم (طبعة ١٤٤١هـ)",
+      "rights_statement": "Public use approved in KFQC technical guide p. 51 for computer applications, educational software, and websites",
+      "dev_portal_url": "https://qurancomplex.gov.sa/en/techquran/dev/",
+      "dev_portal_status": "documented_times_out_from_environment",
+      "original_archive": {
+        "file": "1441-AI-hafs.zip",
+        "sha256": "280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef"
+      },
+      "upstream_conversion": {
+        "repository": "https://github.com/quran-ws/quran-svg",
+        "commit": "b4155f07e4aea087d2c458069acff9f7c7e749f6",
+        "license": "Creative Commons Attribution 4.0 International (CC-BY 4.0)",
+        "conversion_notice": "Structural checks only, no independent geometry diff; publisher official approval not claimed"
+      },
+      "rendering_pipeline": {
+        "svg_renderer": "resvg-js 2.6.2",
+        "image_encoder": "Pillow 12.3.0 / libwebp 1.6.0 method 6 lossless WebP",
+        "width_px": 1200,
+        "background": "#FFFFFF"
+      },
+      "evidence_doc": "docs/sources/KFQC_MUSHAF.md",
+      "bounds_file": {
+        "path": "assets/content/quran/kfqc-page-bounds.json",
+        "sha256": "95f609f8c56e811b8afed9695bee44a0e4766b47c01708a3abb7064b9bc42539"
+      },
+      "digests_file": {
+        "path": "assets/content/quran/quran-pages-digests.json",
+        "sha256": "a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956"
+      }
     }
   },
   "pending_registries": {
     "quran_images": {
-      "status": "missing",
+      "status": "bundled",
       "expected_count": 604,
-      "mushaf_type": "Medina Mushaf",
-      "source_reference": "Quran Foundation APIs / approved CDN (https://api-docs.quran.com/legal/developer-terms/)",
-      "rights_status": "pending_account_and_terms",
-      "alignment_status": "pending_human_verification",
-      "blocker_reason": "Owner has no page-image developer account or access. Source attribution, rights evidence, and Medina Mushaf visual image alignment remain pending.",
-      "pages": []
+      "total_bytes": 91492288,
+      "mushaf_type": "Medina Mushaf (KFQC Hafs 1441 AH)",
+      "source_reference": "King Fahd Glorious Quran Printing Complex via quran-ws/quran-svg",
+      "rights_status": "public_use_approved_kfqc_tech_guide_p51",
+      "alignment_status": "aligned_kfqc_tanzil_verses",
+      "evidence_doc": "docs/sources/KFQC_MUSHAF.md",
+      "bounds_file": {
+        "path": "assets/content/quran/kfqc-page-bounds.json",
+        "sha256": "95f609f8c56e811b8afed9695bee44a0e4766b47c01708a3abb7064b9bc42539"
+      },
+      "digests_file": {
+        "path": "assets/content/quran/quran-pages-digests.json",
+        "sha256": "a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956"
+      },
+      "sample_hashes": {
+        "page_1": "1dd02b643c8b1dcb01aaeb3bb34fa240dfdd824898e402cbddfad01e2e470d87",
+        "page_604": "f30b4aad9b322ce7c3d61c5d2bdedaa948eca8e76494eb21c4473dee68365689"
+      },
+      "pages_directory": "assets/content/quran/pages"
     },
     "dhikr_duas": {
       "status": "bundled",

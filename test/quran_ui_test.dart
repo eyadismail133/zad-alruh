@@ -22,6 +22,7 @@ import 'package:zad_alruh/src/features/prayer/domain/repositories/city_repositor
 import 'package:zad_alruh/src/features/progress/data/progress_repository.dart';
 import 'package:zad_alruh/src/features/progress/presentation/controllers/progress_controller.dart';
 import 'package:zad_alruh/src/features/quran/data/quran_repository.dart';
+import 'package:zad_alruh/src/features/quran/data/sources/kfqc_mushaf_catalog.dart';
 import 'package:zad_alruh/src/features/quran/data/sources/quran_asset_loader.dart';
 import 'package:zad_alruh/src/features/quran/presentation/controllers/quran_navigation_controller.dart';
 import 'package:zad_alruh/src/features/quran/presentation/quran_reader_screen.dart';
@@ -186,6 +187,19 @@ class TransientCachingAssetBundle extends CachingAssetBundle {
     final data = await rootBundle.load(key);
     loadedKeys.add(key);
     return data;
+  }
+}
+
+class _FailingWebpAssetBundle extends CachingAssetBundle {
+  final Set<String> failedKeys = {};
+
+  @override
+  Future<ByteData> load(String key) async {
+    if (key.endsWith('.webp')) {
+      failedKeys.add(key);
+      throw FlutterError('Simulated image asset failure for $key');
+    }
+    return rootBundle.load(key);
   }
 }
 
@@ -559,7 +573,10 @@ void main() {
           () => tester.pumpWidget(
             createTestApp(
               container: container1,
-              child: const QuranReaderScreen(initialPage: 2),
+              child: const QuranReaderScreen(
+                initialPage: 2,
+                initialMode: ReaderMode.text,
+              ),
             ),
           ),
         );
@@ -643,6 +660,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+        // Switch to text mode to verify stop badge on text view
+        await tester.tap(find.text('نص القرآن'));
+        await tester.pumpAndSettle();
         expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
 
         // Turn to page 3 via 'التالي' - clears stop verse
@@ -869,7 +889,7 @@ void main() {
     });
 
     testWidgets(
-      'Mushaf image mode displays honest absence state and toggles to verified text mode',
+      'Mushaf image mode defaults to bundled KFQC sheet, shows attribution dialog, and toggles to verified text mode',
       (tester) async {
         await _ensureTestFonts(tester);
         final ctx = (await tester.runAsync(
@@ -888,23 +908,25 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Switch to Mushaf image mode
-        await tester.tap(find.text('المصحف'));
-        await tester.pumpAndSettle();
+        // 1. Defaults to Mushaf image mode with InteractiveViewer
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+        expect(find.text('مصحف المدينة (حفص)'), findsOneWidget);
 
-        expect(find.text('صفحات المصحف المصورة قيد التدقيق'), findsOneWidget);
+        // 2. Tapping narration badge opens KFQC attribution dialog
+        await tester.tap(find.text('مصحف المدينة (حفص)'));
+        await tester.pumpAndSettle();
         expect(
-          find.textContaining(
-            'صفحات المصحف المصورة (٦٠٤ صفحات من مصحف المدينة المنورة) قيد المراجعة',
-          ),
+          find.text('مصحف المدينة النبوية'),
           findsOneWidget,
         );
-
-        // Switch back to text mode
-        final returnButton = find.text('الانتقال إلى وضع النص القرآني الموثق');
-        await tester.ensureVisible(returnButton);
+        expect(find.textContaining('الدليل الفني لمجمع الملك فهد'), findsOneWidget);
+        expect(find.textContaining('quran-ws/quran-svg'), findsOneWidget);
+        await tester.tap(find.text('إغلاق'));
         await tester.pumpAndSettle();
-        await tester.tap(returnButton);
+
+        // 3. Switch to text mode
+        await tester.tap(find.text('نص القرآن'));
         await tester.pumpAndSettle();
 
         expect(
@@ -914,6 +936,11 @@ void main() {
           ),
           findsWidgets,
         );
+
+        // 4. Switch back to Mushaf image mode
+        await tester.tap(find.text('المصحف'));
+        await tester.pumpAndSettle();
+        expect(find.byType(InteractiveViewer), findsOneWidget);
       },
     );
 
@@ -1046,6 +1073,19 @@ void main() {
           find.textContaining('Tanzil Quran Text (Uthmani, Version 1.1)'),
           findsOneWidget,
         );
+
+        // Scroll to and verify KFQC Mushaf artwork card
+        final kfqcHeader = find.text(
+          'نسب المصدر ورخصة صفحات مصحف المدينة النبوية (KFQC)',
+        );
+        await tester.scrollUntilVisible(
+          kfqcHeader,
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        expect(kfqcHeader, findsOneWidget);
+        expect(find.textContaining('quran-ws/quran-svg'), findsWidgets);
 
         // Scroll to Font card
         final fontHeader = find.text('تراخيص الخطوط وبيانات المصحف الوصفية');
@@ -1423,7 +1463,10 @@ void main() {
           () => tester.pumpWidget(
             createTestApp(
               container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+              child: const QuranReaderScreen(
+                initialPage: 1,
+                initialMode: ReaderMode.text,
+              ),
             ),
           ),
         );
@@ -1515,7 +1558,10 @@ void main() {
           () => tester.pumpWidget(
             createTestApp(
               container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+              child: const QuranReaderScreen(
+                initialPage: 1,
+                initialMode: ReaderMode.text,
+              ),
             ),
           ),
         );
@@ -1587,7 +1633,10 @@ void main() {
           () => tester.pumpWidget(
             createTestApp(
               container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+              child: const QuranReaderScreen(
+                initialPage: 1,
+                initialMode: ReaderMode.text,
+              ),
             ),
           ),
         );
@@ -1649,7 +1698,10 @@ void main() {
                 ),
                 child: child!,
               ),
-              child: const QuranReaderScreen(initialPage: 604),
+              child: const QuranReaderScreen(
+                initialPage: 604,
+                initialMode: ReaderMode.text,
+              ),
             ),
           ),
         );
@@ -1687,7 +1739,10 @@ void main() {
           () => tester.pumpWidget(
             createTestApp(
               container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 604),
+              child: const QuranReaderScreen(
+                initialPage: 604,
+                initialMode: ReaderMode.text,
+              ),
             ),
           ),
         );
@@ -1784,7 +1839,10 @@ void main() {
             () => tester.pumpWidget(
               createTestApp(
                 container: ctx.container,
-                child: const QuranReaderScreen(initialPage: 1),
+                child: const QuranReaderScreen(
+                  initialPage: 1,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
           );
@@ -1860,7 +1918,10 @@ void main() {
           () => tester.pumpWidget(
             createTestApp(
               container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+              child: const QuranReaderScreen(
+                initialPage: 1,
+                initialMode: ReaderMode.text,
+              ),
             ),
           ),
         );
@@ -1900,6 +1961,388 @@ void main() {
         expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
         expect(find.textContaining(p1v1.text), findsOneWidget);
         expect(find.textContaining(p2v1.text), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'horizontal drag/swipe in default Mushaf image mode advances exact KFQC page image and header',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Initially on Page 1 in default Mushaf image mode
+        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+        expect(find.text('سورة الفاتحة'), findsWidgets);
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+
+        final pageViewFinder = find.byType(PageView);
+        expect(pageViewFinder, findsOneWidget);
+
+        // Fling forward (left to right in RTL)
+        await tester.fling(pageViewFinder, const Offset(400, 0), 1000);
+        await tester.pumpAndSettle();
+
+        // Advanced to Page 2
+        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+        expect(find.text('سورة البقرة'), findsWidgets);
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+
+        // Fling backward (right to left in RTL)
+        await tester.fling(pageViewFinder, const Offset(-400, 0), 1000);
+        await tester.pumpAndSettle();
+
+        // Returned to Page 1
+        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+        expect(find.text('سورة الفاتحة'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'Mushaf image mode InteractiveViewer configures zoom constraints and resets zoom',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+        final viewer = tester.widget<InteractiveViewer>(
+          find.byType(InteractiveViewer).first,
+        );
+        expect(viewer.minScale, 1.0);
+        expect(viewer.maxScale, 4.0);
+
+        // At scale 1.0, pan is disabled so horizontal swipe is preserved for PageView
+        expect(viewer.panEnabled, isFalse);
+
+        // Zoom-out reset button is not shown at default scale
+        expect(find.byIcon(Icons.zoom_out_map), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'delayed Quran load reconciles legacy 5:77 stop and bookmark in real SQLite and surfaces recoverable error on failure',
+      (tester) async {
+        await tester.runAsync(() async {
+          final tempDir = await Directory.systemTemp.createTemp('q_delayed_');
+          final db = AppDatabase(
+            databaseFactory: databaseFactoryFfiNoIsolate,
+            databasePath: p.join(tempDir.path, 'delayed.db'),
+          );
+          final rawDb = await db.database;
+
+          // Seed legacy records directly into SQLite: page 121 with selected verse 5:77
+          await rawDb.insert(
+            'reading_progress',
+            {
+              'id': 1,
+              'last_page': 121,
+              'selected_surah': 5,
+              'selected_verse': 77,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+          await rawDb.insert('bookmarks', {
+            'id': 1,
+            'name': 'Legacy Stop 5:77',
+            'page_number': 121,
+            'surah_number': 5,
+            'verse_number': 77,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+
+          final repo = ProgressRepository(
+            db,
+            versePageValidator: quranRepo.isValidVerseOnPage,
+          );
+
+          final quranCompleter = Completer<QuranRepository>();
+          final container = ProviderContainer(
+            overrides: [
+              quranRepositoryProvider.overrideWith(
+                (ref) => quranCompleter.future,
+              ),
+              progressRepositoryProvider.overrideWithValue(repo),
+              cityRepositoryProvider.overrideWith((ref) async => cityRepo),
+            ],
+          );
+
+          try {
+            final progressFuture = container.read(
+              readingProgressControllerProvider.future,
+            );
+            final bookmarksFuture = container.read(
+              bookmarksControllerProvider.future,
+            );
+
+            bool progressCompleted = false;
+            bool bookmarksCompleted = false;
+            unawaited(
+              progressFuture
+                  .then((_) => progressCompleted = true)
+                  .catchError((_) => false),
+            );
+            unawaited(
+              bookmarksFuture
+                  .then((_) => bookmarksCompleted = true)
+                  .catchError((_) => false),
+            );
+
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+            expect(progressCompleted, isFalse);
+            expect(bookmarksCompleted, isFalse);
+
+            quranCompleter.complete(quranRepo);
+
+            final progress = await progressFuture;
+            final bookmarks = await bookmarksFuture;
+
+            expect(progress.lastPage, 120);
+            expect(progress.selectedSurah, 5);
+            expect(progress.selectedVerse, 77);
+
+            expect(bookmarks.length, 1);
+            expect(bookmarks.first.pageNumber, 120);
+            expect(bookmarks.first.surahNumber, 5);
+            expect(bookmarks.first.verseNumber, 77);
+
+            final dbProgress = await rawDb.query(
+              'reading_progress',
+              where: 'id = 1',
+            );
+            expect(dbProgress.first['last_page'], 120);
+            expect(dbProgress.first['selected_surah'], 5);
+            expect(dbProgress.first['selected_verse'], 77);
+
+            final dbBookmarks = await rawDb.query('bookmarks', where: 'id = 1');
+            expect(dbBookmarks.first['page_number'], 120);
+            expect(dbBookmarks.first['surah_number'], 5);
+            expect(dbBookmarks.first['verse_number'], 77);
+          } finally {
+            container.dispose();
+            await repo.close();
+            if (await tempDir.exists()) await tempDir.delete(recursive: true);
+          }
+
+          final errTempDir = await Directory.systemTemp.createTemp('q_err_');
+          final errDb = AppDatabase(
+            databaseFactory: databaseFactoryFfiNoIsolate,
+            databasePath: p.join(errTempDir.path, 'err.db'),
+          );
+          final rawErrDb = await errDb.database;
+          await rawErrDb.insert(
+            'reading_progress',
+            {
+              'id': 1,
+              'last_page': 121,
+              'selected_surah': 5,
+              'selected_verse': 77,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+          final errRepo = ProgressRepository(
+            errDb,
+            versePageValidator: quranRepo.isValidVerseOnPage,
+          );
+
+          final errorContainer = ProviderContainer(
+            overrides: [
+              quranRepositoryProvider.overrideWith(
+                (ref) async =>
+                    throw StateError('Simulated Quran load failure'),
+              ),
+              progressRepositoryProvider.overrideWithValue(errRepo),
+              cityRepositoryProvider.overrideWith((ref) async => cityRepo),
+            ],
+          );
+
+          try {
+            await expectLater(
+              errorContainer.read(readingProgressControllerProvider.future),
+              throwsA(isA<StateError>()),
+            );
+            await expectLater(
+              errorContainer.read(bookmarksControllerProvider.future),
+              throwsA(isA<StateError>()),
+            );
+          } finally {
+            errorContainer.dispose();
+            await errRepo.close();
+            if (await errTempDir.exists()) {
+              await errTempDir.delete(recursive: true);
+            }
+          }
+        });
+      },
+    );
+
+    testWidgets(
+      'Mushaf image reader bounds memory residency by evicting disposed sheets from imageCache after navigation',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final nextButton = find.widgetWithText(ElevatedButton, 'التالي');
+        expect(nextButton, findsOneWidget);
+
+        // Turn pages 1 -> 2 -> 3 -> 4 -> 5
+        for (int p = 1; p < 5; p++) {
+          await tester.tap(nextButton);
+          await tester.pumpAndSettle();
+        }
+
+        expect(find.text('صفحة ٥ / ٦٠٤'), findsOneWidget);
+
+        final readerElement = tester.element(find.byType(QuranReaderScreen));
+        final imageConfig = createLocalImageConfiguration(readerElement);
+        final imageCache = PaintingBinding.instance.imageCache;
+
+        // Resolve exact cache keys using the reader's ambient configuration and bundle
+        final key1 = await AssetImage(
+          KfqcMushafCatalog.assetPathForPage(1),
+        ).obtainKey(imageConfig);
+        final key2 = await AssetImage(
+          KfqcMushafCatalog.assetPathForPage(2),
+        ).obtainKey(imageConfig);
+        final key5 = await AssetImage(
+          KfqcMushafCatalog.assetPathForPage(5),
+        ).obtainKey(imageConfig);
+
+        // Disposed earlier sheets (pages 1 and 2) must be absent/untracked from imageCache without test mutating the cache
+        expect(
+          imageCache.containsKey(key1),
+          isFalse,
+          reason:
+              'Disposed page 1 sheet must have been evicted from imageCache upon navigation',
+        );
+        expect(
+          imageCache.statusForKey(key1).tracked,
+          isFalse,
+          reason:
+              'Page 1 must be completely untracked (neither pending, live, nor keepAlive)',
+        );
+        expect(
+          imageCache.containsKey(key2),
+          isFalse,
+          reason:
+              'Disposed page 2 sheet must have been evicted from imageCache upon navigation',
+        );
+        expect(
+          imageCache.statusForKey(key2).tracked,
+          isFalse,
+          reason: 'Page 2 must be completely untracked',
+        );
+
+        // Currently active page sheet (page 5) must be present in imageCache
+        expect(
+          imageCache.containsKey(key5),
+          isTrue,
+          reason:
+              'Current visible sheet (page 5) must be present in imageCache',
+        );
+        final status5 = imageCache.statusForKey(key5);
+        expect(
+          status5.live || status5.keepAlive,
+          isTrue,
+          reason: 'Current visible sheet must be live or kept alive in cache',
+        );
+
+        // Overall cache metrics must remain strictly bounded rather than leaking all turned pages
+        expect(
+          imageCache.currentSize,
+          lessThanOrEqualTo(3),
+          reason: 'Image cache keepAlive size must remain bounded',
+        );
+        expect(
+          imageCache.liveImageCount,
+          lessThanOrEqualTo(2),
+          reason:
+              'Live images must remain bounded to current active viewport sheet',
+        );
+      },
+    );
+
+    testWidgets(
+      'Mushaf image reader error card shows page number, retry, and Arabic guidance without exposing internal asset path',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        final failingBundle = _FailingWebpAssetBundle();
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            DefaultAssetBundle(
+              bundle: failingBundle,
+              child: createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 1),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('تعذر تحميل صورة الصفحة ١'), findsOneWidget);
+        expect(
+          find.text('يرجى إعادة المحاولة أو الانتقال إلى وضع القراءة النصية.'),
+          findsOneWidget,
+        );
+        expect(
+          find.widgetWithText(ElevatedButton, 'إعادة المحاولة'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('assets/content/quran'), findsNothing);
+        expect(find.textContaining('المسار:'), findsNothing);
       },
     );
   });

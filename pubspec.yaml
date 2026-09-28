@@ -43,6 +43,9 @@ flutter:
     - assets/content/manifest.json
     - assets/content/quran/quran-uthmani.txt
     - assets/content/quran/quran-data.xml
+    - assets/content/quran/kfqc-page-bounds.json
+    - assets/content/quran/quran-pages-digests.json
+    - assets/content/quran/pages/
     - assets/content/cities/cities15000.txt
     - assets/content/cities/GEONAMES-LICENSE-README.txt
     - assets/content/hadith/hadith-enc-sahih.json

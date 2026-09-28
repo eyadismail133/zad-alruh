@@ -208,6 +208,79 @@ class ProgressRepository {
     await db.delete('bookmarks', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void>? _reconciliationFuture;
+
+  /// Reconciles stored reading progress and bookmarks with the canonical KFQC Quran page mapping.
+  ///
+  /// - Stored lastPage remains a visible page number (1..604).
+  /// - Stored exact selected verses or bookmarks with specific verse references are aligned
+  ///   to their canonical KFQC page without deleting or altering any user records.
+  /// - Bookmarks without specific verse references (page bookmarks) retain their page number.
+  /// - Deduplicates and serializes concurrent calls to avoid SQLite lock conflicts.
+  Future<void> reconcileWithQuranMapping({
+    required int Function(int surahNumber, int verseNumber) getCanonicalPage,
+  }) {
+    if (_reconciliationFuture != null) return _reconciliationFuture!;
+    _reconciliationFuture = () async {
+      try {
+        final db = await _db;
+
+        // 1. Reconcile Bookmarks with specific verse references
+        final bookmarkRows = await db.query('bookmarks');
+        for (final row in bookmarkRows) {
+          final id = (row['id'] as num?)?.toInt();
+          final surah = (row['surah_number'] as num?)?.toInt();
+          final verse = (row['verse_number'] as num?)?.toInt();
+          final currentPage = (row['page_number'] as num?)?.toInt() ?? 1;
+
+          if (id != null && surah != null && verse != null) {
+            final canonicalPage = getCanonicalPage(surah, verse);
+            if (canonicalPage != currentPage &&
+                canonicalPage >= 1 &&
+                canonicalPage <= 604) {
+              await db.update(
+                'bookmarks',
+                {'page_number': canonicalPage},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+            }
+          }
+        }
+
+        // 2. Reconcile Reading Progress
+        final progressRows = await db.query(
+          'reading_progress',
+          where: 'id = 1',
+          limit: 1,
+        );
+        if (progressRows.isNotEmpty) {
+          final row = progressRows.first;
+          final surah = (row['selected_surah'] as num?)?.toInt();
+          final verse = (row['selected_verse'] as num?)?.toInt();
+          final currentPage = (row['last_page'] as num?)?.toInt() ?? 1;
+
+          if (surah != null && verse != null) {
+            final canonicalPage = getCanonicalPage(surah, verse);
+            if (canonicalPage != currentPage &&
+                canonicalPage >= 1 &&
+                canonicalPage <= 604) {
+              await db.update(
+                'reading_progress',
+                {'last_page': canonicalPage},
+                where: 'id = 1',
+              );
+            }
+          }
+        }
+      } catch (err) {
+        _reconciliationFuture = null;
+        rethrow;
+      }
+    }();
+    return _reconciliationFuture!;
+  }
+
   // -------------------------------------------------------------
   // Favorites (Unique by content_kind & stable_id)
   // -------------------------------------------------------------

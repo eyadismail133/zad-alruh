@@ -12,6 +12,8 @@ class QuranAssetLoader {
 
   static const String textAssetPath = 'assets/content/quran/quran-uthmani.txt';
   static const String xmlAssetPath = 'assets/content/quran/quran-data.xml';
+  static const String boundsAssetPath =
+      'assets/content/quran/kfqc-page-bounds.json';
 
   /// Loads bundled Quran source assets using the given [AssetBundle] (defaults to [rootBundle]).
   ///
@@ -33,7 +35,17 @@ class QuranAssetLoader {
       xmlByteData.lengthInBytes,
     );
 
-    return QuranRepository.fromBytes(textBytes: textBytes, xmlBytes: xmlBytes);
+    final boundsByteData = await assetBundle.load(boundsAssetPath);
+    final boundsBytes = boundsByteData.buffer.asUint8List(
+      boundsByteData.offsetInBytes,
+      boundsByteData.lengthInBytes,
+    );
+
+    return QuranRepository.fromBytes(
+      textBytes: textBytes,
+      xmlBytes: xmlBytes,
+      boundsBytes: boundsBytes,
+    );
   }
 }
 

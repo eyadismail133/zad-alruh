@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:xml/xml.dart';
 import '../../domain/models/juz.dart';
 import '../../domain/models/quran_page.dart';
 import '../../domain/models/surah.dart';
 import '../../domain/models/verse.dart';
 import '../../domain/utils/arabic_normalizer.dart';
+import '../sources/kfqc_mushaf_catalog.dart';
 
 /// Exception thrown when Quran source content fails integrity or structural validation.
 class QuranValidationException implements Exception {
@@ -75,6 +77,7 @@ class QuranParser {
   static QuranParsedData parse({
     required String textContent,
     required String xmlMetadataContent,
+    String? kfqcPageBoundsJson,
   }) {
     if (textContent.trim().isEmpty) {
       throw const QuranValidationException('Quran text content is empty');
@@ -303,7 +306,7 @@ class QuranParser {
       );
     }
 
-    final pages = <QuranPage>[];
+    final xmlPages = <QuranPage>[];
     for (int i = 0; i < pageElements.length; i++) {
       final el = pageElements[i];
       final indexStr = el.getAttribute('index');
@@ -336,7 +339,7 @@ class QuranParser {
       }
 
       if (i > 0) {
-        final prev = pages[i - 1];
+        final prev = xmlPages[i - 1];
         if (compareVerseRef(
               prev.startSurahNumber,
               prev.startVerseNumber,
@@ -350,13 +353,29 @@ class QuranParser {
         }
       }
 
-      pages.add(
+      xmlPages.add(
         QuranPage(
           pageNumber: index,
           startSurahNumber: sura,
           startVerseNumber: aya,
         ),
       );
+    }
+
+    // Canonical KFQC Hafs Medina Mushaf pages for runtime mapping
+    final List<QuranPage> pages;
+    if (kfqcPageBoundsJson != null) {
+      pages = parseKfqcPageBounds(kfqcPageBoundsJson);
+    } else {
+      pages = KfqcMushafCatalog.pages
+          .map(
+            (e) => QuranPage(
+              pageNumber: e.page,
+              startSurahNumber: e.startSurah,
+              startVerseNumber: e.startAyah,
+            ),
+          )
+          .toList(growable: false);
     }
 
     // 2. Parse Uthmani Text
@@ -457,7 +476,9 @@ class QuranParser {
     final verseKeySet = <String>{
       for (final v in rawVerses) '${v.surahNumber}:${v.verseNumber}',
     };
-    for (final p in pages) {
+
+    // Verify XML page boundaries resolve to actual verses in the corpus
+    for (final p in xmlPages) {
       final key = '${p.startSurahNumber}:${p.startVerseNumber}';
       if (!verseKeySet.contains(key)) {
         throw QuranValidationException(
@@ -493,11 +514,44 @@ class QuranParser {
       );
     }
 
+    // Verify canonical KFQC page boundaries resolve to actual verses in the corpus
+    for (final p in pages) {
+      final key = '${p.startSurahNumber}:${p.startVerseNumber}';
+      if (!verseKeySet.contains(key)) {
+        throw QuranValidationException(
+          'KFQC Page ${p.pageNumber} start boundary ($key) does not resolve to an actual verse in the corpus',
+        );
+      }
+    }
+
+    // Verify first page starts at 1:1
+    if (pages[0].startSurahNumber != 1 || pages[0].startVerseNumber != 1) {
+      throw QuranValidationException(
+        'First page must start at 1:1, got ${pages[0].startSurahNumber}:${pages[0].startVerseNumber}',
+      );
+    }
+
+    // Verify Page 121 starts at Chapter 5 Aya 78 in KFQC (differs from Tanzil 5:77)
+    if (pages[120].startSurahNumber != 5 || pages[120].startVerseNumber != 78) {
+      throw QuranValidationException(
+        'Page 121 must start at Chapter 5 Aya 78 in KFQC, got '
+        '${pages[120].startSurahNumber}:${pages[120].startVerseNumber}',
+      );
+    }
+
     // Check Chapter 9 / Page 187 specifically
     if (pages[186].startSurahNumber != 9 || pages[186].startVerseNumber != 1) {
       throw QuranValidationException(
         'Page 187 must start at Chapter 9 Aya 1, got '
         '${pages[186].startSurahNumber}:${pages[186].startVerseNumber}',
+      );
+    }
+
+    // Verify Page 600 starts at Chapter 100 Aya 6 in KFQC (differs from Tanzil 100:10)
+    if (pages[599].startSurahNumber != 100 || pages[599].startVerseNumber != 6) {
+      throw QuranValidationException(
+        'Page 600 must start at Chapter 100 Aya 6 in KFQC, got '
+        '${pages[599].startSurahNumber}:${pages[599].startVerseNumber}',
       );
     }
 
@@ -591,5 +645,79 @@ class QuranParser {
       pages: List.unmodifiable(pages),
       verses: List.unmodifiable(verses),
     );
+  }
+
+  /// Parses and validates a KFQC page-bounds JSON string into a strongly-typed list of [QuranPage]s.
+  static List<QuranPage> parseKfqcPageBounds(String jsonStr) {
+    if (jsonStr.trim().isEmpty) {
+      throw const QuranValidationException('KFQC page bounds JSON is empty');
+    }
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(jsonStr);
+    } catch (e) {
+      throw QuranValidationException('Failed to parse KFQC page bounds JSON: $e', e);
+    }
+    if (decoded is! Map || decoded['pages'] is! List) {
+      throw const QuranValidationException('KFQC page bounds JSON missing "pages" array');
+    }
+    final rawList = decoded['pages'] as List;
+    if (rawList.length != expectedPagesCount) {
+      throw QuranValidationException(
+        'Expected $expectedPagesCount pages in KFQC bounds, found ${rawList.length}',
+      );
+    }
+    final result = <QuranPage>[];
+    int totalCoveredVerses = 0;
+    for (int i = 0; i < rawList.length; i++) {
+      final item = rawList[i];
+      if (item is! Map) {
+        throw QuranValidationException('Malformed KFQC page entry at index $i');
+      }
+      final pageNum = item['page'] as int?;
+      final start = item['start'] as Map?;
+      final end = item['end'] as Map?;
+      final startSurah = start?['surah'] as int?;
+      final startAyah = start?['ayah'] as int?;
+      final endSurah = end?['surah'] as int?;
+      final endAyah = end?['ayah'] as int?;
+      final count = item['verse_count'] as int?;
+      if (pageNum == null ||
+          startSurah == null ||
+          startAyah == null ||
+          endSurah == null ||
+          endAyah == null ||
+          count == null ||
+          count <= 0) {
+        throw QuranValidationException('Incomplete KFQC page bounds at index $i');
+      }
+      final canonical = KfqcMushafCatalog.pages[i];
+      if (pageNum != canonical.page ||
+          startSurah != canonical.startSurah ||
+          startAyah != canonical.startAyah ||
+          endSurah != canonical.endSurah ||
+          endAyah != canonical.endAyah ||
+          count != canonical.verseCount) {
+        throw QuranValidationException(
+          'KFQC page $pageNum boundary mismatch against canonical catalog: '
+          'got ($startSurah:$startAyah..$endSurah:$endAyah, count=$count), '
+          'expected (${canonical.startSurah}:${canonical.startAyah}..${canonical.endSurah}:${canonical.endAyah}, count=${canonical.verseCount})',
+        );
+      }
+      totalCoveredVerses += count;
+      result.add(
+        QuranPage(
+          pageNumber: pageNum,
+          startSurahNumber: startSurah,
+          startVerseNumber: startAyah,
+        ),
+      );
+    }
+    if (totalCoveredVerses != KfqcMushafCatalog.expectedTotalVerses) {
+      throw QuranValidationException(
+        'KFQC bounds total verses ($totalCoveredVerses) != ${KfqcMushafCatalog.expectedTotalVerses}',
+      );
+    }
+    return List.unmodifiable(result);
   }
 }

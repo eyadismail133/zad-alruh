@@ -256,10 +256,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                         const Divider(height: 16),
                         _buildContentStatusItem(
                           title: 'صفحات المصحف المصورة (٦٠٤ صفحات)',
-                          status: 'قيد الاعتماد والترخيص',
-                          isBundled: false,
+                          status: 'مدمجة ومحققة رقمياً بالكامل',
+                          isBundled: true,
                           detail:
-                              'الصور عالية الدقة لصفحات مصحف المدينة المنورة قيد التدقيق القانوني والترخيص الدقيق لضمان سلامة المصدر والخط، ويتوفر حالياً وضع القراءة النصية الكامل الموثق.',
+                              '٦٠٤ صفحات مصورة عالية الدقة لمصحف المدينة النبوية (رواية حفص عن عاصم، طبعة مجمع الملك فهد لطباعة المصحف الشريف ١٤٤١هـ) مدمجة بالكامل بتنسيق WebP عالي الجودة عبر تحويل رقمي مفتوح المصدر من مستودع quran-ws/quran-svg برخصة المشاع الإبداعي (CC BY 4.0).',
                           isDark: isDark,
                         ),
                         const Divider(height: 16),
@@ -504,7 +504,6 @@ class _SourcesScreenState extends State<SourcesScreen> {
               const SizedBox(height: 6),
               Container(
                 width: double.infinity,
-                constraints: const BoxConstraints(maxHeight: 220),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isDark
@@ -517,16 +516,14 @@ class _SourcesScreenState extends State<SourcesScreen> {
                         : const Color(0xFFD8E2DA),
                   ),
                 ),
-                child: SingleChildScrollView(
-                  child: SelectableText(
-                    licenses.tanzilCopyright,
-                    style: const TextStyle(
-                      fontFamily: 'Courier',
-                      fontSize: 10,
-                      height: 1.45,
-                    ),
-                    textDirection: TextDirection.ltr,
+                child: SelectableText(
+                  licenses.tanzilCopyright,
+                  style: const TextStyle(
+                    fontFamily: 'Courier',
+                    fontSize: 10,
+                    height: 1.45,
                   ),
+                  textDirection: TextDirection.ltr,
                 ),
               ),
               const SizedBox(height: 10),
@@ -559,6 +556,142 @@ class _SourcesScreenState extends State<SourcesScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'نص القرآن الكريم مأخوذ من مشروع تنزيل (Tanzil.net) بموجب رخصة Creative Commons Attribution 3.0 (تنزيل، الإصدار ١.١). لم يتم إدخال أي تعديل أو تحريف على النص القرآني المعتمد والمدمج محلياً، وهو مطابق للنص الأصلي حرفاً بحرف.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        height: 1.5,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      // 4b. KFQC Mushaf Artwork Attribution & Licensing Card
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_stories,
+                    color: AppColors.forestPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'نسب المصدر ورخصة صفحات مصحف المدينة النبوية (KFQC)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'المصدر الأصلي للوحات المصحف: مجمع الملك فهد لطباعة المصحف الشريف بالمدينة المنورة\n'
+                'الطبعة المعتمدة: مصحف المدينة النبوية لأعمال الطباعة - رواية حفص عن عاصم (طبعة ١٤٤١هـ)\n'
+                'الترخيص والاستخدام العام: أتاح مجمع الملك فهد استخدام النسخ الرقمية من مصحف المدينة النبوية في التطبيقات الحاسوبية والتعليمية والمواقع (الدليل الفني لمجمع الملك فهد، صفحة ٥١، قسم "مصحف المدينة النبوية لأعمال الطباعة")\n'
+                'بوابة المطورين للمجمع: https://qurancomplex.gov.sa/en/techquran/dev/ (تشير إلى إتاحة أوسع، وربما يتعذر الاتصال بها مؤقتاً من بعض الشبكات الخارجية دون تأثير على العمل المحلي)\n'
+                'التحويل الرقمي المفتوح: مستودع quran-ws/quran-svg (الالتزام بـ git commit b4155f07e4aea087d2c458069acff9f7c7e749f6) برخصة المشاع الإبداعي (CC BY 4.0)\n'
+                'الأرشيف الأصلي للمجمع: 1441-AI-hafs.zip (SHA-256: 280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef)',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.picture_as_pdf, size: 12),
+                    label: const Text(
+                      'الدليل الفني للمجمع (PDF)',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://qurancomplex.gov.sa/wp-content/uploads/isdarat/booklets/complextechguide.pdf',
+                      'الدليل الفني لمجمع الملك فهد',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text(
+                      'نسخ رابط الدليل الفني',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://qurancomplex.gov.sa/wp-content/uploads/isdarat/booklets/complextechguide.pdf',
+                      'الدليل الفني لمجمع الملك فهد',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text(
+                      'نسخ رابط مستودع التحويل',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://github.com/quran-ws/quran-svg',
+                      'مستودع quran-ws/quran-svg',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.teal.shade900.withAlpha(40)
+                      : const Color(0xFFEFF5F0),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.teal.shade700
+                        : AppColors.forestLight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'بيان الأمانة العلمية وسلامة الرسم العثماني:',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkGoldAccent
+                            : AppColors.forestPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'أجريت مطابقة برمجية شاملة لجميع حدود الآيات الـ ٦٢٣٦ وفحص بصري للعينات المحورية (صفحات ١، ٢، ٣، ١٢١، ٦٠٠، ٦٠٤). ننوّه أن تحويل quran-ws اعتمد فحوصاً هيكلية دون تدقيق هندسي مستقل، والمراجعة الشرعية البشرية الشاملة لكامل الصفحات ما زالت قيد المتابعة؛ ولا ندّعي موافقة رسمية من مجمع الملك فهد على هذا التحويل الرقمي المشتق.',
                       style: TextStyle(
                         fontSize: 10.5,
                         height: 1.5,

@@ -140,6 +140,10 @@ class ReadingProgressController extends AsyncNotifier<ReadingProgress> {
     final int gen = _generation;
     _bootstrapFuture = () async {
       try {
+        final quranRepo = await ref.read(quranRepositoryProvider.future);
+        await repo.reconcileWithQuranMapping(
+          getCanonicalPage: (s, v) => quranRepo.getVerse(s, v).pageNumber,
+        );
         final persisted = await repo.getReadingProgress();
         if (_generation != gen) {
           throw StateError('Generation superseded by reset');
@@ -725,6 +729,10 @@ class BookmarksController extends AsyncNotifier<List<Bookmark>> {
   @override
   Future<List<Bookmark>> build() async {
     final repo = ref.watch(progressRepositoryProvider);
+    final quranRepo = await ref.read(quranRepositoryProvider.future);
+    await repo.reconcileWithQuranMapping(
+      getCanonicalPage: (s, v) => quranRepo.getVerse(s, v).pageNumber,
+    );
     return repo.getBookmarks();
   }
 
@@ -749,7 +757,8 @@ class BookmarksController extends AsyncNotifier<List<Bookmark>> {
         surahNumber: surahNumber,
         verseNumber: verseNumber,
       );
-      ref.invalidateSelf();
+      final updated = await repo.getBookmarks();
+      state = AsyncData(updated);
       return id;
     } catch (e) {
       rethrow;
@@ -760,7 +769,8 @@ class BookmarksController extends AsyncNotifier<List<Bookmark>> {
     try {
       final repo = ref.read(progressRepositoryProvider);
       await repo.updateBookmark(bookmark);
-      ref.invalidateSelf();
+      final updated = await repo.getBookmarks();
+      state = AsyncData(updated);
     } catch (e) {
       rethrow;
     }
@@ -770,7 +780,8 @@ class BookmarksController extends AsyncNotifier<List<Bookmark>> {
     try {
       final repo = ref.read(progressRepositoryProvider);
       await repo.deleteBookmark(id);
-      ref.invalidateSelf();
+      final updated = await repo.getBookmarks();
+      state = AsyncData(updated);
     } catch (e) {
       rethrow;
     }

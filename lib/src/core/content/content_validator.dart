@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import '../../features/quran/data/parsers/quran_parser.dart';
+import '../../features/quran/data/sources/kfqc_mushaf_catalog.dart';
 import '../../features/quran/data/sources/quran_source_verifier.dart';
 
 /// Result of running content validation.
@@ -162,10 +163,33 @@ class ContentValidator {
   /// Expected count of Hisn al-Muslim referenced footnotes
   static const int kExpectedHisnFootnotesCount = 300;
 
+  /// Canonical SHA-256 for KFQC page bounds JSON asset
+  static const String kExpectedKfqcBoundsSha256 =
+      '95f609f8c56e811b8afed9695bee44a0e4766b47c01708a3abb7064b9bc42539';
+
+  /// Canonical SHA-256 for KFQC page WebP digests catalog JSON asset
+  static const String kExpectedKfqcDigestsSha256 =
+      'a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956';
+
+  /// Expected count of Medina Mushaf pages
+  static const int kExpectedPageCount = 604;
+
+  /// Expected total byte sum of 604 WebP page files
+  static const int kExpectedTotalPageBytes = 91492288;
+
+  /// Pinned SHA-256 for sample page 1 WebP
+  static const String kExpectedPage1Sha256 =
+      '1dd02b643c8b1dcb01aaeb3bb34fa240dfdd824898e402cbddfad01e2e470d87';
+
+  /// Pinned SHA-256 for sample page 604 WebP
+  static const String kExpectedPage604Sha256 =
+      'f30b4aad9b322ce7c3d61c5d2bdedaa948eca8e76494eb21c4473dee68365689';
+
   /// Validates content integrity and release readiness against a workspace root.
   static Future<ValidationResult> validate({
     required String workspaceRoot,
     bool isDevelopmentMode = false,
+    bool strictImageHashes = false,
   }) async {
     final errors = <String>[];
     final pendingBlockers = <String>[];
@@ -326,6 +350,7 @@ class ContentValidator {
       pending: pending,
       normalizedRoot: normalizedRoot,
       canonicalRoot: canonicalRoot,
+      strictImageHashes: strictImageHashes,
       errors: errors,
       pendingBlockers: pendingBlockers,
       verified: verified,
@@ -799,6 +824,110 @@ class ContentValidator {
         }
       }
     }
+
+    // Validate KFQC Mushaf Provenance
+    final kfqcRaw = provenance['kfqc_mushaf'];
+    if (kfqcRaw is Map) {
+      final k = kfqcRaw.cast<String, dynamic>();
+      final boundsRaw = k['bounds_file'];
+      if (boundsRaw is Map) {
+        final path = boundsRaw['path'];
+        final declaredSha = boundsRaw['sha256'];
+        if (path is! String ||
+            !_isPathSafe(
+              relativePath: path,
+              normalizedRoot: normalizedRoot,
+              canonicalRoot: canonicalRoot,
+            )) {
+          errors.add('Unsafe or invalid KFQC bounds provenance path: $path');
+        } else if (path != KfqcMushafCatalog.boundsAssetPath) {
+          errors.add(
+            'KFQC bounds provenance path must match exact runtime path "${KfqcMushafCatalog.boundsAssetPath}", got: $path',
+          );
+        } else {
+          final f = File(p.join(normalizedRoot, path));
+          if (!await f.exists()) {
+            errors.add('KFQC bounds file missing in provenance: $path');
+          } else {
+            final bytes = await f.readAsBytes();
+            final actualSha = sha256.convert(bytes).toString().toLowerCase();
+            if (declaredSha is! String ||
+                declaredSha.toLowerCase() != kExpectedKfqcBoundsSha256) {
+              errors.add(
+                'KFQC bounds file declared SHA mismatch in provenance: expected $kExpectedKfqcBoundsSha256 but got $declaredSha',
+              );
+            } else if (actualSha != kExpectedKfqcBoundsSha256) {
+              errors.add(
+                'KFQC bounds file SHA mismatch in provenance: expected $kExpectedKfqcBoundsSha256 but got $actualSha',
+              );
+            } else {
+              verified.add('KFQC bounds file verified in provenance ($path)');
+            }
+          }
+        }
+      }
+      final digestsRaw = k['digests_file'];
+      if (digestsRaw is Map) {
+        final path = digestsRaw['path'];
+        final declaredSha = digestsRaw['sha256'];
+        if (path is! String ||
+            !_isPathSafe(
+              relativePath: path,
+              normalizedRoot: normalizedRoot,
+              canonicalRoot: canonicalRoot,
+            )) {
+          errors.add('Unsafe or invalid KFQC digests provenance path: $path');
+        } else if (path != KfqcMushafCatalog.digestsAssetPath) {
+          errors.add(
+            'KFQC digests provenance path must match exact runtime path "${KfqcMushafCatalog.digestsAssetPath}", got: $path',
+          );
+        } else {
+          final f = File(p.join(normalizedRoot, path));
+          if (!await f.exists()) {
+            errors.add('KFQC digests file missing in provenance: $path');
+          } else {
+            final bytes = await f.readAsBytes();
+            final actualSha = sha256.convert(bytes).toString().toLowerCase();
+            if (declaredSha is! String ||
+                declaredSha.toLowerCase() != kExpectedKfqcDigestsSha256) {
+              errors.add(
+                'KFQC digests file declared SHA mismatch in provenance: expected $kExpectedKfqcDigestsSha256 but got $declaredSha',
+              );
+            } else if (actualSha != kExpectedKfqcDigestsSha256) {
+              errors.add(
+                'KFQC digests file SHA mismatch in provenance: expected $kExpectedKfqcDigestsSha256 but got $actualSha',
+              );
+            } else {
+              verified.add('KFQC digests file verified in provenance ($path)');
+            }
+          }
+        }
+      }
+      final evidenceDoc = k['evidence_doc'];
+      if (evidenceDoc != null) {
+        if (evidenceDoc is! String ||
+            !_isPathSafe(
+              relativePath: evidenceDoc,
+              normalizedRoot: normalizedRoot,
+              canonicalRoot: canonicalRoot,
+            )) {
+          errors.add(
+            'Unsafe or invalid evidence_doc path for KFQC Mushaf: $evidenceDoc',
+          );
+        } else if (evidenceDoc != KfqcMushafCatalog.evidenceDocPath) {
+          errors.add(
+            'KFQC Mushaf evidence doc path must match exact runtime path "${KfqcMushafCatalog.evidenceDocPath}", got: $evidenceDoc',
+          );
+        } else {
+          final evf = File(p.join(normalizedRoot, evidenceDoc));
+          if (!await evf.exists()) {
+            errors.add('KFQC Mushaf evidence doc missing: $evidenceDoc');
+          } else {
+            verified.add('KFQC Mushaf evidence doc verified ($evidenceDoc)');
+          }
+        }
+      }
+    }
   }
 
   /// Structurally parses verified text and XML metadata to guarantee verbatim completeness.
@@ -835,12 +964,13 @@ class ContentValidator {
 
   /// Typed pending and bundled registry checks.
   ///
-  /// Enforces schema, field types, counts, and validates file-backed Hadith bundle.
-  /// Drops ONLY the Hadith release blocker when verified valid.
+  /// Enforces schema, field types, counts, and validates file-backed Hadith, Hisn, and Quran images bundles.
+  /// Drops ONLY the corresponding release blockers when verified valid.
   static Future<void> _validatePendingRegistries({
     required Map<String, dynamic>? pending,
     required String normalizedRoot,
     required String canonicalRoot,
+    required bool strictImageHashes,
     required List<String> errors,
     required List<String> pendingBlockers,
     required List<String> verified,
@@ -851,6 +981,11 @@ class ContentValidator {
 
     // 1. Quran Images Registry
     final imgRaw = pending['quran_images'];
+    bool imagesValid = false;
+    const imagesBlocker =
+        'Missing 604 Medina Mushaf page images. '
+        'Owner has no developer account/CDN access. Same-edition image alignment pending.';
+
     if (imgRaw is! Map) {
       errors.add(
         'Missing or malformed "quran_images" section in pending_registries',
@@ -860,35 +995,48 @@ class ContentValidator {
       final status = img['status'];
       if (status is! String) {
         errors.add('Image registry status must be a string');
-      } else if (status != 'missing' && status != 'pending') {
-        errors.add('Contradictory or invalid image registry status: "$status"');
       }
 
-      final expectedCount = img['expected_count'];
-      if (expectedCount != null &&
-          (expectedCount is! int || expectedCount < 0)) {
-        errors.add(
-          'Quran images expected_count must be a non-negative integer',
-        );
-      }
-
-      final recordsCount = img['records_count'];
-      if (recordsCount != null && (recordsCount is! int || recordsCount < 0)) {
-        errors.add('Quran images records_count must be a non-negative integer');
-      }
-
-      final pages = img['pages'];
-      if (pages is! List) {
-        errors.add('Image registry "pages" field must be a list');
-      } else if (pages.isNotEmpty) {
-        if (status == 'missing') {
+      if (img.containsKey('pages')) {
+        final pages = img['pages'];
+        if (pages is! List) {
+          errors.add('Image registry "pages" field must be a list');
+        } else if (pages.isNotEmpty) {
+          if (status == 'missing') {
+            errors.add(
+              'Image registry declares status="missing" but contains page entries',
+            );
+          }
           errors.add(
-            'Image registry declares status="missing" but contains page entries',
+            'Quran page images are unsupported at this milestone; dedicated validator pending',
           );
         }
-        errors.add(
-          'Quran page images are unsupported at this milestone; dedicated validator pending',
+      }
+
+      if (status == 'bundled') {
+        imagesValid = await _validateBundledQuranImages(
+          images: img,
+          normalizedRoot: normalizedRoot,
+          canonicalRoot: canonicalRoot,
+          strictImageHashes: strictImageHashes,
+          errors: errors,
+          verified: verified,
         );
+      } else if (status == 'missing' || status == 'pending') {
+        final expectedCount = img['expected_count'];
+        if (expectedCount != null &&
+            (expectedCount is! int || expectedCount < 0)) {
+          errors.add(
+            'Quran images expected_count must be a non-negative integer',
+          );
+        }
+
+        final recordsCount = img['records_count'];
+        if (recordsCount != null && (recordsCount is! int || recordsCount < 0)) {
+          errors.add('Quran images records_count must be a non-negative integer');
+        }
+      } else if (status is String) {
+        errors.add('Contradictory or invalid image registry status: "$status"');
       }
     }
 
@@ -1102,11 +1250,10 @@ class ContentValidator {
       }
     }
 
-    // Retain Quran images, audio, and human-review blockers
-    pendingBlockers.add(
-      'Missing 604 Medina Mushaf page images. '
-      'Owner has no developer account/CDN access. Same-edition image alignment pending.',
-    );
+    // Drop ONLY Quran images blocker when valid
+    if (!imagesValid) {
+      pendingBlockers.add(imagesBlocker);
+    }
     pendingBlockers.add(
       'Missing 3 licensed adhan recordings (3 distinct voices including Fajr and <30s notification clips).',
     );
@@ -1124,6 +1271,389 @@ class ContentValidator {
     pendingBlockers.add(
       'Qualified human reviewer religious review tied to exact corpus hashes is pending.',
     );
+  }
+
+  /// Strictly validates file-backed 604-page KFQC Medina Mushaf images bundle
+  /// against bounds, digests catalog, safe paths, file count, total size,
+  /// sample hashes, and optional full hash verification.
+  static Future<bool> _validateBundledQuranImages({
+    required Map<String, dynamic> images,
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required bool strictImageHashes,
+    required List<String> errors,
+    required List<String> verified,
+  }) async {
+    bool valid = true;
+
+    // 1. Expected count and total bytes in manifest
+    final declaredCount = images['expected_count'];
+    if (declaredCount != kExpectedPageCount) {
+      errors.add(
+        'Quran images expected_count mismatch: manifest declared $declaredCount, expected $kExpectedPageCount',
+      );
+      valid = false;
+    }
+
+    final declaredBytes = images['total_bytes'];
+    if (declaredBytes != kExpectedTotalPageBytes) {
+      errors.add(
+        'Quran images total_bytes mismatch: manifest declared $declaredBytes, expected $kExpectedTotalPageBytes',
+      );
+      valid = false;
+    }
+
+    // 2. Bounds file verification
+    final boundsRaw = images['bounds_file'];
+    if (boundsRaw is! Map) {
+      errors.add('Quran images registry missing "bounds_file" entry');
+      valid = false;
+    } else {
+      final boundsMap = boundsRaw.cast<String, dynamic>();
+      final path = boundsMap['path'];
+      final declaredSha = boundsMap['sha256'];
+
+      if (path is! String ||
+          !_isPathSafe(
+            relativePath: path,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid bounds_file path: $path');
+        valid = false;
+      } else if (path != KfqcMushafCatalog.boundsAssetPath) {
+        errors.add(
+          'Quran page bounds path must match exact runtime path "${KfqcMushafCatalog.boundsAssetPath}", got: $path',
+        );
+        valid = false;
+      } else if (declaredSha is! String ||
+          declaredSha.toLowerCase() != kExpectedKfqcBoundsSha256) {
+        errors.add(
+          'Bounds file declared SHA mismatch: expected $kExpectedKfqcBoundsSha256, declared $declaredSha',
+        );
+        valid = false;
+      } else {
+        final boundsFile = File(p.join(normalizedRoot, path));
+        if (!await boundsFile.exists()) {
+          errors.add('Quran page bounds file missing: $path');
+          valid = false;
+        } else {
+          final bytes = await boundsFile.readAsBytes();
+          final actualSha = sha256.convert(bytes).toString().toLowerCase();
+          if (actualSha != kExpectedKfqcBoundsSha256) {
+            errors.add(
+              'Quran page bounds file SHA-256 mismatch: expected $kExpectedKfqcBoundsSha256, actual $actualSha',
+            );
+            valid = false;
+          } else {
+            try {
+              final content = utf8.decode(bytes);
+              final parsed = jsonDecode(content);
+              if (parsed is Map && parsed['pages'] is List) {
+                final pagesList = parsed['pages'] as List;
+                if (pagesList.length != kExpectedPageCount) {
+                  errors.add(
+                    'Quran page bounds count mismatch: expected $kExpectedPageCount, found ${pagesList.length}',
+                  );
+                  valid = false;
+                } else {
+                  int totalCoveredVerses = 0;
+                  for (int i = 0; i < pagesList.length; i++) {
+                    final entry = pagesList[i];
+                    if (entry is! Map) {
+                      errors.add('Malformed page bound entry at index $i');
+                      valid = false;
+                      break;
+                    }
+                    final pageNum = entry['page'];
+                    final startMap = entry['start'];
+                    final endMap = entry['end'];
+                    final count = entry['verse_count'];
+
+                    if (pageNum is! int ||
+                        startMap is! Map ||
+                        endMap is! Map ||
+                        count is! int) {
+                      errors.add('Invalid types in page bound entry for page ${i + 1}');
+                      valid = false;
+                      break;
+                    }
+
+                    final sSurah = startMap['surah'] as int?;
+                    final sAyah = startMap['ayah'] as int?;
+                    final eSurah = endMap['surah'] as int?;
+                    final eAyah = endMap['ayah'] as int?;
+
+                    if (sSurah == null || sAyah == null || eSurah == null || eAyah == null) {
+                      errors.add('Incomplete verse references in page bound entry for page $pageNum');
+                      valid = false;
+                      break;
+                    }
+
+                    final canonical = KfqcMushafCatalog.pages[i];
+                    if (pageNum != canonical.page ||
+                        sSurah != canonical.startSurah ||
+                        sAyah != canonical.startAyah ||
+                        eSurah != canonical.endSurah ||
+                        eAyah != canonical.endAyah ||
+                        count != canonical.verseCount) {
+                      errors.add(
+                        'Page $pageNum bound mismatch against canonical KFQC catalog: '
+                        'got ($sSurah:$sAyah..$eSurah:$eAyah, count=$count), '
+                        'expected (${canonical.startSurah}:${canonical.startAyah}..${canonical.endSurah}:${canonical.endAyah}, count=${canonical.verseCount})',
+                      );
+                      valid = false;
+                      break;
+                    }
+
+                    totalCoveredVerses += count;
+                  }
+
+                  if (valid && totalCoveredVerses != 6236) {
+                    errors.add(
+                      'Quran page bounds total verses covered ($totalCoveredVerses) != 6236',
+                    );
+                    valid = false;
+                  }
+                }
+              } else {
+                errors.add('Quran page bounds JSON root must contain "pages" array');
+                valid = false;
+              }
+            } catch (e) {
+              errors.add('Failed to parse Quran page bounds JSON: $e');
+              valid = false;
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Digests file verification
+    final digestsRaw = images['digests_file'];
+    Map<String, String>? webpDigests;
+    if (digestsRaw is! Map) {
+      errors.add('Quran images registry missing "digests_file" entry');
+      valid = false;
+    } else {
+      final digestsMap = digestsRaw.cast<String, dynamic>();
+      final path = digestsMap['path'];
+      final declaredSha = digestsMap['sha256'];
+
+      if (path is! String ||
+          !_isPathSafe(
+            relativePath: path,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid digests_file path: $path');
+        valid = false;
+      } else if (path != KfqcMushafCatalog.digestsAssetPath) {
+        errors.add(
+          'Quran page digests path must match exact runtime path "${KfqcMushafCatalog.digestsAssetPath}", got: $path',
+        );
+        valid = false;
+      } else if (declaredSha is! String ||
+          declaredSha.toLowerCase() != kExpectedKfqcDigestsSha256) {
+        errors.add(
+          'Digests file declared SHA mismatch: expected $kExpectedKfqcDigestsSha256, declared $declaredSha',
+        );
+        valid = false;
+      } else {
+        final digestsFile = File(p.join(normalizedRoot, path));
+        if (!await digestsFile.exists()) {
+          errors.add('Quran page digests file missing: $path');
+          valid = false;
+        } else {
+          final bytes = await digestsFile.readAsBytes();
+          final actualSha = sha256.convert(bytes).toString().toLowerCase();
+          if (actualSha != kExpectedKfqcDigestsSha256) {
+            errors.add(
+              'Quran page digests file SHA-256 mismatch: expected $kExpectedKfqcDigestsSha256, actual $actualSha',
+            );
+            valid = false;
+          } else {
+            try {
+              final content = utf8.decode(bytes);
+              final parsed = jsonDecode(content);
+              if (parsed is Map && parsed['pages'] is List) {
+                final pagesList = parsed['pages'] as List;
+                if (pagesList.length != kExpectedPageCount) {
+                  errors.add(
+                    'Quran page digests count mismatch: expected $kExpectedPageCount, found ${pagesList.length}',
+                  );
+                  valid = false;
+                } else {
+                  webpDigests = {};
+                  for (final item in pagesList) {
+                    if (item is Map) {
+                      final pNum = item['page'];
+                      final sha = item['webp_sha256'];
+                      if (pNum is int && sha is String) {
+                        webpDigests[pNum.toString().padLeft(3, '0')] =
+                            sha.toLowerCase();
+                      }
+                    }
+                  }
+                  if (webpDigests.length != kExpectedPageCount) {
+                    errors.add('Quran page digests has incomplete or invalid entries');
+                    valid = false;
+                  }
+                }
+              } else {
+                errors.add('Quran page digests JSON root must contain "pages" array');
+                valid = false;
+              }
+            } catch (e) {
+              errors.add('Failed to parse Quran page digests JSON: $e');
+              valid = false;
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Pages directory and files verification
+    final pagesDirRel = images['pages_directory'];
+    if (pagesDirRel is! String ||
+        !_isPathSafe(
+          relativePath: pagesDirRel,
+          normalizedRoot: normalizedRoot,
+          canonicalRoot: canonicalRoot,
+        )) {
+      errors.add('Unsafe or invalid pages_directory path: $pagesDirRel');
+      valid = false;
+    } else if (pagesDirRel != KfqcMushafCatalog.pagesAssetDirectory) {
+      errors.add(
+        'Quran pages directory must match exact runtime path "${KfqcMushafCatalog.pagesAssetDirectory}", got: $pagesDirRel',
+      );
+      valid = false;
+    } else {
+      final pagesDir = Directory(p.join(normalizedRoot, pagesDirRel));
+      if (!await pagesDir.exists()) {
+        errors.add('Quran pages directory missing: $pagesDirRel');
+        valid = false;
+      } else {
+        final dirEntities = await pagesDir.list().toList();
+        final fileEntities = dirEntities.whereType<File>().toList();
+
+        if (fileEntities.length != kExpectedPageCount) {
+          errors.add(
+            'Quran pages directory file count mismatch: expected $kExpectedPageCount, found ${fileEntities.length}',
+          );
+          valid = false;
+        }
+
+        int totalBytes = 0;
+        final existingFilenames = <String>{};
+        for (final file in fileEntities) {
+          final basename = p.basename(file.path);
+          existingFilenames.add(basename);
+          totalBytes += await file.length();
+        }
+
+        if (totalBytes != kExpectedTotalPageBytes) {
+          errors.add(
+            'Quran pages combined byte size mismatch: expected $kExpectedTotalPageBytes bytes, found $totalBytes bytes',
+          );
+          valid = false;
+        }
+
+        // Verify all 604 files 001.webp .. 604.webp exist
+        for (int page = 1; page <= kExpectedPageCount; page++) {
+          final expectedName = '${page.toString().padLeft(3, '0')}.webp';
+          if (!existingFilenames.contains(expectedName)) {
+            errors.add('Missing Quran page image file: $expectedName');
+            valid = false;
+            break;
+          }
+        }
+
+        // Sample Page Hashes (Page 1 and Page 604)
+        final page1File = File(p.join(pagesDir.path, '001.webp'));
+        if (await page1File.exists()) {
+          final p1Sha = sha256
+              .convert(await page1File.readAsBytes())
+              .toString()
+              .toLowerCase();
+          if (p1Sha != kExpectedPage1Sha256) {
+            errors.add(
+              'Page 1 WebP SHA-256 mismatch: expected $kExpectedPage1Sha256, got $p1Sha',
+            );
+            valid = false;
+          }
+        }
+
+        final page604File = File(p.join(pagesDir.path, '604.webp'));
+        if (await page604File.exists()) {
+          final p604Sha = sha256
+              .convert(await page604File.readAsBytes())
+              .toString()
+              .toLowerCase();
+          if (p604Sha != kExpectedPage604Sha256) {
+            errors.add(
+              'Page 604 WebP SHA-256 mismatch: expected $kExpectedPage604Sha256, got $p604Sha',
+            );
+            valid = false;
+          }
+        }
+
+        // If strictImageHashes is requested (e.g. CLI validator), hash all 604 files
+        if (strictImageHashes && webpDigests != null && valid) {
+          for (int page = 1; page <= kExpectedPageCount; page++) {
+            final pageStr = page.toString().padLeft(3, '0');
+            final filename = '$pageStr.webp';
+            final file = File(p.join(pagesDir.path, filename));
+            final fileSha = sha256
+                .convert(await file.readAsBytes())
+                .toString()
+                .toLowerCase();
+            final expectedDigest = webpDigests[pageStr];
+
+            if (expectedDigest == null || fileSha != expectedDigest) {
+              errors.add(
+                'Page $page ($filename) digest mismatch: expected $expectedDigest, got $fileSha',
+              );
+              valid = false;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // 5. Evidence document
+    final evidenceDoc = images['evidence_doc'];
+    if (evidenceDoc != null) {
+      if (evidenceDoc is! String ||
+          !_isPathSafe(
+            relativePath: evidenceDoc,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add(
+          'Unsafe or invalid evidence_doc path for Quran images: $evidenceDoc',
+        );
+        valid = false;
+      } else {
+        final evf = File(p.join(normalizedRoot, evidenceDoc));
+        if (!await evf.exists()) {
+          errors.add('Quran images evidence doc missing: $evidenceDoc');
+          valid = false;
+        } else {
+          verified.add('Quran images evidence doc verified ($evidenceDoc)');
+        }
+      }
+    }
+
+    if (valid) {
+      verified.add(
+        'Bundled 604 KFQC Medina Mushaf page images verified '
+        '($kExpectedPageCount WebP pages, $kExpectedTotalPageBytes bytes, pinned bounds & digests)',
+      );
+    }
+
+    return valid;
   }
 
   /// Strictly validates file-backed Hadith bundle against pinned constants,

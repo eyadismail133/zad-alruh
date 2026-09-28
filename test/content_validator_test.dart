@@ -193,13 +193,13 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Must list the 3 remaining pending release prerequisites (Hadith & Hisn blockers resolved)
-        expect(result.pendingReleaseBlockers.length, 3);
+        // Must list the 2 remaining pending release prerequisites (Hadith, Hisn & Quran images blockers resolved)
+        expect(result.pendingReleaseBlockers.length, 2);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
           ),
-          isTrue,
+          isFalse,
         );
         expect(
           result.pendingReleaseBlockers.any(
@@ -350,6 +350,55 @@ void main() {
       await File(
         'docs/sources/HISN_ALMUSLIM.md',
       ).copy(p.join(tempDir.path, 'docs', 'sources', 'HISN_ALMUSLIM.md'));
+      await File(
+        'docs/sources/KFQC_MUSHAF.md',
+      ).copy(p.join(tempDir.path, 'docs', 'sources', 'KFQC_MUSHAF.md'));
+
+      await File('assets/content/quran/kfqc-page-bounds.json').copy(
+        p.join(
+          tempDir.path,
+          'assets',
+          'content',
+          'quran',
+          'kfqc-page-bounds.json',
+        ),
+      );
+      await File('assets/content/quran/quran-pages-digests.json').copy(
+        p.join(
+          tempDir.path,
+          'assets',
+          'content',
+          'quran',
+          'quran-pages-digests.json',
+        ),
+      );
+
+      final targetPagesDir = Directory(
+        p.join(tempDir.path, 'assets', 'content', 'quran', 'pages'),
+      );
+      await targetPagesDir.create(recursive: true);
+      if (Platform.isWindows) {
+        await Process.run('robocopy', [
+          p.join(Directory.current.path, 'assets', 'content', 'quran', 'pages'),
+          targetPagesDir.path,
+          '/e',
+          '/njh',
+          '/njs',
+          '/ndl',
+          '/nc',
+          '/ns',
+          '/nfl',
+        ]);
+      } else {
+        final srcDir = Directory('assets/content/quran/pages');
+        await for (final entity in srcDir.list()) {
+          if (entity is File) {
+            await entity.copy(
+              p.join(targetPagesDir.path, p.basename(entity.path)),
+            );
+          }
+        }
+      }
     });
 
     tearDown(() async {
@@ -369,7 +418,7 @@ void main() {
         expect(result.errors, isEmpty);
         expect(result.isDevelopmentValid, isTrue);
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 3);
+        expect(result.pendingReleaseBlockers.length, 2);
       },
     );
 
@@ -1510,7 +1559,7 @@ void main() {
     );
 
     test(
-      'development validation passes for valid canonical workspace, but release mode retains remaining 3 release blockers',
+      'development validation passes for valid canonical workspace, but release mode retains remaining 2 release blockers',
       () async {
         final result = await ContentValidator.validate(
           workspaceRoot: tempDir.path,
@@ -1521,14 +1570,14 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Release mode MUST fail because 3 unacquired categories remain pending
+        // Release mode MUST fail because 2 unacquired categories remain pending
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 3);
+        expect(result.pendingReleaseBlockers.length, 2);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
           ),
-          isTrue,
+          isFalse,
         );
         expect(
           result.pendingReleaseBlockers.any(
@@ -1551,6 +1600,129 @@ void main() {
         expect(
           result.pendingReleaseBlockers.any((b) => b.contains('HadeethEnc')),
           isFalse,
+        );
+      },
+    );
+
+    test('rejects missing Quran page image file in pages directory', () async {
+      final page121 = File(
+        p.join(tempDir.path, 'assets', 'content', 'quran', 'pages', '121.webp'),
+      );
+      await page121.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) =>
+              e.contains('Missing Quran page image file: 121.webp') ||
+              e.contains('file count mismatch'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects tampered or corrupt page bounds file', () async {
+      final boundsFile = File(
+        p.join(
+          tempDir.path,
+          'assets',
+          'content',
+          'quran',
+          'kfqc-page-bounds.json',
+        ),
+      );
+      await boundsFile.writeAsString('{"pages": []}');
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('SHA-256 mismatch')),
+        isTrue,
+      );
+    });
+
+    test('rejects tampered sample page WebP hash', () async {
+      final page1File = File(
+        p.join(tempDir.path, 'assets', 'content', 'quran', 'pages', '001.webp'),
+      );
+      await page1File.writeAsBytes([0x00, 0x01, 0x02, 0x03]);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) =>
+              e.contains('Page 1 WebP SHA-256 mismatch') ||
+              e.contains('byte size mismatch'),
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'rejects modified manifest pointing to valid files elsewhere while deleting packaged paths',
+      () async {
+        // Copy valid bounds file to an alternate path
+        final altDir = Directory(
+          p.join(tempDir.path, 'assets', 'content', 'alternate'),
+        );
+        await altDir.create(recursive: true);
+        final altBounds = File(p.join(altDir.path, 'alt-bounds.json'));
+        final packagedBounds = File(
+          p.join(
+            tempDir.path,
+            'assets',
+            'content',
+            'quran',
+            'kfqc-page-bounds.json',
+          ),
+        );
+        await packagedBounds.copy(altBounds.path);
+
+        // Delete the packaged bounds file at runtime path
+        await packagedBounds.delete();
+
+        // Point manifest to the alternate valid file
+        final manifestFile = File(
+          p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+        );
+        final manifestJson =
+            jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+        final pending =
+            manifestJson['pending_registries'] as Map<String, dynamic>;
+        final quranImages = pending['quran_images'] as Map<String, dynamic>;
+        final boundsMap = quranImages['bounds_file'] as Map<String, dynamic>;
+        boundsMap['path'] = 'assets/content/alternate/alt-bounds.json';
+
+        final provenance = manifestJson['provenance'] as Map<String, dynamic>;
+        final kfqc = provenance['kfqc_mushaf'] as Map<String, dynamic>;
+        final provBounds = kfqc['bounds_file'] as Map<String, dynamic>;
+        provBounds['path'] = 'assets/content/alternate/alt-bounds.json';
+
+        await manifestFile.writeAsString(jsonEncode(manifestJson));
+
+        final result = await ContentValidator.validate(
+          workspaceRoot: tempDir.path,
+          isDevelopmentMode: true,
+        );
+
+        expect(result.isDevelopmentValid, isFalse);
+        expect(
+          result.errors.any((e) => e.contains('must match exact runtime path')),
+          isTrue,
         );
       },
     );
