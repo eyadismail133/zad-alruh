@@ -237,6 +237,15 @@ class _SourcesScreenState extends State<SourcesScreen> {
                         ),
                         const Divider(height: 16),
                         _buildContentStatusItem(
+                          title: 'موسوعة الأحاديث النبوية (٣٢١٣ حديثاً صحيحاً)',
+                          status: 'مدمج ومتحقق من سلامة المصدر',
+                          isBundled: true,
+                          detail:
+                              '٣٢١٣ حديثاً نبوياً صحيحاً مدمجة محلياً بالكامل من موسوعة الأحاديث النبوية (HadeethEnc.com) الإصدار ١.٧.٠ مع التحقق البرمجي التام من سلامة المصدر والتخريج، والمراجعة الشرعية البشرية قيد الإجراء.',
+                          isDark: isDark,
+                        ),
+                        const Divider(height: 16),
+                        _buildContentStatusItem(
                           title: 'صفحات المصحف المصورة (٦٠٤ صفحات)',
                           status: 'قيد الاعتماد والترخيص',
                           isBundled: false,
@@ -641,6 +650,137 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 fontName: 'خط Amiri Quran (الخط القرآني)',
                 licenseText: licenses.amiriLicense,
                 isDark: isDark,
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      // 6. HadeethEnc Attribution & Licensing Card
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.format_quote_rounded,
+                    color: AppColors.forestPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'نسب المصدر ورخصة موسوعة الأحاديث النبوية (HadeethEnc)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'المصدر: موسوعة الأحاديث النبوية (HadeethEnc.com)\nالإصدار المعتمد: v1.7.0 (تاريخ التحديث: 2025-11-12)\nرابط البوابة: https://hadeethenc.com/ar\nرابط فحص التحديثات: https://hadeethenc.com/en/check/ar/v1.7.0\nرابط التنزيل المباشر: https://hadeethenc.com/browse/download/ar',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.open_in_browser, size: 12),
+                    label: const Text(
+                      'زيارة موقع الموسوعة',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://hadeethenc.com/ar',
+                      'موسوعة الأحاديث النبوية',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text(
+                      'نسخ رابط الموسوعة',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://hadeethenc.com/ar',
+                      'موسوعة الأحاديث النبوية',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text(
+                      'نسخ رابط التحقق',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://hadeethenc.com/en/check/ar/v1.7.0',
+                      'رابط التحقق من التحديثات',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.teal.shade900.withAlpha(40)
+                      : const Color(0xFFEFF5F0),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.teal.shade700
+                        : AppColors.forestLight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'إشعار إسناد وشروط إعادة النشر (HadeethEnc Terms):',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkGoldAccent
+                            : AppColors.forestPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'يلتزم التطبيق التزاماً تاماً بضوابط النقل الحرفي والأمانة العلمية وشروط الاستخدام وإعادة النشر المعتمدة لدى موسوعة الأحاديث النبوية (HadeethEnc.com): تم نقل وتبويب النصوص والتخريج والشروح كما وردت في الموسوعة دون أي تعديل أو تحريف أو توليد آلي، مع بيان التخريج ودرجة الصحة المعتمدة في الموسوعة وبيانات الإصدار، وخلو التطبيق تماماً من الإعلانات التجارية. لا يدّعي التطبيق أي اعتماد شرعي أو تحقيق علمي مستقل.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        height: 1.5,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

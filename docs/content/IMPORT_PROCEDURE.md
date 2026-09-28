@@ -85,16 +85,26 @@ When Medina Mushaf page images are acquired in a future dedicated milestone:
 
 ---
 
-## 5. Dhikr & Hadith Registries (Deferred Milestone)
+## 5. Hadith Corpus Ingestion & Dhikr Registry Status
 
-1. **Future Ingestion Specifications**:
-   - **Dhikr Collection (*Hisn al-Muslim*)**: File-backed corpus registry with documented printed/digital edition, Arabic reuse rights evidence, authentic references, and positive repetition counts.
-   - **100 Authentic Hadith Records (*HadeethEnc*)**: File-backed registry with exact SHA-256, schema, IDs, Arabic text, canonical book references, and source-original authenticity grade.
-2. **Task2A Milestone Status**:
-   - The repository currently contains **NO** dhikr or hadith content files.
-   - Any declared non-empty items in `dhikr_duas` or `hadith` are rejected as unsupported imports by `ContentValidator`.
-   - Count-only declarations without items (`records_count > 0` with empty `items`) or negative counts are strictly rejected.
-   - Both missing collections remain unconditional release blockers.
+### A. Hadith Corpus (HadeethEnc Arabic v1.7.0) - Bundled & Verified
+1. **Source & Provenance**:
+   - Official HadeethEnc download (`https://hadeethenc.com/browse/download/ar`).
+   - Source Excel file: `assets/content/hadith/hadeethenc-ar.xlsx` (SHA-256: `d5d397cb9fc8ddd54c4c6ee88357c2217721db0bd0759c6ec26d8b3fc36f1ec1`).
+   - Compact JSON asset: `assets/content/hadith/hadith-enc-sahih.json` (SHA-256: `94a69dbdb44144d2dad2ba0a3fa1ee73c7f7b456c46d945ea15f4332a2eeeda7`).
+   - Version metadata: v1.7.0 (2025-11-12 00:00:55), check URL `https://hadeethenc.com/en/check/ar/v1.7.0`.
+   - Evidence document: `docs/sources/HADEETHENC.md`.
+2. **Selection & Verification**:
+   - Exactly 3,213 authentic ("صحيح") records extracted from 3,582 workbook rows.
+   - Non-empty essential fields: `id`, `title`, `hadith_text`, `grade`, `takhrij`, `link`.
+   - Unique IDs, preserved workbook ordering, zero synthetic or AI-paraphrased text.
+   - Deterministic reproducible tooling: `tool/import_hadith.py`.
+   - The Hadith release blocker is resolved once content validation passes.
+
+### B. Dhikr Collection (Hisn al-Muslim) - Deferred Milestone Status
+- The repository currently contains **NO** dhikr content files.
+- Any declared non-empty items in `dhikr_duas` are rejected as unsupported imports by `ContentValidator`.
+- Missing documented Hisn al-Muslim digital edition remains an unconditional release blocker.
 
 ---
 

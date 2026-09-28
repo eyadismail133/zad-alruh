@@ -184,11 +184,8 @@ void main() {
         await tester.ensureVisible(find.text('الأحاديث النبوية'));
         await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الأحاديث النبوية'));
-        expect(find.text('الأحاديث الشريفة'), findsOneWidget);
-        expect(
-          find.textContaining('مجموعة الأحاديث قيد التدقيق'),
-          findsOneWidget,
-        );
+        expect(find.byType(HadithScreen), findsOneWidget);
+        expect(find.text('الأحاديث النبوية الشريفة'), findsOneWidget);
 
         // Pop Hadith
         await popRoute(tester);

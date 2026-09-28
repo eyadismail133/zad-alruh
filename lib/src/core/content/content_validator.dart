@@ -131,6 +131,20 @@ class ContentValidator {
   static const String kExpectedCitiesReadmeSha256 =
       'b1957379b6c1242c700c98ac9a8aa0a09f56c3c0a50ee72175527005f48ef2c5';
 
+  /// Canonical SHA-256 for HadeethEnc Arabic Excel source export v1.7.0
+  static const String kExpectedHadithSourceSha256 =
+      'd5d397cb9fc8ddd54c4c6ee88357c2217721db0bd0759c6ec26d8b3fc36f1ec1';
+
+  /// Canonical SHA-256 for bundled compact HadeethEnc Sahih JSON asset
+  static const String kExpectedHadithJsonSha256 =
+      '94a69dbdb44144d2dad2ba0a3fa1ee73c7f7b456c46d945ea15f4332a2eeeda7';
+
+  /// Expected count of authentic ("صحيح") Hadith records
+  static const int kExpectedHadithCount = 3213;
+
+  /// Expected source edition version
+  static const String kExpectedHadithVersion = 'v1.7.0';
+
   /// Validates content integrity and release readiness against a workspace root.
   static Future<ValidationResult> validate({
     required String workspaceRoot,
@@ -290,11 +304,14 @@ class ContentValidator {
       verified: verified,
     );
 
-    // 5. Small Typed Pending-Registry Checks (Fail-closed on unsupported entries; all 5 release blockers retained)
-    _validatePendingRegistries(
+    // 5. Pending and Bundled Registries Checks
+    await _validatePendingRegistries(
       pending: pending,
+      normalizedRoot: normalizedRoot,
+      canonicalRoot: canonicalRoot,
       errors: errors,
       pendingBlockers: pendingBlockers,
+      verified: verified,
     );
 
     final isDevelopmentValid = errors.isEmpty;
@@ -671,6 +688,53 @@ class ContentValidator {
         }
       }
     }
+
+    // Validate HadeethEnc Provenance
+    final hadeethRaw = provenance['hadeethenc'];
+    if (hadeethRaw is Map) {
+      final h = hadeethRaw.cast<String, dynamic>();
+      final sourceFileRaw = h['source_file'];
+      if (sourceFileRaw is Map) {
+        final path = sourceFileRaw['path'];
+        if (path is! String ||
+            !_isPathSafe(
+              relativePath: path,
+              normalizedRoot: normalizedRoot,
+              canonicalRoot: canonicalRoot,
+            )) {
+          errors.add('Unsafe or invalid HadeethEnc provenance source path: $path');
+        } else {
+          final f = File(p.join(normalizedRoot, path));
+          if (await f.exists()) {
+            final bytes = await f.readAsBytes();
+            final actualSha = sha256.convert(bytes).toString().toLowerCase();
+            if (actualSha == kExpectedHadithSourceSha256) {
+              verified.add('HadeethEnc provenance source XLSX verified ($path)');
+            }
+          }
+        }
+      }
+      final evidenceDoc = h['evidence_doc'];
+      if (evidenceDoc != null) {
+        if (evidenceDoc is! String ||
+            !_isPathSafe(
+              relativePath: evidenceDoc,
+              normalizedRoot: normalizedRoot,
+              canonicalRoot: canonicalRoot,
+            )) {
+          errors.add(
+            'Unsafe or invalid evidence_doc path for HadeethEnc: $evidenceDoc',
+          );
+        } else {
+          final evf = File(p.join(normalizedRoot, evidenceDoc));
+          if (!await evf.exists()) {
+            errors.add('HadeethEnc evidence doc missing: $evidenceDoc');
+          } else {
+            verified.add('HadeethEnc evidence doc verified ($evidenceDoc)');
+          }
+        }
+      }
+    }
   }
 
   /// Structurally parses verified text and XML metadata to guarantee verbatim completeness.
@@ -705,16 +769,18 @@ class ContentValidator {
     }
   }
 
-  /// Small typed pending-registry checks.
+  /// Typed pending and bundled registry checks.
   ///
-  /// Enforces schema, field types, counts, and rejects any non-empty entries
-  /// or pseudo-approvals as unsupported at this milestone.
-  /// Unconditionally retains all 5 release blockers.
-  static void _validatePendingRegistries({
+  /// Enforces schema, field types, counts, and validates file-backed Hadith bundle.
+  /// Drops ONLY the Hadith release blocker when verified valid.
+  static Future<void> _validatePendingRegistries({
     required Map<String, dynamic>? pending,
+    required String normalizedRoot,
+    required String canonicalRoot,
     required List<String> errors,
     required List<String> pendingBlockers,
-  }) {
+    required List<String> verified,
+  }) async {
     if (pending == null) {
       return;
     }
@@ -855,6 +921,10 @@ class ContentValidator {
 
     // 4. Hadith Registry
     final hadithRaw = pending['hadith'];
+    bool hadithValid = false;
+    const hadithBlocker =
+        'Missing 100 authentic HadeethEnc hadith records with references and Arabic reuse rights.';
+
     if (hadithRaw is! Map) {
       errors.add('Missing or malformed "hadith" section in pending_registries');
     } else {
@@ -862,41 +932,49 @@ class ContentValidator {
       final status = hadith['status'];
       if (status is! String) {
         errors.add('Hadith registry status must be a string');
-      } else if (status != 'missing' && status != 'pending') {
+      } else if (status == 'bundled') {
+        hadithValid = await _validateBundledHadith(
+          hadith: hadith,
+          normalizedRoot: normalizedRoot,
+          canonicalRoot: canonicalRoot,
+          errors: errors,
+          verified: verified,
+        );
+      } else if (status == 'missing' || status == 'pending') {
+        final recordsCount = hadith['records_count'];
+        if (recordsCount != null && (recordsCount is! int || recordsCount < 0)) {
+          errors.add('Hadith records_count must be a non-negative integer');
+        }
+
+        final targetCount = hadith['target_count'];
+        if (targetCount != null && (targetCount is! int || targetCount < 0)) {
+          errors.add('Hadith target_count must be a non-negative integer');
+        }
+
+        final items = hadith['items'];
+        if (items is! List) {
+          errors.add('Hadith registry "items" field must be a list');
+        } else {
+          if (recordsCount is int && recordsCount > 0 && items.isEmpty) {
+            errors.add(
+              'Hadith registry claims $recordsCount records but items list has 0',
+            );
+          }
+          if (items.isNotEmpty) {
+            if (status == 'missing') {
+              errors.add(
+                'Hadith registry declares status="missing" but contains items',
+              );
+            }
+            errors.add(
+              'Hadith collection is unsupported at this milestone; dedicated validator pending',
+            );
+          }
+        }
+      } else {
         errors.add(
           'Contradictory or invalid hadith registry status: "$status"',
         );
-      }
-
-      final recordsCount = hadith['records_count'];
-      if (recordsCount != null && (recordsCount is! int || recordsCount < 0)) {
-        errors.add('Hadith records_count must be a non-negative integer');
-      }
-
-      final targetCount = hadith['target_count'];
-      if (targetCount != null && (targetCount is! int || targetCount < 0)) {
-        errors.add('Hadith target_count must be a non-negative integer');
-      }
-
-      final items = hadith['items'];
-      if (items is! List) {
-        errors.add('Hadith registry "items" field must be a list');
-      } else {
-        if (recordsCount is int && recordsCount > 0 && items.isEmpty) {
-          errors.add(
-            'Hadith registry claims $recordsCount records but items list has 0',
-          );
-        }
-        if (items.isNotEmpty) {
-          if (status == 'missing') {
-            errors.add(
-              'Hadith registry declares status="missing" but contains items',
-            );
-          }
-          errors.add(
-            'Hadith collection is unsupported at this milestone; dedicated validator pending',
-          );
-        }
       }
     }
 
@@ -946,7 +1024,7 @@ class ContentValidator {
       }
     }
 
-    // Unconditionally retain all 5 release blockers
+    // Retain Quran images, audio, Hisn and human-review blockers
     pendingBlockers.add(
       'Missing 604 Medina Mushaf page images. '
       'Owner has no developer account/CDN access. Same-edition image alignment pending.',
@@ -957,12 +1035,288 @@ class ContentValidator {
     pendingBlockers.add(
       'Missing documented Hisn al-Muslim dhikr/duas digital edition, references, and repetition counts.',
     );
-    pendingBlockers.add(
-      'Missing 100 authentic HadeethEnc hadith records with references and Arabic reuse rights.',
-    );
+
+    // Drop ONLY the hadith release blocker when valid
+    if (!hadithValid) {
+      pendingBlockers.add(hadithBlocker);
+    }
+
     pendingBlockers.add(
       'Qualified human reviewer religious review tied to exact corpus hashes is pending.',
     );
+  }
+
+  /// Strictly validates file-backed Hadith bundle against pinned constants,
+  /// counts, IDs, verbatim source values, and metadata.
+  static Future<bool> _validateBundledHadith({
+    required Map<String, dynamic> hadith,
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required List<String> errors,
+    required List<String> verified,
+  }) async {
+    bool valid = true;
+
+    // 1. Source file (XLSX provenance)
+    final sourceFileRaw = hadith['source_file'];
+    if (sourceFileRaw is! Map) {
+      errors.add('Hadith registry missing "source_file" specification');
+      valid = false;
+    } else {
+      final sourceFile = sourceFileRaw.cast<String, dynamic>();
+      final path = sourceFile['path'];
+      final declaredSha = sourceFile['sha256'];
+
+      if (path is! String ||
+          !_isPathSafe(
+            relativePath: path,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid path for hadith source_file: $path');
+        valid = false;
+      } else {
+        final f = File(p.join(normalizedRoot, path));
+        if (!await f.exists()) {
+          errors.add('Hadith source XLSX file not found: $path');
+          valid = false;
+        } else {
+          final bytes = await f.readAsBytes();
+          final actualSha = sha256.convert(bytes).toString().toLowerCase();
+
+          if (actualSha != kExpectedHadithSourceSha256) {
+            errors.add(
+              'Hadith source XLSX SHA-256 hash mismatch! '
+              'Expected $kExpectedHadithSourceSha256, actual $actualSha',
+            );
+            valid = false;
+          } else if (declaredSha != kExpectedHadithSourceSha256) {
+            errors.add(
+              'Hadith source XLSX declared hash mismatch! '
+              'Declared $declaredSha != expected $kExpectedHadithSourceSha256',
+            );
+            valid = false;
+          } else {
+            verified.add(
+              'Hadith source XLSX SHA-256 verified ($actualSha)',
+            );
+          }
+        }
+      }
+    }
+
+    // 2. Data file (compact JSON asset)
+    final dataFileRaw = hadith['data_file'];
+    Uint8List? jsonBytes;
+    if (dataFileRaw is! Map) {
+      errors.add('Hadith registry missing "data_file" specification');
+      valid = false;
+    } else {
+      final dataFile = dataFileRaw.cast<String, dynamic>();
+      final path = dataFile['path'];
+      final declaredSha = dataFile['sha256'];
+
+      if (path is! String ||
+          !_isPathSafe(
+            relativePath: path,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid path for hadith data_file: $path');
+        valid = false;
+      } else {
+        final f = File(p.join(normalizedRoot, path));
+        if (!await f.exists()) {
+          errors.add('Hadith JSON asset file not found: $path');
+          valid = false;
+        } else {
+          jsonBytes = await f.readAsBytes();
+          final actualSha = sha256.convert(jsonBytes).toString().toLowerCase();
+
+          if (actualSha != kExpectedHadithJsonSha256) {
+            errors.add(
+              'Hadith JSON asset SHA-256 hash mismatch! '
+              'Expected $kExpectedHadithJsonSha256, actual $actualSha',
+            );
+            valid = false;
+          } else if (declaredSha != kExpectedHadithJsonSha256) {
+            errors.add(
+              'Hadith JSON asset declared hash mismatch! '
+              'Declared $declaredSha != expected $kExpectedHadithJsonSha256',
+            );
+            valid = false;
+          } else {
+            verified.add(
+              'Hadith JSON asset SHA-256 verified ($actualSha)',
+            );
+          }
+        }
+      }
+    }
+
+    // 3. Evidence doc
+    final evidenceDoc = hadith['evidence_doc'];
+    if (evidenceDoc != null) {
+      if (evidenceDoc is! String ||
+          !_isPathSafe(
+            relativePath: evidenceDoc,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid evidence_doc path for hadith: $evidenceDoc');
+        valid = false;
+      } else {
+        final evf = File(p.join(normalizedRoot, evidenceDoc));
+        if (!await evf.exists()) {
+          errors.add('Hadith evidence doc missing: $evidenceDoc');
+          valid = false;
+        }
+      }
+    }
+
+    // 4. Records count in manifest
+    final recordsCount = hadith['records_count'];
+    if (recordsCount is! int || recordsCount != kExpectedHadithCount) {
+      errors.add(
+        'Hadith records_count mismatch in manifest: expected $kExpectedHadithCount, got $recordsCount',
+      );
+      valid = false;
+    }
+
+    // 5. Structural and semantic verification of JSON content
+    if (jsonBytes != null) {
+      try {
+        final decoded = jsonDecode(utf8.decode(jsonBytes));
+        if (decoded is! Map<String, dynamic>) {
+          errors.add('Hadith JSON root must be a JSON object');
+          return false;
+        }
+
+        final meta = decoded['metadata'];
+        if (meta is! Map<String, dynamic>) {
+          errors.add('Hadith JSON missing "metadata" section');
+          valid = false;
+        } else {
+          final ver = meta['version'];
+          if (ver != kExpectedHadithVersion) {
+            errors.add(
+              'Hadith JSON version mismatch: expected "$kExpectedHadithVersion", got "$ver"',
+            );
+            valid = false;
+          }
+          final sourceUrl = meta['source'];
+          if (sourceUrl != 'https://hadeethenc.com/ar') {
+            errors.add('Hadith JSON invalid source URL: "$sourceUrl"');
+            valid = false;
+          }
+          final checkUrl = meta['check_url'];
+          if (checkUrl != 'https://hadeethenc.com/en/check/ar/v1.7.0') {
+            errors.add('Hadith JSON invalid check URL: "$checkUrl"');
+            valid = false;
+          }
+          final grade = meta['selection_grade'];
+          if (grade != 'صحيح') {
+            errors.add('Hadith JSON selection_grade must be "صحيح", got "$grade"');
+            valid = false;
+          }
+          final totalRecords = meta['total_records'];
+          if (totalRecords != kExpectedHadithCount) {
+            errors.add(
+              'Hadith JSON total_records mismatch: expected $kExpectedHadithCount, got $totalRecords',
+            );
+            valid = false;
+          }
+        }
+
+        final items = decoded['items'];
+        if (items is! List) {
+          errors.add('Hadith JSON "items" must be a list');
+          valid = false;
+        } else {
+          if (items.length != kExpectedHadithCount) {
+            errors.add(
+              'Hadith JSON items count mismatch: expected $kExpectedHadithCount, got ${items.length}',
+            );
+            valid = false;
+          }
+
+          final seenIds = <int>{};
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            if (item is! Map<String, dynamic>) {
+              errors.add('Hadith item at index $i is not a JSON object');
+              valid = false;
+              break;
+            }
+
+            final id = item['id'];
+            if (id is! int || id <= 0) {
+              errors.add('Hadith item at index $i has invalid ID: $id');
+              valid = false;
+              break;
+            }
+            if (seenIds.contains(id)) {
+              errors.add('Duplicate Hadith ID: $id');
+              valid = false;
+              break;
+            }
+            seenIds.add(id);
+
+            final title = item['title'];
+            if (title is! String || title.trim().isEmpty) {
+              errors.add('Hadith ID $id has empty title');
+              valid = false;
+              break;
+            }
+
+            final text = item['hadith_text'];
+            if (text is! String || text.trim().isEmpty) {
+              errors.add('Hadith ID $id has empty hadith_text');
+              valid = false;
+              break;
+            }
+
+            final gr = item['grade'];
+            if (gr != 'صحيح') {
+              errors.add('Hadith ID $id has non-sahih grade: "$gr"');
+              valid = false;
+              break;
+            }
+
+            final takhrij = item['takhrij'];
+            if (takhrij is! String || takhrij.trim().isEmpty) {
+              errors.add('Hadith ID $id has empty takhrij');
+              valid = false;
+              break;
+            }
+
+            final link = item['link'];
+            if (link is! String || link != 'https://hadeethenc.com/ar/browse/hadith/$id') {
+              errors.add('Hadith ID $id has invalid link: "$link"');
+              valid = false;
+              break;
+            }
+          }
+
+          if (valid) {
+            verified.add(
+              'Hadith corpus structure verified: 3,213 authentic records (v1.7.0, all grade="صحيح")',
+            );
+            verified.add(
+              'Hadith first record verified: ID ${items.first['id']} ("${(items.first['title'] as String).substring(0, 30)}...")',
+            );
+            verified.add(
+              'Hadith last record verified: ID ${items.last['id']} ("${(items.last['title'] as String).substring(0, 30)}...")',
+            );
+          }
+        }
+      } catch (e) {
+        errors.add('Hadith JSON parsing / validation error: $e');
+        valid = false;
+      }
+    }
+
+    return valid;
   }
 
   /// Rigorously inspects a PCM WAV byte array (preserved for future audio milestone).

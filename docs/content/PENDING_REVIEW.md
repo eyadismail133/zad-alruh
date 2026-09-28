@@ -13,7 +13,7 @@ This document records the exact status of pending religious and media content fo
 | **GeoNames Gazetteer (cities15000)** | ✅ Bundled & Verified | SHA-256 `c8e0a782...` (data) and `b1957379...` (readme) verified. CC-BY 4.0 license retained. |
 | **604 Quran Page Images** | ❌ PENDING (Missing) | Owner has **NO** Quran Foundation developer account or approved CDN access. Visual religious alignment uncertified. Registry stays empty/pending. |
 | **Dhikr & Duas Digital Edition** | ❌ PENDING (Missing) | Documented *Hisn al-Muslim* edition, digital reuse permission, verified references and positive counts pending. |
-| **100 Authentic Hadith Records** | ❌ PENDING (Missing) | 100 authentic records from *HadeethEnc* with reference, grading, and Arabic reuse rights pending. |
+| **Hadith Corpus (HadeethEnc v1.7.0)** | ✅ Bundled & Verified | 3,213 authentic ("صحيح") records bundled offline from HadeethEnc Arabic v1.7.0 with provenance XLSX, verified JSON asset, and rights evidence in `docs/sources/HADEETHENC.md`. |
 | **3 Licensed Adhan Recordings** | ❌ PENDING (Missing) | 3 distinct voices, Fajr recording, and <30s notification clips pending. WAV header inspection verified by pipeline. |
 | **Qualified Human Religious Review** | ❌ PENDING (Unapproved) | Structured review covering exact SHA-256 hashes of supplied corpora pending qualified scholar evaluation. |
 
@@ -38,13 +38,13 @@ This document records the exact status of pending religious and media content fo
   3. Extracting exact Arabic text, authentic source references, and strictly positive repetition counts.
   4. Validating registry with actual items (count-only integer without items is strictly rejected).
 
-### C. 100 Authentic Hadith Records
-- **Target Source**: *HadeethEnc* (Encyclopedia of Translated Prophetic Hadiths).
-- **Prerequisites for Resolution**:
-  1. Selecting 100 core authentic (Sahih) Hadiths relevant to spiritual companionship.
-  2. Documenting the original Arabic text, canonical book reference (Bukhari, Muslim, etc.), and source-original authenticity grade (never an arbitrary boolean).
-  3. Securing and documenting Arabic digital reuse permissions.
-  4. Validating registry with actual items (count-only integer without items is strictly rejected).
+### C. Hadith Corpus (Resolved & Bundled)
+- **Source**: *HadeethEnc* (Encyclopedia of Translated Prophetic Hadiths), Arabic v1.7.0.
+- **Resolution**:
+  1. Complete offline bundle of all 3,213 exact "صحيح" records from the 3,582 workbook rows.
+  2. Preserved original Arabic text, canonical takhrij references, and source authenticity grades.
+  3. Official reuse terms documented in `docs/sources/HADEETHENC.md`.
+  4. Verified by `ContentValidator` against pinned hashes, counts, and required fields. Release blocker dropped.
 
 ### D. Adhan Audio Recordings
 - **Prerequisites for Resolution**:

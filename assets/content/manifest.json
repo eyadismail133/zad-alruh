@@ -68,6 +68,26 @@
         "precise_license_version": "unspecified",
         "precise_rights_status": "pending_clarification"
       }
+    },
+    "hadeethenc": {
+      "source": "HadeethEnc (Encyclopedia of Prophetic Hadiths)",
+      "url": "https://hadeethenc.com/ar",
+      "download_url": "https://hadeethenc.com/browse/download/ar",
+      "check_url": "https://hadeethenc.com/en/check/ar/v1.7.0",
+      "version": "v1.7.0",
+      "last_update": "2025-11-12 00:00:55",
+      "license": "HadeethEnc Content Redistribution Terms",
+      "license_url": "https://hadeethenc.com/ar",
+      "acquisition_date": "2026-09-28",
+      "evidence_doc": "docs/sources/HADEETHENC.md",
+      "source_file": {
+        "path": "assets/content/hadith/hadeethenc-ar.xlsx",
+        "sha256": "d5d397cb9fc8ddd54c4c6ee88357c2217721db0bd0759c6ec26d8b3fc36f1ec1"
+      },
+      "data_file": {
+        "path": "assets/content/hadith/hadith-enc-sahih.json",
+        "sha256": "94a69dbdb44144d2dad2ba0a3fa1ee73c7f7b456c46d945ea15f4332a2eeeda7"
+      }
     }
   },
   "pending_registries": {
@@ -90,13 +110,28 @@
       "blocker_reason": "Documented Hisn al-Muslim edition, digital reuse permission, references and repetition counts are pending acquisition."
     },
     "hadith": {
-      "status": "missing",
+      "status": "bundled",
       "source_target": "HadeethEnc (Encyclopedia of Prophetic Hadiths)",
-      "target_count": 100,
-      "records_count": 0,
-      "items": [],
-      "rights_status": "pending_corpus_acquisition",
-      "blocker_reason": "100 authentic records from HadeethEnc with reference, authenticity grading, and documented Arabic reuse rights are pending."
+      "edition": "HadeethEnc Arabic v1.7.0 (2025-11-12)",
+      "version": "v1.7.0",
+      "last_update": "2025-11-12 00:00:55",
+      "source_url": "https://hadeethenc.com/browse/download/ar",
+      "check_url": "https://hadeethenc.com/en/check/ar/v1.7.0",
+      "terms_url": "https://hadeethenc.com/ar",
+      "evidence_doc": "docs/sources/HADEETHENC.md",
+      "license": "HadeethEnc Content Redistribution Terms",
+      "attribution": "HadeethEnc.com",
+      "selection_grade": "صحيح",
+      "records_count": 3213,
+      "source_file": {
+        "path": "assets/content/hadith/hadeethenc-ar.xlsx",
+        "sha256": "d5d397cb9fc8ddd54c4c6ee88357c2217721db0bd0759c6ec26d8b3fc36f1ec1"
+      },
+      "data_file": {
+        "path": "assets/content/hadith/hadith-enc-sahih.json",
+        "sha256": "94a69dbdb44144d2dad2ba0a3fa1ee73c7f7b456c46d945ea15f4332a2eeeda7",
+        "expected_records": 3213
+      }
     },
     "adhan_audio": {
       "status": "missing",

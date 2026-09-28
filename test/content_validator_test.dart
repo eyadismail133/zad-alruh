@@ -193,8 +193,8 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Must list all 5 pending release prerequisites
-        expect(result.pendingReleaseBlockers.length, 5);
+        // Must list the 4 remaining pending release prerequisites (Hadith blocker is resolved)
+        expect(result.pendingReleaseBlockers.length, 4);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
@@ -214,14 +214,14 @@ void main() {
           isTrue,
         );
         expect(
-          result.pendingReleaseBlockers.any((b) => b.contains('HadeethEnc')),
-          isTrue,
-        );
-        expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('Qualified human reviewer'),
           ),
           isTrue,
+        );
+        expect(
+          result.pendingReleaseBlockers.any((b) => b.contains('HadeethEnc')),
+          isFalse,
         );
 
         // Verify report formatting
@@ -266,6 +266,10 @@ void main() {
         p.join(tempDir.path, 'assets', 'content', 'cities'),
       );
       await citiesDir.create(recursive: true);
+      final hadithDir = Directory(
+        p.join(tempDir.path, 'assets', 'content', 'hadith'),
+      );
+      await hadithDir.create(recursive: true);
 
       // Copy real bundled files into temp
       await File(
@@ -289,6 +293,24 @@ void main() {
           'GEONAMES-LICENSE-README.txt',
         ),
       );
+      await File('assets/content/hadith/hadeethenc-ar.xlsx').copy(
+        p.join(
+          tempDir.path,
+          'assets',
+          'content',
+          'hadith',
+          'hadeethenc-ar.xlsx',
+        ),
+      );
+      await File('assets/content/hadith/hadith-enc-sahih.json').copy(
+        p.join(
+          tempDir.path,
+          'assets',
+          'content',
+          'hadith',
+          'hadith-enc-sahih.json',
+        ),
+      );
 
       // Create docs subdirectories and copy referenced source documentation
       final docsSourcesDir = Directory(p.join(tempDir.path, 'docs', 'sources'));
@@ -300,6 +322,9 @@ void main() {
       await File(
         'docs/sources/GEONAMES.md',
       ).copy(p.join(tempDir.path, 'docs', 'sources', 'GEONAMES.md'));
+      await File(
+        'docs/sources/HADEETHENC.md',
+      ).copy(p.join(tempDir.path, 'docs', 'sources', 'HADEETHENC.md'));
     });
 
     tearDown(() async {
@@ -319,7 +344,7 @@ void main() {
         expect(result.errors, isEmpty);
         expect(result.isDevelopmentValid, isTrue);
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 5);
+        expect(result.pendingReleaseBlockers.length, 4);
       },
     );
 
@@ -884,7 +909,7 @@ void main() {
     });
 
     test(
-      'hadith registry rejects count-only integer with empty items list',
+      'hadith registry with status missing rejects count-only integer with empty items list',
       () async {
         final manifestFile = File(
           p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
@@ -894,6 +919,7 @@ void main() {
                 as Map<String, dynamic>;
         final pending = json['pending_registries'] as Map<String, dynamic>;
         final hadith = pending['hadith'] as Map<String, dynamic>;
+        hadith['status'] = 'missing';
         hadith['records_count'] = 100; // Claims 100 records but items is empty
         hadith['items'] = <Map<String, dynamic>>[];
         await manifestFile.writeAsString(jsonEncode(json));
@@ -914,7 +940,7 @@ void main() {
     );
 
     test(
-      'hadith registry rejects non-empty items as unsupported import',
+      'hadith registry with status missing rejects non-empty items as unsupported import',
       () async {
         final manifestFile = File(
           p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
@@ -924,6 +950,7 @@ void main() {
                 as Map<String, dynamic>;
         final pending = json['pending_registries'] as Map<String, dynamic>;
         final hadith = pending['hadith'] as Map<String, dynamic>;
+        hadith['status'] = 'missing';
         hadith['items'] = <Map<String, dynamic>>[
           <String, dynamic>{
             'id': 'hadith_1',
@@ -941,16 +968,16 @@ void main() {
         expect(result.isDevelopmentValid, isFalse);
         expect(
           result.errors.any(
-            (e) => e.contains(
-              'Hadith collection is unsupported at this milestone',
-            ),
+            (e) =>
+                e.contains('declares status="missing" but contains items') ||
+                e.contains('Hadith collection is unsupported at this milestone'),
           ),
           isTrue,
         );
       },
     );
 
-    test('hadith registry rejects non-list items field', () async {
+    test('hadith registry with status missing rejects non-list items field', () async {
       final manifestFile = File(
         p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
       );
@@ -958,6 +985,7 @@ void main() {
           jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
       final pending = json['pending_registries'] as Map<String, dynamic>;
       final hadith = pending['hadith'] as Map<String, dynamic>;
+      hadith['status'] = 'missing';
       hadith['items'] = 'not-a-list';
       await manifestFile.writeAsString(jsonEncode(json));
 
@@ -985,6 +1013,7 @@ void main() {
       final dhikr = pending['dhikr_duas'] as Map<String, dynamic>;
       dhikr['records_count'] = -5;
       final hadith = pending['hadith'] as Map<String, dynamic>;
+      hadith['status'] = 'missing';
       hadith['records_count'] = -10;
       await manifestFile.writeAsString(jsonEncode(json));
 
@@ -1006,6 +1035,126 @@ void main() {
           (e) =>
               e.contains('Hadith records_count must be a non-negative integer'),
         ),
+        isTrue,
+      );
+    });
+
+    test('hadith registry rejects altered SHA-256 for source XLSX copy', () async {
+      final xlsxFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hadith', 'hadeethenc-ar.xlsx'),
+      );
+      final original = await xlsxFile.readAsBytes();
+      final corrupted = Uint8List.fromList(original);
+      corrupted[corrupted.length - 1] ^= 0xFF;
+      await xlsxFile.writeAsBytes(corrupted);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hadith source XLSX SHA-256 hash mismatch')),
+        isTrue,
+      );
+    });
+
+    test('hadith registry rejects altered SHA-256 for JSON asset copy', () async {
+      final jsonFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hadith', 'hadith-enc-sahih.json'),
+      );
+      final text = await jsonFile.readAsString();
+      await jsonFile.writeAsString('$text ');
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hadith JSON asset SHA-256 hash mismatch')),
+        isTrue,
+      );
+    });
+
+    test('hadith registry rejects missing source XLSX file', () async {
+      final xlsxFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hadith', 'hadeethenc-ar.xlsx'),
+      );
+      await xlsxFile.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hadith source XLSX file not found')),
+        isTrue,
+      );
+    });
+
+    test('hadith registry rejects missing JSON asset file', () async {
+      final jsonFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hadith', 'hadith-enc-sahih.json'),
+      );
+      await jsonFile.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hadith JSON asset file not found')),
+        isTrue,
+      );
+    });
+
+    test('hadith registry rejects manifest declared count mismatch', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final hadith = pending['hadith'] as Map<String, dynamic>;
+      hadith['records_count'] = 100;
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hadith records_count mismatch in manifest')),
+        isTrue,
+      );
+    });
+
+    test('hadith registry rejects path traversal in source_file', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final hadith = pending['hadith'] as Map<String, dynamic>;
+      hadith['source_file']['path'] = '../../hadeethenc.xlsx';
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Unsafe or invalid path for hadith source_file')),
         isTrue,
       );
     });
@@ -1211,7 +1360,7 @@ void main() {
     );
 
     test(
-      'development validation passes for valid canonical workspace, but release mode unconditionally retains all 5 release blockers',
+      'development validation passes for valid canonical workspace, but release mode retains remaining 4 release blockers',
       () async {
         final result = await ContentValidator.validate(
           workspaceRoot: tempDir.path,
@@ -1222,9 +1371,9 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Release mode MUST fail because 5 unacquired categories remain pending
+        // Release mode MUST fail because 4 unacquired categories remain pending
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 5);
+        expect(result.pendingReleaseBlockers.length, 4);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
@@ -1244,14 +1393,14 @@ void main() {
           isTrue,
         );
         expect(
-          result.pendingReleaseBlockers.any((b) => b.contains('HadeethEnc')),
-          isTrue,
-        );
-        expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('Qualified human reviewer'),
           ),
           isTrue,
+        );
+        expect(
+          result.pendingReleaseBlockers.any((b) => b.contains('HadeethEnc')),
+          isFalse,
         );
       },
     );
