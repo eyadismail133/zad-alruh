@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,8 @@ import 'package:zad_alruh/src/features/more/presentation/hadith_screen.dart';
 import 'package:zad_alruh/src/features/more/presentation/more_screen.dart';
 import 'package:zad_alruh/src/features/more/presentation/settings_screen.dart';
 import 'package:zad_alruh/src/features/more/presentation/sources_screen.dart';
+import 'package:zad_alruh/src/features/prayer/data/sources/city_asset_adapter.dart';
+import 'package:zad_alruh/src/features/prayer/domain/repositories/city_repository.dart';
 import 'package:zad_alruh/src/features/progress/data/progress_repository.dart';
 import 'package:zad_alruh/src/features/progress/presentation/controllers/progress_controller.dart';
 
@@ -20,11 +23,30 @@ void main() {
   ensureTimeZonesInitialized();
   final databaseFactory = databaseFactoryFfiNoIsolate;
 
+  late Uint8List cityBytes;
+  late CityRepository cityRepo;
+
+  setUpAll(() {
+    final file = File('assets/content/cities/cities15000.txt');
+    expect(file.existsSync(), isTrue, reason: 'cities15000.txt must exist');
+    cityBytes = file.readAsBytesSync();
+    cityRepo = CityAssetAdapter.fromBytes(cityBytes);
+  });
+
   Widget createTestApp(ProgressRepository repository) {
     return ProviderScope(
-      overrides: [progressRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        progressRepositoryProvider.overrideWithValue(repository),
+        cityRepositoryProvider.overrideWith((ref) async => cityRepo),
+      ],
       child: const ZadAlruhApp(),
     );
+  }
+
+  Future<void> pumpBounded(WidgetTester tester, [int frames = 8]) async {
+    for (int i = 0; i < frames; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
   }
 
   Future<void> pumpTestApp(WidgetTester tester, ProgressRepository repo) async {
@@ -34,20 +56,32 @@ void main() {
         final element = tester.element(find.byType(ZadAlruhApp));
         final container = ProviderScope.containerOf(element);
         await container.read(preferencesControllerProvider.future);
+        await container.read(cityRepositoryProvider.future);
       } catch (_) {
         // Corrupted database fixtures or initialization failures reject the future
       }
     });
-    await tester.pumpAndSettle();
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (find.byType(ZadAlruhApp).evaluate().isNotEmpty &&
+        find.text('الرئيسية').evaluate().isEmpty &&
+        find.byType(RetryableErrorView).evaluate().isEmpty &&
+        DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+    }
+    await tester.pump();
   }
 
   Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
     await tester.tap(finder);
-    await tester.pumpAndSettle();
+    await pumpBounded(tester);
   }
 
   Future<void> popRoute(WidgetTester tester) async {
-    await tapAndSettle(tester, find.byType(BackButton));
+    await tester.tap(find.byType(BackButton).last);
+    for (int i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
   }
 
   group('UI Navigation & Responsive Smoke Tests', () {
@@ -83,7 +117,8 @@ void main() {
           find.byIcon(Icons.access_time_filled_outlined),
         );
         expect(find.text('مواقيت الصلاة'), findsOneWidget);
-        expect(find.textContaining('حساب المواقيت قيد الربط'), findsOneWidget);
+        expect(find.textContaining('الصلاة القادمة'), findsWidgets);
+        expect(find.text('الفجر'), findsOneWidget);
 
         // Tab 3: Dhikr (الأذكار)
         await tapAndSettle(tester, find.byIcon(Icons.auto_awesome_outlined));
@@ -119,6 +154,17 @@ void main() {
         await popRoute(tester);
 
         // Navigate to Duas
+        final moreScrollable = find.descendant(
+          of: find.byType(MoreScreen),
+          matching: find.byType(Scrollable),
+        );
+        await tester.scrollUntilVisible(
+          find.text('الأدعية'),
+          100,
+          scrollable: moreScrollable,
+        );
+        await tester.ensureVisible(find.text('الأدعية'));
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الأدعية'));
         expect(find.text('الأدعية المأثورة'), findsOneWidget);
         expect(
@@ -130,6 +176,13 @@ void main() {
         await popRoute(tester);
 
         // Navigate to Hadith
+        await tester.scrollUntilVisible(
+          find.text('الأحاديث النبوية'),
+          100,
+          scrollable: moreScrollable,
+        );
+        await tester.ensureVisible(find.text('الأحاديث النبوية'));
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الأحاديث النبوية'));
         expect(find.text('الأحاديث الشريفة'), findsOneWidget);
         expect(
@@ -141,6 +194,13 @@ void main() {
         await popRoute(tester);
 
         // Navigate to Sources & Privacy
+        await tester.scrollUntilVisible(
+          find.text('المصادر والخصوصية'),
+          100,
+          scrollable: moreScrollable,
+        );
+        await tester.ensureVisible(find.text('المصادر والخصوصية'));
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('المصادر والخصوصية'));
         expect(find.text('المصادر والخصوصية والتراخيص'), findsOneWidget);
         expect(find.textContaining('بدون إعلانات وبدون تتبع'), findsOneWidget);
@@ -228,7 +288,7 @@ void main() {
 
         // Tap Dua of the day checkbox
         await tester.tap(find.byWidget(checkboxes[4]));
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
 
         // Verify completion updated to 20% (Western digits with Arabic percent sign)
         expect(find.text('20٪'), findsOneWidget);
@@ -302,7 +362,7 @@ void main() {
           scrollable: moreScrollable,
         );
         await tester.ensureVisible(find.text('الإعدادات'));
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الإعدادات'));
         expect(tester.takeException(), isNull);
         expect(find.byType(SettingsScreen), findsOneWidget);
@@ -316,7 +376,7 @@ void main() {
           scrollable: moreScrollable,
         );
         await tester.ensureVisible(find.text('المفضلة والعلامات'));
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('المفضلة والعلامات'));
         expect(tester.takeException(), isNull);
         expect(find.byType(FavoritesScreen), findsOneWidget);
@@ -330,7 +390,7 @@ void main() {
           scrollable: moreScrollable,
         );
         await tester.ensureVisible(find.text('الأدعية'));
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الأدعية'));
         expect(tester.takeException(), isNull);
         expect(find.byType(DuasScreen), findsOneWidget);
@@ -344,7 +404,7 @@ void main() {
           scrollable: moreScrollable,
         );
         await tester.ensureVisible(find.text('الأحاديث النبوية'));
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الأحاديث النبوية'));
         expect(tester.takeException(), isNull);
         expect(find.byType(HadithScreen), findsOneWidget);
@@ -358,7 +418,7 @@ void main() {
           scrollable: moreScrollable,
         );
         await tester.ensureVisible(find.text('المصادر والخصوصية'));
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('المصادر والخصوصية'));
         expect(tester.takeException(), isNull);
         expect(find.byType(SourcesScreen), findsOneWidget);
@@ -436,9 +496,10 @@ void main() {
             final element = tester.element(find.byType(ZadAlruhApp));
             final container = ProviderScope.containerOf(element);
             await container.read(preferencesControllerProvider.future);
+            await container.read(cityRepositoryProvider.future);
           } catch (_) {}
         });
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
 
         // 5. After retry with restored fixture, app recovers cleanly and renders main shell without errors
         expect(tester.takeException(), isNull);
@@ -472,7 +533,7 @@ void main() {
         // Attempt UI mutation: toggle dua checkbox
         final duaCheckbox = find.byType(Checkbox).last;
         await tester.tap(duaCheckbox);
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
 
         // UI surfaces Arabic SnackBar with retry action and no unhandled exception
         expect(tester.takeException(), isNull);
@@ -522,7 +583,7 @@ void main() {
           bookmarkTextFieldFinder,
           'علامة الصباح المستمرة',
         );
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
 
         // Tap save button while DB is read-only
         final saveBookmarkButton = find.descendant(
@@ -530,7 +591,7 @@ void main() {
           matching: find.text('حفظ العلامة'),
         );
         await tester.tap(saveBookmarkButton);
-        await tester.pumpAndSettle();
+        await pumpBounded(tester);
 
         // Verify no unhandled exception, dialog remains open, and user input is preserved
         expect(tester.takeException(), isNull);

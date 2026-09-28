@@ -17,6 +17,8 @@ import 'package:zad_alruh/src/features/home/presentation/home_screen.dart';
 import 'package:zad_alruh/src/features/more/presentation/favorites_screen.dart';
 import 'package:zad_alruh/src/features/more/presentation/sources_screen.dart';
 import 'package:zad_alruh/src/features/progress/data/models/reading_progress.dart';
+import 'package:zad_alruh/src/features/prayer/data/sources/city_asset_adapter.dart';
+import 'package:zad_alruh/src/features/prayer/domain/repositories/city_repository.dart';
 import 'package:zad_alruh/src/features/progress/data/progress_repository.dart';
 import 'package:zad_alruh/src/features/progress/presentation/controllers/progress_controller.dart';
 import 'package:zad_alruh/src/features/quran/data/quran_repository.dart';
@@ -213,6 +215,7 @@ class _TestContext {
       overrides: [
         quranRepositoryProvider.overrideWith((ref) => Future.value(quranRepo)),
         progressRepositoryProvider.overrideWithValue(repo),
+        cityRepositoryProvider.overrideWith((ref) async => cityRepo),
       ],
     );
     return _TestContext(tempDir, db, repo, container);
@@ -244,6 +247,8 @@ class _TestContext {
   }
 }
 
+late CityRepository cityRepo;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
@@ -262,6 +267,11 @@ void main() {
       textBytes: textBytes,
       xmlBytes: xmlBytes,
     );
+
+    final cityBytes = await File(
+      'assets/content/cities/cities15000.txt',
+    ).readAsBytes();
+    cityRepo = CityAssetAdapter.fromBytes(cityBytes);
   });
 
   group('Quran UI - Core Navigation, Search & Reader Workflows', () {
@@ -796,12 +806,22 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (find.text('آخر صفحة مسجلة: صفحة 50 من ٦٠٤').evaluate().isEmpty &&
+          DateTime.now().isBefore(deadline)) {
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+      }
+      await tester.pump();
 
       expect(find.text('آخر صفحة مسجلة: صفحة 50 من ٦٠٤'), findsOneWidget);
 
       await tester.tap(find.text('كمّل وِردك  ←'));
-      await tester.pumpAndSettle();
+      for (int i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
 
       expect(navigatedTab, 1);
       final navState = ctx.container.read(quranNavigationProvider);

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
+import '../../more/presentation/settings_screen.dart';
+import '../../prayer/domain/models/prayer_day.dart';
+import '../../prayer/domain/models/prayer_event.dart';
+import '../../prayers/presentation/controllers/prayers_controller.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
 import '../../quran/presentation/controllers/quran_navigation_controller.dart';
 
@@ -50,9 +54,9 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final readingAsync = ref.watch(readingProgressControllerProvider);
-    final prefsAsync = ref.watch(preferencesControllerProvider);
     final today = ref.watch(activeDateBucketProvider);
     final dailyAsync = ref.watch(dailyProgressControllerProvider(today));
+    final prayerStateAsync = ref.watch(prayerTimesControllerProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -441,30 +445,107 @@ class HomeScreen extends ConsumerWidget {
 
               const SizedBox(height: 14),
 
-              // Next Prayer Card (Honest state without fake times)
-              prefsAsync.when(
-                data: (prefs) {
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkSurface
-                          : AppColors.cardSurface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
+              // Next Prayer Card (Real offline calculations from shared provider)
+              prayerStateAsync.when(
+                data: (state) {
+                  if (state.isUnsupported) {
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
                         color: isDark
-                            ? AppColors.darkCardBorder
-                            : AppColors.cardBorder,
+                            ? AppColors.darkSurface
+                            : AppColors.cardSurface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkCardBorder
+                              : AppColors.cardBorder,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                'مواقيت الصلاة',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textDark,
+                                ),
+                              ),
+                              Text(
+                                state.unsupportedCity ?? '',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? AppColors.darkGoldAccent
+                                      : AppColors.forestMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'المدينة المحددة غير مدعومة حالياً في حساب المواقيت. اضغط لفتح الإعدادات واختيار مدينة معتمدة.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              height: 1.4,
+                              color: isDark
+                                  ? AppColors.darkTextMuted
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const SettingsScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.tune, size: 14),
+                              label: const Text(
+                                'الإعدادات',
+                                style: TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (state.isUnresolved) {
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.cardSurface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkCardBorder
+                              : AppColors.cardBorder,
+                        ),
+                      ),
+                      child: InkWell(
+                        onTap: () => onNavigateTab?.call(2),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'مواقيت الصلاة',
@@ -476,70 +557,215 @@ class HomeScreen extends ConsumerWidget {
                                     : AppColors.textDark,
                               ),
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.location_on_outlined,
-                                  size: 13,
-                                  color: isDark
-                                      ? AppColors.darkGoldAccent
-                                      : AppColors.forestMedium,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  prefs.selectedCity,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark
-                                        ? AppColors.darkGoldAccent
-                                        : AppColors.forestMedium,
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 6),
+                            Text(
+                              'تعذر حساب المواقيت فلكياً لهذا اليوم (يوم قطبي). اضغط لعرض التفاصيل.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                height: 1.4,
+                                color: isDark
+                                    ? AppColors.darkTextMuted
+                                    : AppColors.textMuted,
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.darkBackground
-                                : AppColors.forestSoftTint,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 18,
-                                color: isDark
-                                    ? AppColors.darkGoldAccent
-                                    : AppColors.forestPrimary,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'المواقيت الدقيقة بدون إنترنت ستتوفر مع اكتمال محرك الحسابات الفلكية بدون إنترنت. لا يتم عرض مواعيد وهمية.',
+                      ),
+                    );
+                  }
+
+                  final city = state.city;
+                  final next = state.nextPrayer;
+                  final timeString = next != null && city != null
+                      ? formatPrayerTime(next, city.timezone)
+                      : '--:--';
+                  final countdown = state.countdownString;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : AppColors.cardSurface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.darkCardBorder
+                            : AppColors.cardBorder,
+                      ),
+                    ),
+                    child: InkWell(
+                      onTap: () => onNavigateTab?.call(2),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  'الصلاة القادمة',
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    height: 1.4,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
                                     color: isDark
-                                        ? AppColors.darkTextMuted
-                                        : AppColors.textMuted,
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.textDark,
                                   ),
                                 ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.location_on_outlined,
+                                      size: 13,
+                                      color: isDark
+                                          ? AppColors.darkGoldAccent
+                                          : AppColors.forestMedium,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      city?.arabicName ?? city?.name ?? '',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark
+                                            ? AppColors.darkGoldAccent
+                                            : AppColors.forestMedium,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // Next prayer callout
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isDark
+                                      ? [
+                                          const Color(0xFF1B4E3B),
+                                          const Color(0xFF123528),
+                                        ]
+                                      : [
+                                          const Color(0xFFFFF5DF),
+                                          const Color(0xFFE7F1E6),
+                                        ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${next?.type.arabicName ?? ''} · بعد $countdown',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark
+                                                ? AppColors.darkTextMuted
+                                                : AppColors.textMuted,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          timeString,
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark
+                                                ? AppColors.darkGoldAccent
+                                                : const Color(0xFF875E22),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'عرض الكل',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? AppColors.darkGoldAccent
+                                              : AppColors.forestPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.arrow_forward_ios,
+                                        size: 11,
+                                        color: isDark
+                                            ? AppColors.darkGoldAccent
+                                            : AppColors.forestPrimary,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (state.prayerDay != null &&
+                                !state.prayerDay!.isUnresolved) ...[
+                              const SizedBox(height: 10),
+                              _buildPrayersSummaryRow(
+                                prayerDay: state.prayerDay!,
+                                nextPrayer: next,
+                                timezone: city?.timezone ?? 'Africa/Cairo',
+                                isDark: isDark,
                               ),
                             ],
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   );
                 },
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                loading: () => Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.cardSurface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (_, __) => Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.cardSurface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'تعذر حساب مواقيت الصلاة. يرجى التحقق من إعدادات المدينة أو إعادة المحاولة.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ),
               ),
 
               const SizedBox(height: 14),
@@ -697,6 +923,115 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPrayersSummaryRow({
+    required PrayerDay prayerDay,
+    required PrayerEvent? nextPrayer,
+    required String timezone,
+    required bool isDark,
+  }) {
+    final prayers = [
+      (PrayerType.fajr, prayerDay.fajr),
+      (PrayerType.dhuhr, prayerDay.dhuhr),
+      (PrayerType.asr, prayerDay.asr),
+      (PrayerType.maghrib, prayerDay.maghrib),
+      (PrayerType.isha, prayerDay.isha),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkBackground : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.darkCardBorder : const Color(0xFFE5EBE6),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(1.0);
+          final estimatedItemWidth = 68.0 * textScale;
+          final totalNeeded = estimatedItemWidth * prayers.length;
+          final shouldWrap =
+              constraints.maxWidth < totalNeeded || textScale > 1.15;
+
+          Widget buildItem((PrayerType, PrayerEvent?) p) {
+            final isNext = p.$2 != null &&
+                nextPrayer != null &&
+                p.$2!.utcDateTime.isAtSameMomentAs(nextPrayer.utcDateTime);
+            final time = p.$2 != null
+                ? formatPrayerTime(p.$2!, timezone, use12Hour: false)
+                : '--:--';
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: isNext
+                    ? (isDark
+                        ? AppColors.darkForestPrimary.withAlpha(50)
+                        : const Color(0xFFE7F0E8))
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    p.$1.arabicName,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isNext ? FontWeight.bold : FontWeight.normal,
+                      color: isNext
+                          ? (isDark
+                              ? AppColors.darkGoldAccent
+                              : AppColors.forestPrimary)
+                          : (isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    time,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isNext
+                          ? (isDark
+                              ? AppColors.darkGoldAccent
+                              : AppColors.forestPrimary)
+                          : (isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textDark),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (shouldWrap) {
+            return SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceAround,
+                runAlignment: WrapAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: prayers.map(buildItem).toList(),
+              ),
+            );
+          }
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: prayers.map(buildItem).toList(),
+          );
+        },
       ),
     );
   }
