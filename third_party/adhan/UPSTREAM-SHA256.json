@@ -1,0 +1,121 @@
+{
+  "Package": "adhan",
+  "Version": "2.0.0+1",
+  "ArchiveSha256": "e1d3363c8127dc614947ecf312e458fbf4783af3db8e3b465c4a286eb37374ac",
+  "Source": "https://pub.dev/packages/adhan/versions/2.0.0+1",
+  "PreparedAt": "2026-09-27",
+  "Files": [
+    {
+      "Path": "CHANGELOG.md",
+      "Sha256": "e9fbe5052376a90a5803dd2c24b5150a41ae973519f113db964f0dcb0d9293b8"
+    },
+    {
+      "Path": "LICENSE",
+      "Sha256": "d06c4b95f419fac31fec8196e999b36114002ecc1b0f086f15e788e41b8c8f27"
+    },
+    {
+      "Path": "pubspec.yaml",
+      "Sha256": "477d8c363e984330f0eb7b64553d40b99563570153dbf08987e2f6f0d0b830f4"
+    },
+    {
+      "Path": "README.md",
+      "Sha256": "25c95f9387d6587a6c25df39a769d03f4c425331f899ed380b25fa6a6a372f17"
+    },
+    {
+      "Path": "lib/adhan.dart",
+      "Sha256": "0700b0f150fd4debbcdc48ea1fc831f83315831cceec6be2aa0a5254c9a9d1ce"
+    },
+    {
+      "Path": "lib/src/adhan_base.dart",
+      "Sha256": "06905fa2f0172314c8e2214ced6253de36353aa3bb5674d7b1265a4becdde678"
+    },
+    {
+      "Path": "lib/src/calculation_method.dart",
+      "Sha256": "5fdeeb9c2789dbe0c7dc110353665235c0c188e8a065d92b1d67fcd903fe28f7"
+    },
+    {
+      "Path": "lib/src/calculation_parameters.dart",
+      "Sha256": "3d3a832fce2b86b15d900748256571a56742565e1c3e2b76b7cfdda825bb994b"
+    },
+    {
+      "Path": "lib/src/coordinates.dart",
+      "Sha256": "a34c1e79dac80b0260ca367a4848fd2183dd4675c77b2974a2319e181db4cad0"
+    },
+    {
+      "Path": "lib/src/high_latitude_rule.dart",
+      "Sha256": "146142b29429c9f2fac27a5d2b8fca96c1f989da8e38d1d31508a7836774b1c1"
+    },
+    {
+      "Path": "lib/src/madhab.dart",
+      "Sha256": "f2f114831eef4f5e37b3ed8e9b2513b65c73be2fa32f1034a9de930d36261497"
+    },
+    {
+      "Path": "lib/src/prayer_adjustments.dart",
+      "Sha256": "4b388fb2dc1d860f4fa26080cfc0bb3fd2583db1f44e107225877c7c3463a695"
+    },
+    {
+      "Path": "lib/src/prayer_times.dart",
+      "Sha256": "e864ca395516ab6c0ce2a5a58e369ce833fe7bc72f8de176c272f1b389f8d668"
+    },
+    {
+      "Path": "lib/src/prayer.dart",
+      "Sha256": "246951e7165ed554a67dc62b6698545b267431298f2e1aa1d3a12b754bf7f6e3"
+    },
+    {
+      "Path": "lib/src/qibla.dart",
+      "Sha256": "82db27538a5c52c682a320ccb33e5e98a4e03f6ff1678bd84292cf85d7319eed"
+    },
+    {
+      "Path": "lib/src/sunnah_times.dart",
+      "Sha256": "0aeda6bad0c723048dbe5f8fa284f365e170dc0c9329d7260314e2eaadd3de27"
+    },
+    {
+      "Path": "lib/src/data/calendar_util.dart",
+      "Sha256": "606f41e1cfbf3e769d6e5260e3009bfbeb144e26f25a63a0126b5999cf51b060"
+    },
+    {
+      "Path": "lib/src/data/date_components.dart",
+      "Sha256": "6b1e1701d3fa82c3958a50ac10f360fed9ebfcb4329748e55115076f4a194b5b"
+    },
+    {
+      "Path": "lib/src/data/time_components.dart",
+      "Sha256": "0f0bc1ea725b4aa148977bd06ab7aa3ea72c0d8371621beb8c60801b9cd6a86c"
+    },
+    {
+      "Path": "lib/src/extensions/datetime.dart",
+      "Sha256": "f9b475baee4e02db55776619fbb58223d8d5a5f82f1a21bd926325470c86c6bb"
+    },
+    {
+      "Path": "lib/src/internal/astronomical.dart",
+      "Sha256": "5404a432f891f291bed9f99c1ce964a80c3ddeae71d089c15da1d2841cb33480"
+    },
+    {
+      "Path": "lib/src/internal/calendrical_helper.dart",
+      "Sha256": "3cf300bc0123352080ab45636bb6cc6d2f4ee61cf4b107c00c3f96e1384e12a5"
+    },
+    {
+      "Path": "lib/src/internal/double_util.dart",
+      "Sha256": "d6db8710b8d182b44c52384fc6c9c0d74aea24808fafd12b1bd80ee14900dbcb"
+    },
+    {
+      "Path": "lib/src/internal/math.dart",
+      "Sha256": "4e3a71dbfe3b5932f7a4965f7551b03255dddfeedd14ce37bec9248c4293766b"
+    },
+    {
+      "Path": "lib/src/internal/qibla_util.dart",
+      "Sha256": "45baf631ac709af53ab05a848670cea40a2392c4b1f51879e434e9993cfe7185"
+    },
+    {
+      "Path": "lib/src/internal/shadow_length.dart",
+      "Sha256": "22be766ae33eb9d273726a5a4b16a133191422b84101cff8b1ade2b5fed08a78"
+    },
+    {
+      "Path": "lib/src/internal/solar_coordinates.dart",
+      "Sha256": "fbb9b395a6979b919ba724e9a6118ea06d59d323dd1862f4f5ea767b7fc2d3cc"
+    },
+    {
+      "Path": "lib/src/internal/solar_time.dart",
+      "Sha256": "2c1c197b34d7616c0f5670d78201b7a7109d8c1e88ec81c33166c1de59e28c4d"
+    }
+  ]
+}

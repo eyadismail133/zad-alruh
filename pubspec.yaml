@@ -19,6 +19,9 @@ dependencies:
   crypto: 3.0.7
   xml: 7.0.1
   url_launcher: 6.3.2
+  adhan:
+    path: third_party/adhan
+  hijri: 3.0.1
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +38,8 @@ flutter:
     - assets/branding/logo.png
     - assets/fonts/Amiri-OFL.txt
     - assets/fonts/IBM-Plex-LICENSE.txt
+    - assets/licenses/Adhan-MIT.txt
+    - assets/licenses/Hijri-BSD.txt
     - assets/content/manifest.json
     - assets/content/quran/quran-uthmani.txt
     - assets/content/quran/quran-data.xml

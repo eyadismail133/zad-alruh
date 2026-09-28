@@ -10,7 +10,8 @@ This record separates implemented work, verified work and external prerequisites
 | Quran source/domain | Historical Astra APPROVED Task2A; canonical hashes,114chapters/6236verses/604boundaries/30juz; original assets verified unchanged in latest debug APK | Content/image/religious review |
 | Quran interface | GPT-6 Sol APPROVED Task2B; offline index/search/reader/explicit stop/bookmarks/favorites/source notices; full113tests and analyze passed, fresh debug build14.0s | Physical-device accessibility and image-mode acceptance when approved604images are supplied |
 | Mushaf images | No approved images supplied | Quran Foundation access/permission,604images, alignment and human review |
-| Global cities | Original GeoNames cities15000 snapshot34149records and CC BY4.0 attribution acquired | Offline search and timezone-aware prayer calculator/UI |
+| Global cities | Original GeoNames cities15000 snapshot34149records and CC BY4.0 attribution; offline Arabic/Latin search and nearest-city domain reviewed by GPT-6 Sol | Persisted selection and UI integration |
+| Prayer calculation domain | GPT-6 Sol APPROVED Task3A; pinned MIT Adhan engine with 3 documented patches, city-anchored timezone/DST, method settings, estimated/polar-day policy and cross-midnight next prayer; full158 tests, analyze clean, debug APK built | Connect to UI, persist choices, schedule and device-verify notifications/adhan; qualified review of prayer times |
 | Dhikr/duas/hadith | No licensed digital corpus imported | Exact-edition rights, referenced records and qualified human review |
 | Adhan | No licensed recordings supplied | Three voices including Fajr and permitted clips; playback/device verification |
 | Prayer notifications | Foundation activation disabled pending implementation | Native Android exact/fallback scheduling and iOS rolling horizon |
@@ -22,6 +23,8 @@ This record separates implemented work, verified work and external prerequisites
 Independent Astra verdict and bounded acceptance are recorded in [FOUNDATION-REVIEW.md](FOUNDATION-REVIEW.md). Local evidence: foundation-fix07 analyze/test logs and fresh debug APK build10.4s. Task2A has separate independent approval, recorded in [QURAN-REVIEW.md](QURAN-REVIEW.md). Its89tests and fresh debug build do not approve subsequent UI/native/store milestones.
 
 Task2B was separately approved by GPT-6 Sol on2026-09-28 after the actual production/test diff and final113-test/analyzer/build/source-integrity evidence were reviewed. See [QURAN-UI-REVIEW.md](QURAN-UI-REVIEW.md). Future reviews use GPT-6 Sol, as requested by the owner.
+
+Task3A prayer and city domain was separately approved by GPT-6 Sol on2026-09-28. Focused tests45/45 and full suite158/158 passed, `flutter analyze --no-pub` found no issues, `git diff --check` passed, and a fresh debug APK was built. The domain is not yet wired to the prayer screen or native notifications. See [PRAYER-DOMAIN.md](PRAYER-DOMAIN.md) for the implemented policy and limits.
 
 ## Native compatibility
 
