@@ -26,6 +26,7 @@ import 'package:zad_alruh/src/features/quran/data/sources/quran_asset_loader.dar
 import 'package:zad_alruh/src/features/quran/presentation/controllers/quran_navigation_controller.dart';
 import 'package:zad_alruh/src/features/quran/presentation/quran_reader_screen.dart';
 import 'package:zad_alruh/src/features/quran/presentation/quran_screen.dart';
+import 'package:zad_alruh/src/features/quran/presentation/utils/quran_ui_utils.dart';
 
 const bool kCapturePreviews = bool.fromEnvironment(
   'CAPTURE_PREVIEWS',
@@ -139,6 +140,41 @@ Widget createTestApp({
     home: Directionality(textDirection: TextDirection.rtl, child: child),
   ),
 );
+
+Future<void> tapVerseSpan(WidgetTester tester, String verseText) async {
+  final richTextFinder = find.byType(RichText);
+  RenderParagraph? targetParagraph;
+  for (final element in richTextFinder.evaluate()) {
+    final renderObj = element.renderObject as RenderParagraph?;
+    if (renderObj != null &&
+        renderObj.text
+            .toPlainText(includeSemanticsLabels: false)
+            .contains(verseText)) {
+      targetParagraph = renderObj;
+      break;
+    }
+  }
+  expect(
+    targetParagraph,
+    isNotNull,
+    reason: 'Must find RichText paragraph containing verse text "$verseText"',
+  );
+  final text = targetParagraph!.text.toPlainText(
+    includeSemanticsLabels: false,
+  );
+  final startIndex = text.indexOf(verseText);
+  final endIndex = startIndex + verseText.length;
+  final boxes = targetParagraph.getBoxesForSelection(
+    TextSelection(baseOffset: startIndex, extentOffset: endIndex),
+  );
+  expect(
+    boxes.isNotEmpty,
+    isTrue,
+    reason: 'Must find glyph bounding box for verse span "$verseText"',
+  );
+  final globalCenter = targetParagraph.localToGlobal(boxes.first.toRect().center);
+  await tester.tapAt(globalCenter);
+}
 
 class TransientCachingAssetBundle extends CachingAssetBundle {
   bool shouldFail = true;
@@ -537,7 +573,7 @@ void main() {
         await tester.ensureVisible(verse2Finder);
         await tester.pumpAndSettle();
         expect(verse2Finder, findsOneWidget);
-        await tester.tap(verse2Finder);
+        await tapVerseSpan(tester, quranRepo.getVerse(2, 2).text);
         await tester.pumpAndSettle();
 
         // BottomSheet options appear
@@ -1370,6 +1406,500 @@ void main() {
           () => gatedRepo!.getReadingProgress(),
         ))!;
         expect(progress.lastPage, 155);
+      },
+    );
+
+    testWidgets(
+      'compact continuous Mushaf sheet renders all verses assigned to page 1, 2, and 604 with surah headers',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Page 1: Al-Fatiha all 7 verses rendered on the sheet
+        final page1Verses = quranRepo.getVersesForPage(1);
+        expect(page1Verses.length, 7);
+        for (final verse in page1Verses) {
+          expect(
+            find.textContaining(verse.text, findRichText: true),
+            findsOneWidget,
+            reason: 'Verse 1:${verse.verseNumber} must be rendered on page 1',
+          );
+          expect(
+            find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
+            findsOneWidget,
+            reason: 'Marker 1:${verse.verseNumber} must be rendered on page 1',
+          );
+        }
+        expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
+        expect(find.text('سورة الفاتحة'), findsWidgets);
+
+        // Turn to Page 2: Al-Baqarah 2:1..5
+        await tester.tap(find.text('التالي'));
+        await tester.pumpAndSettle();
+
+        final page2Verses = quranRepo.getVersesForPage(2);
+        expect(page2Verses.length, 5);
+        for (final verse in page2Verses) {
+          expect(
+            find.textContaining(verse.text, findRichText: true),
+            findsOneWidget,
+            reason: 'Verse 2:${verse.verseNumber} must be rendered on page 2',
+          );
+          expect(
+            find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
+            findsOneWidget,
+            reason: 'Marker 2:${verse.verseNumber} must be rendered on page 2',
+          );
+        }
+        expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
+
+        // Jump to Page 604: All 15 verses across 3 surahs
+        await tester.tap(find.byIcon(Icons.pin_outlined));
+        await tester.pumpAndSettle();
+        final jumpField = find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        );
+        await tester.enterText(jumpField, '604');
+        await tester.tap(find.text('انتقال'));
+        await tester.pumpAndSettle();
+
+        final page604Verses = quranRepo.getVersesForPage(604);
+        expect(page604Verses.length, 15);
+        for (final verse in page604Verses) {
+          expect(
+            find.textContaining(verse.text, findRichText: true),
+            findsOneWidget,
+            reason:
+                'Verse ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
+          );
+          expect(
+            find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
+            findsWidgets,
+            reason:
+                'Marker ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
+          );
+        }
+        expect(find.text('۞ سُورَةُ الإخلاص ۞'), findsOneWidget);
+        expect(find.text('۞ سُورَةُ الفلق ۞'), findsOneWidget);
+        expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
+        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'preserves exact page boundaries: 1->2 advances to Baqarah start, and 603->604 advances to final page with disabled next button',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // On Page 1, 'السابق' is disabled
+        final prevButtonFinder = find.widgetWithText(OutlinedButton, 'السابق');
+        final prevButton = tester.widget<OutlinedButton>(prevButtonFinder);
+        expect(prevButton.onPressed, isNull);
+
+        // Tap 'التالي' moves to Page 2
+        await tester.tap(find.text('التالي'));
+        await tester.pumpAndSettle();
+        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+        expect(
+          find.textContaining(
+            quranRepo.getVerse(2, 1).text,
+            findRichText: true,
+          ),
+          findsOneWidget,
+        );
+        // Fatiha verses are no longer present
+        expect(
+          find.textContaining(
+            quranRepo.getVerse(1, 7).text,
+            findRichText: true,
+          ),
+          findsNothing,
+        );
+
+        // Jump to Page 603
+        await tester.tap(find.byIcon(Icons.pin_outlined));
+        await tester.pumpAndSettle();
+        final jumpField = find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        );
+        await tester.enterText(jumpField, '603');
+        await tester.tap(find.text('انتقال'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
+        // Page 603 contains Surahs 109, 110, 111
+        expect(find.text('۞ سُورَةُ الكافرون ۞'), findsOneWidget);
+
+        // Tap 'التالي' moves to Page 604
+        await tester.tap(find.text('التالي'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+        // On Page 604, 'التالي' is disabled
+        final nextButtonFinder = find.widgetWithText(ElevatedButton, 'التالي');
+        final nextButton = tester.widget<ElevatedButton>(nextButtonFinder);
+        expect(nextButton.onPressed, isNull);
+      },
+    );
+
+    testWidgets(
+      'compact sheet verse tap opens bottom sheet, sets exact stop verse and displays stop badge',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap verse 1:2: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ"
+        final verse2 = quranRepo.getVerse(1, 2);
+        final verse2Finder = find.textContaining(
+          verse2.text,
+          findRichText: true,
+        );
+        expect(verse2Finder, findsOneWidget);
+        await tapVerseSpan(tester, verse2.text);
+        await tester.pumpAndSettle();
+
+        // Options bottomsheet appears
+        expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
+        await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
+        await drainQueue(
+          tester,
+          ctx.container.read(readingProgressControllerProvider.notifier),
+        );
+        await tester.pumpAndSettle();
+
+        // Stop badge appears on compact sheet
+        expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
+
+        final saved = (await tester.runAsync(
+          () => ctx.repo.getReadingProgress(),
+        ))!;
+        expect(saved.lastPage, 1);
+        expect(saved.selectedSurah, 1);
+        expect(saved.selectedVerse, 2);
+      },
+    );
+
+    testWidgets(
+      'compact continuous sheet renders at 320x480 small screen with 2.0 text scale without overflow',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        tester.view.physicalSize = const Size(320, 480);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(604));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: const TextScaler.linear(2.0),
+                ),
+                child: child!,
+              ),
+              child: const QuranReaderScreen(initialPage: 604),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+        expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
+
+        // Turn to Page 603 at 2.0 font scale on 320x480
+        await tester.tap(find.text('السابق'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'flowing rich-text paragraph geometry: adjacent short verses share line in wide viewport and verse span tap works',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        tester.view.physicalSize = const Size(800, 600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(604));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 604),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // On Page 604, Surah Al-Ikhlas (112) verses 1 and 2 are short:
+        // 112:1: "قُلْ هُوَ ٱللَّهُ أَحَدٌ ۝١ "
+        // 112:2: "ٱللَّهُ ٱلصَّمَدُ ۝٢ "
+        final v1 = quranRepo.getVerse(112, 1);
+        final v2 = quranRepo.getVerse(112, 2);
+
+        final richTextFinder = find.byType(RichText);
+        RenderParagraph? ikhlasParagraph;
+        for (final element in richTextFinder.evaluate()) {
+          final renderObj = element.renderObject as RenderParagraph?;
+          if (renderObj != null &&
+              renderObj.text.toPlainText().contains(v1.text) &&
+              renderObj.text.toPlainText().contains(v2.text)) {
+            ikhlasParagraph = renderObj;
+            break;
+          }
+        }
+        expect(
+          ikhlasParagraph,
+          isNotNull,
+          reason: 'Flowing paragraph for Surah 112 must exist',
+        );
+
+        final fullText = ikhlasParagraph!.text.toPlainText(
+          includeSemanticsLabels: false,
+        );
+        final start1 = fullText.indexOf(v1.text);
+        final boxes1 = ikhlasParagraph.getBoxesForSelection(
+          TextSelection(
+            baseOffset: start1,
+            extentOffset: start1 + v1.text.length,
+          ),
+        );
+        final start2 = fullText.indexOf(v2.text);
+        final boxes2 = ikhlasParagraph.getBoxesForSelection(
+          TextSelection(
+            baseOffset: start2,
+            extentOffset: start2 + v2.text.length,
+          ),
+        );
+
+        expect(boxes1.isNotEmpty, isTrue);
+        expect(boxes2.isNotEmpty, isTrue);
+
+        // PROOF OF CONTINUOUS FLOW: In an 800px viewport, adjacent short verses 112:1 and 112:2
+        // share the same line (same vertical top coordinate within font tolerance),
+        // rather than being stacked on separate lines as isolated block containers.
+        expect(
+          (boxes1.first.top - boxes2.first.top).abs(),
+          lessThanOrEqualTo(2.0),
+          reason:
+              'Adjacent short verses in flowing paragraph must share the same line in a wide viewport',
+        );
+
+        // Prove working tap on specific verse span (112:2)
+        await tapVerseSpan(tester, v2.text);
+        await tester.pumpAndSettle();
+
+        expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
+        await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
+        await drainQueue(
+          tester,
+          ctx.container.read(readingProgressControllerProvider.notifier),
+        );
+        await tester.pumpAndSettle();
+
+        final saved = (await tester.runAsync(
+          () => ctx.repo.getReadingProgress(),
+        ))!;
+        expect(saved.lastPage, 604);
+        expect(saved.selectedSurah, 112);
+        expect(saved.selectedVerse, 2);
+      },
+    );
+
+    testWidgets(
+      'accessibility: screen reader semantics provides exactly one node per verse with content, chapter, number, and tap action',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final semanticsHandle = tester.ensureSemantics();
+        try {
+          final ctx = (await tester.runAsync(
+            () => _TestContext.create(quranRepo: quranRepo),
+          ))!;
+          addTearDown(() => ctx.dispose(tester));
+          await tester.runAsync(() => ctx.prehydrate(1));
+
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 1),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final surah1 = quranRepo.getSurah(1);
+          final page1Verses = quranRepo.getVersesForPage(1);
+
+          for (final verse in page1Verses) {
+            // 1. Assert exactly ONE semantics node per verse matching the verse content and ayah number
+            final verseFinder = find.semantics.byPredicate(
+              (node) =>
+                  node.label.startsWith(verse.text) &&
+                  node.label.contains('الآية ${verse.verseNumber}'),
+            );
+            expect(
+              verseFinder,
+              findsOneWidget,
+              reason:
+                  'Must have exactly one semantics node for Verse 1:${verse.verseNumber}',
+            );
+
+            // 2. Assert content + chapter + number are present in the node
+            final SemanticsNode node = verseFinder.evaluate().single;
+            final SemanticsData data = node.getSemanticsData();
+            expect(data.label, contains(verse.text));
+            expect(data.label, contains(surah1.name));
+            expect(data.label, contains('${verse.verseNumber}'));
+
+            // 3. Assert tap action is available on the semantics node
+            expect(
+              data.hasAction(SemanticsAction.tap),
+              isTrue,
+              reason:
+                  'Verse 1:${verse.verseNumber} semantics node must have a tap action',
+            );
+          }
+
+          // 4. REGRESSION PROOF: Assert no duplicate or separate marker node exists in semantics
+          final markerSemanticsFinder = find.semantics.byPredicate(
+            (node) => node.label.contains('۝'),
+          );
+          expect(
+            markerSemanticsFinder,
+            findsNothing,
+            reason:
+                'Visual ayah markers must be excluded from semantics to prevent duplicate focus stops',
+          );
+
+          // 5. Verify the visual marker is still physically tappable on screen
+          final markerWidgetFinder = find.textContaining(' ۝١ ');
+          expect(markerWidgetFinder, findsOneWidget);
+          await tester.tap(markerWidgetFinder);
+          await tester.pumpAndSettle();
+          expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
+        } finally {
+          semanticsHandle.dispose();
+        }
+      },
+    );
+
+    testWidgets(
+      'horizontal drag/swipe on reader advances page number and official Medina verse boundaries',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(1));
+
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Initially on Page 1 (Al-Fatiha 1:1..7)
+        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+        expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
+        final p1v1 = quranRepo.getVerse(1, 1);
+        expect(find.textContaining(p1v1.text), findsOneWidget);
+
+        // Perform horizontal swipe/drag across PageView.
+        // In an RTL PageView, dragging from left-to-right (positive X delta) advances forward
+        // to the next Medina page (Page 2), and right-to-left (negative X delta) navigates backward.
+        final pageViewFinder = find.byType(PageView);
+        expect(pageViewFinder, findsOneWidget);
+
+        // Fling forward to advance to Page 2
+        await tester.fling(pageViewFinder, const Offset(400, 0), 1000);
+        await tester.pumpAndSettle();
+
+        // Assert reader has advanced to official Page 2 (Al-Baqarah 2:1..5)
+        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+        expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
+        final p2v1 = quranRepo.getVerse(2, 1);
+        expect(find.textContaining(p2v1.text), findsOneWidget);
+
+        // And verify verses from Page 1 (e.g. Al-Fatiha 1:7) are no longer on current page
+        final p1v7 = quranRepo.getVerse(1, 7);
+        expect(find.textContaining(p1v7.text), findsNothing);
+
+        // Swipe backward to return to Page 1
+        await tester.fling(pageViewFinder, const Offset(-400, 0), 1000);
+        await tester.pumpAndSettle();
+
+        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+        expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
+        expect(find.textContaining(p1v1.text), findsOneWidget);
+        expect(find.textContaining(p2v1.text), findsNothing);
       },
     );
   });

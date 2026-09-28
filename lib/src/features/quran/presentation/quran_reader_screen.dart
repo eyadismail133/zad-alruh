@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
@@ -656,7 +657,8 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     );
   }
 
-  /// Builds the accessible, verified Tanzil Uthmani text page with Amiri Quran typography.
+  /// Builds the accessible, verified Tanzil Uthmani text page with Amiri Quran typography
+  /// rendered as a true flowing rich-text paragraph on a Medina Mushaf sheet.
   Widget _buildAccessibleTextPage(
     BuildContext context,
     QuranRepository repo,
@@ -664,10 +666,81 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     ReadingProgress? readingProgress,
     bool isDark,
   ) {
-    final verses = repo.getVersesForPage(pageNumber);
+    return _FlowingMushafPage(
+      key: ValueKey('flowing_mushaf_page_$pageNumber'),
+      repo: repo,
+      pageNumber: pageNumber,
+      readingProgress: readingProgress,
+      isDark: isDark,
+      onVerseTap: (verse, surah) => _showVerseOptions(verse, surah),
+    );
+  }
+}
+
+/// A stateful Medina Mushaf page sheet that renders all verses assigned to a page
+/// as a continuous, flowing rich-text paragraph per Surah, with individually tappable
+/// verse spans and properly disposed [TapGestureRecognizer] instances.
+class _FlowingMushafPage extends StatefulWidget {
+  final QuranRepository repo;
+  final int pageNumber;
+  final ReadingProgress? readingProgress;
+  final bool isDark;
+  final void Function(Verse verse, Surah surah) onVerseTap;
+
+  const _FlowingMushafPage({
+    super.key,
+    required this.repo,
+    required this.pageNumber,
+    required this.readingProgress,
+    required this.isDark,
+    required this.onVerseTap,
+  });
+
+  @override
+  State<_FlowingMushafPage> createState() => _FlowingMushafPageState();
+}
+
+class _FlowingMushafPageState extends State<_FlowingMushafPage> {
+  final List<TapGestureRecognizer> _recognizers = [];
+
+  void _clearRecognizers() {
+    for (final recognizer in _recognizers) {
+      recognizer.dispose();
+    }
+    _recognizers.clear();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FlowingMushafPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pageNumber != widget.pageNumber ||
+        oldWidget.readingProgress != widget.readingProgress ||
+        oldWidget.isDark != widget.isDark) {
+      _clearRecognizers();
+    }
+  }
+
+  @override
+  void dispose() {
+    _clearRecognizers();
+    super.dispose();
+  }
+
+  TapGestureRecognizer _obtainRecognizer(Verse verse, Surah surah) {
+    final recognizer = TapGestureRecognizer()
+      ..onTap = () => widget.onVerseTap(verse, surah);
+    _recognizers.add(recognizer);
+    return recognizer;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final verses = widget.repo.getVersesForPage(widget.pageNumber);
     if (verses.isEmpty) {
       return const Center(child: Text('لا توجد آيات لهذه الصفحة.'));
     }
+
+    _clearRecognizers();
 
     // Determine current Surahs present on this page
     final surahNumbers = <int>{};
@@ -676,223 +749,260 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     }
 
     final firstVerse = verses.first;
-    final primarySurah = repo.getSurah(firstVerse.surahNumber);
+    final primarySurah = widget.repo.getSurah(firstVerse.surahNumber);
+    final isDark = widget.isDark;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Page Meta Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.darkCardBorder.withAlpha(60)
-                  : const Color(0xFFF2ECE0),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                Text(
-                  'سورة ${primarySurah.name}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: isDark
-                        ? AppColors.darkGoldAccent
-                        : AppColors.goldDark,
-                  ),
-                ),
-                Text(
-                  'الجزء ${QuranUiUtils.toArabicDigits(firstVerse.juzNumber)} · صفحة ${QuranUiUtils.toArabicDigits(pageNumber)}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark
-                        ? AppColors.darkTextMuted
-                        : AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1B231F) : const Color(0xFFFAF7EE),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? AppColors.darkCardBorder : const Color(0xFFD6C8A8),
+            width: 1.5,
           ),
-          const SizedBox(height: 12),
-
-          // Render verses grouped by Surah
-          ...surahNumbers.map((sNumber) {
-            final surah = repo.getSurah(sNumber);
-            final surahVerses = verses
-                .where((v) => v.surahNumber == sNumber)
-                .toList();
-            final isSurahStart = surahVerses.any((v) => v.verseNumber == 1);
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Surah Header Banner if Surah starts on this page
-                if (isSurahStart) ...[
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.symmetric(
-                        horizontal: BorderSide(
-                          color: isDark
-                              ? AppColors.darkCardBorder
-                              : const Color(0xFFD6C8A8),
-                          width: 1.5,
-                        ),
-                      ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withAlpha(80)
+                  : Colors.brown.withAlpha(20),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Page Meta Header (Slim frame at top of Mushaf sheet)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.darkCardBorder.withAlpha(40)
+                    : const Color(0xFFF1E9DA),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isDark
+                      ? AppColors.darkCardBorder
+                      : const Color(0xFFE2D8C3),
+                  width: 0.8,
+                ),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 2,
+                children: [
+                  Text(
+                    'سورة ${primarySurah.name}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
                       color: isDark
-                          ? AppColors.darkSurface
-                          : const Color(0xFFFDFBF7),
+                          ? AppColors.darkGoldAccent
+                          : AppColors.goldDark,
                     ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '۞ سُورَةُ ${surah.name} ۞',
-                          style: TextStyle(
-                            fontFamily: 'Amiri Quran',
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? AppColors.darkGoldAccent
-                                : AppColors.forestPrimary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        Text(
-                          '${surah.type == "Meccan" ? "مكية" : "مدنية"} · عدد آياتها ${QuranUiUtils.toArabicDigits(surah.versesCount)}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isDark
-                                ? AppColors.darkTextMuted
-                                : AppColors.textMuted,
-                          ),
-                        ),
-                      ],
+                  ),
+                  Text(
+                    'الجزء ${QuranUiUtils.toArabicDigits(firstVerse.juzNumber)} · صفحة ${QuranUiUtils.toArabicDigits(widget.pageNumber)}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 6),
 
-                // Verses List with exact stop marker & tap options
-                ...surahVerses.map((verse) {
-                  final isStopVerse =
-                      readingProgress?.selectedSurah == verse.surahNumber &&
-                      readingProgress?.selectedVerse == verse.verseNumber;
+            // Render Surahs and their flowing continuous verses
+            ...surahNumbers.map((sNumber) {
+              final surah = widget.repo.getSurah(sNumber);
+              final surahVerses = verses
+                  .where((v) => v.surahNumber == sNumber)
+                  .toList();
+              final isSurahStart = surahVerses.any((v) => v.verseNumber == 1);
 
-                  return Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isStopVerse
-                          ? (isDark
-                                ? Colors.amber.shade900.withAlpha(40)
-                                : const Color(0xFFFFF7E3))
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: isStopVerse
-                          ? Border.all(
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Surah Header Banner if Surah starts on this page
+                  if (isSurahStart) ...[
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.symmetric(
+                          horizontal: BorderSide(
+                            color: isDark
+                                ? AppColors.darkGoldAccent.withAlpha(120)
+                                : const Color(0xFFC7B38A),
+                            width: 1.2,
+                          ),
+                        ),
+                        color: isDark
+                            ? AppColors.darkSurface.withAlpha(150)
+                            : const Color(0xFFF5EEDB),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '۞ سُورَةُ ${surah.name} ۞',
+                            style: TextStyle(
+                              fontFamily: 'Amiri Quran',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                               color: isDark
                                   ? AppColors.darkGoldAccent
-                                  : AppColors.goldAccent,
-                            )
-                          : null,
+                                  : AppColors.forestPrimary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          Text(
+                            '${surah.type == "Meccan" ? "مكية" : "مدنية"} · عدد آياتها ${QuranUiUtils.toArabicDigits(surah.versesCount)}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: isDark
+                                  ? AppColors.darkTextMuted
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: InkWell(
-                      onTap: () => _showVerseOptions(verse, surah),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 4.0,
-                          horizontal: 2.0,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (isStopVerse) ...[
-                              Align(
-                                alignment: Alignment.centerLeft,
+                  ],
+
+                  // True flowing rich-text paragraph for this Surah
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4.0,
+                      vertical: 4.0,
+                    ),
+                    child: Text.rich(
+                      TextSpan(
+                        children: surahVerses.expand<InlineSpan>((verse) {
+                          final isStopVerse =
+                              widget.readingProgress?.selectedSurah ==
+                                  verse.surahNumber &&
+                              widget.readingProgress?.selectedVerse ==
+                                  verse.verseNumber;
+                          final recognizer = _obtainRecognizer(verse, surah);
+
+                          final spans = <InlineSpan>[];
+
+                          // Stop badge indicator widget span
+                          if (isStopVerse) {
+                            spans.add(
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
+                                    horizontal: 5,
+                                    vertical: 1,
                                   ),
-                                  margin: const EdgeInsets.only(bottom: 4),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: isDark
                                         ? AppColors.darkGoldAccent
                                         : AppColors.goldDark,
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(3),
                                   ),
                                   child: const Text(
                                     'موضع التوقف الحالي 🔖',
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: 8,
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                               ),
-                            ],
-                            Semantics(
-                              label:
-                                  'الآية ${verse.verseNumber} من سورة ${surah.name}',
-                              child: Text.rich(
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: verse.text,
-                                      style: TextStyle(
-                                        fontFamily: 'Amiri Quran',
-                                        fontSize: 21,
-                                        height: 2.2,
-                                        color: isDark
-                                            ? AppColors.darkTextPrimary
-                                            : const Color(0xFF1B2921),
-                                      ),
-                                    ),
-                                    TextSpan(
-                                      text:
-                                          ' ۝${QuranUiUtils.toArabicDigits(verse.verseNumber)} ',
-                                      style: TextStyle(
-                                        fontFamily: 'Amiri Quran',
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark
-                                            ? AppColors.darkGoldAccent
-                                            : AppColors.forestMedium,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                textAlign: TextAlign.justify,
-                                textDirection: TextDirection.rtl,
+                            );
+                          }
+
+                          // Main verse text span with full semantics label (content, number, and chapter)
+                          spans.add(
+                            TextSpan(
+                              text: '${verse.text} ',
+                              semanticsLabel:
+                                  '${verse.text} (الآية ${verse.verseNumber} من سورة ${surah.name})',
+                              recognizer: recognizer,
+                              style: TextStyle(
+                                fontFamily: 'Amiri Quran',
+                                fontSize: 21,
+                                height: 1.85,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : const Color(0xFF1B2921),
+                                backgroundColor: isStopVerse
+                                    ? (isDark
+                                        ? Colors.amber.shade900.withAlpha(90)
+                                        : const Color(0xFFFFF1C2))
+                                    : null,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            );
-          }),
+                          );
 
-          const SizedBox(height: 20),
-        ],
+                          // Ayah ending marker: visually rendered and tappable, but excluded
+                          // from separate screen-reader semantics so each verse has exactly one focus target
+                          spans.add(
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: ExcludeSemantics(
+                                child: GestureDetector(
+                                  onTap: () => widget.onVerseTap(verse, surah),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Text(
+                                    ' ۝${QuranUiUtils.toArabicDigits(verse.verseNumber)} ',
+                                    style: TextStyle(
+                                      fontFamily: 'Amiri Quran',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? AppColors.darkGoldAccent
+                                          : AppColors.forestMedium,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+
+                          return spans;
+                        }).toList(),
+                      ),
+                      textAlign: TextAlign.justify,
+                      textDirection: TextDirection.rtl,
+                    ),
+                  ),
+                ],
+              );
+            }),
+
+            const SizedBox(height: 8),
+            // Page Footer
+            Center(
+              child: Text(
+                '— ${QuranUiUtils.toArabicDigits(widget.pageNumber)} —',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
