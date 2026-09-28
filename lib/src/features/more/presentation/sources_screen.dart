@@ -246,6 +246,15 @@ class _SourcesScreenState extends State<SourcesScreen> {
                         ),
                         const Divider(height: 16),
                         _buildContentStatusItem(
+                          title: 'حصن المسلم من أذكار الكتاب والسنة (٢٦٧ ذكراً ودعاءً)',
+                          status: 'مدمج ومتحقق من سلامة المصدر',
+                          isBundled: true,
+                          detail:
+                              '٢٦٧ ذكراً ودعاءً مأثوراً في ١٣٢ باباً مع ٣٠٠ إحالة وهوامش تخريجية موثقة مدمجة محلياً بالكامل من موقع دار إسلام هاوس (IslamHouse.com) من كتاب حصن المسلم للشيخ د. سعيد بن علي بن وهف القحطاني، مع التحقق البرمجي التام من سلامة المصدر، والمراجعة الشرعية البشرية قيد الإجراء.',
+                          isDark: isDark,
+                        ),
+                        const Divider(height: 16),
+                        _buildContentStatusItem(
                           title: 'صفحات المصحف المصورة (٦٠٤ صفحات)',
                           status: 'قيد الاعتماد والترخيص',
                           isBundled: false,
@@ -771,6 +780,137 @@ class _SourcesScreenState extends State<SourcesScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'يلتزم التطبيق التزاماً تاماً بضوابط النقل الحرفي والأمانة العلمية وشروط الاستخدام وإعادة النشر المعتمدة لدى موسوعة الأحاديث النبوية (HadeethEnc.com): تم نقل وتبويب النصوص والتخريج والشروح كما وردت في الموسوعة دون أي تعديل أو تحريف أو توليد آلي، مع بيان التخريج ودرجة الصحة المعتمدة في الموسوعة وبيانات الإصدار، وخلو التطبيق تماماً من الإعلانات التجارية. لا يدّعي التطبيق أي اعتماد شرعي أو تحقيق علمي مستقل.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        height: 1.5,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      // 7. Hisn al-Muslim Attribution & Licensing Card
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_stories_rounded,
+                    color: AppColors.forestPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'نسب المصدر ورخصة كتاب حصن المسلم (IslamHouse)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'المصدر: دار إسلام هاوس (IslamHouse.com)\nالكتاب: حصن المسلم من أذكار الكتاب والسنة\nالمؤلف: فضيلة الشيخ د. سعيد بن علي بن وهف القحطاني رحمه الله\nالملف المعتمد: كتاب حصن المسلم word (مرفق بتاريخ 2019-05-02)\nرابط الكتاب: https://islamhouse.com/ar/books/2522\nرابط النسخة الإنجليزية: https://islamhouse.com/en/books/2522\nرابط شروط قاعدة البيانات والمكتبة: https://github.com/IslamHouse-API/multilingual-quran-hadith-islamic-content-database-api-hub',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.open_in_browser, size: 12),
+                    label: const Text(
+                      'زيارة صفحة الكتاب',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://islamhouse.com/ar/books/2522',
+                      'كتاب حصن المسلم',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text(
+                      'نسخ رابط الكتاب',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://islamhouse.com/ar/books/2522',
+                      'كتاب حصن المسلم',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text(
+                      'نسخ رابط شروط الاستخدام',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://github.com/IslamHouse-API/multilingual-quran-hadith-islamic-content-database-api-hub',
+                      'شروط الاستخدام وإعادة النشر',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.teal.shade900.withAlpha(40)
+                      : const Color(0xFFEFF5F0),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.teal.shade700
+                        : AppColors.forestLight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'إشعار إسناد وشروط إعادة النشر (IslamHouse Open Terms):',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkGoldAccent
+                            : AppColors.forestPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'وفقاً لسياسة وشروط دار إسلام هاوس، يُسمح بإعادة النشر والتحويل البرمجي للتطبيقات غير المتصلة شريطة الحفاظ التام على النص الأصلي ونسبته لمؤلفه د. سعيد بن علي بن وهف القحطاني، وعدم تحريف أو بتر النصوص والهوامش التخريجية. تم استخراج كافة الأذكار والأدعية الـ ٢٦٧ وهوامشها الـ ٣٠٠ برمجياً من الملف الأصلي دون أي تعديل أو تلخيص أو توليد آلي، وخلو التطبيق من أي إعلانات تجارية.',
                       style: TextStyle(
                         fontSize: 10.5,
                         height: 1.5,

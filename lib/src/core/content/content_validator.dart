@@ -145,6 +145,23 @@ class ContentValidator {
   /// Expected source edition version
   static const String kExpectedHadithVersion = 'v1.7.0';
 
+  /// Canonical SHA-256 for official IslamHouse Hisn al-Muslim DOCX source
+  static const String kExpectedHisnSourceSha256 =
+      '7509ed8d485bd6f6af1b2edb12f4066f4d12d1959bcafc04697cd319c6ff3e8a';
+
+  /// Canonical SHA-256 for bundled compact Hisn al-Muslim JSON asset
+  static const String kExpectedHisnJsonSha256 =
+      '8655afe53935baf74fed92164fedb9f0ba7e989c23818f82bd231ebd6d7a773d';
+
+  /// Expected count of Hisn al-Muslim items
+  static const int kExpectedHisnItemsCount = 267;
+
+  /// Expected count of Hisn al-Muslim chapters
+  static const int kExpectedHisnChaptersCount = 132;
+
+  /// Expected count of Hisn al-Muslim referenced footnotes
+  static const int kExpectedHisnFootnotesCount = 300;
+
   /// Validates content integrity and release readiness against a workspace root.
   static Future<ValidationResult> validate({
     required String workspaceRoot,
@@ -735,6 +752,53 @@ class ContentValidator {
         }
       }
     }
+
+    // Validate Hisn al-Muslim Provenance
+    final hisnRaw = provenance['hisn_almuslim'];
+    if (hisnRaw is Map) {
+      final h = hisnRaw.cast<String, dynamic>();
+      final sourceFileRaw = h['source_file'];
+      if (sourceFileRaw is Map) {
+        final path = sourceFileRaw['path'];
+        if (path is! String ||
+            !_isPathSafe(
+              relativePath: path,
+              normalizedRoot: normalizedRoot,
+              canonicalRoot: canonicalRoot,
+            )) {
+          errors.add('Unsafe or invalid Hisn al-Muslim provenance source path: $path');
+        } else {
+          final f = File(p.join(normalizedRoot, path));
+          if (await f.exists()) {
+            final bytes = await f.readAsBytes();
+            final actualSha = sha256.convert(bytes).toString().toLowerCase();
+            if (actualSha == kExpectedHisnSourceSha256) {
+              verified.add('Hisn al-Muslim provenance source DOCX verified ($path)');
+            }
+          }
+        }
+      }
+      final evidenceDoc = h['evidence_doc'];
+      if (evidenceDoc != null) {
+        if (evidenceDoc is! String ||
+            !_isPathSafe(
+              relativePath: evidenceDoc,
+              normalizedRoot: normalizedRoot,
+              canonicalRoot: canonicalRoot,
+            )) {
+          errors.add(
+            'Unsafe or invalid evidence_doc path for Hisn al-Muslim: $evidenceDoc',
+          );
+        } else {
+          final evf = File(p.join(normalizedRoot, evidenceDoc));
+          if (!await evf.exists()) {
+            errors.add('Hisn al-Muslim evidence doc missing: $evidenceDoc');
+          } else {
+            verified.add('Hisn al-Muslim evidence doc verified ($evidenceDoc)');
+          }
+        }
+      }
+    }
   }
 
   /// Structurally parses verified text and XML metadata to guarantee verbatim completeness.
@@ -879,6 +943,10 @@ class ContentValidator {
 
     // 3. Dhikr & Duas Registry
     final dhikrRaw = pending['dhikr_duas'];
+    bool dhikrValid = false;
+    const dhikrBlocker =
+        'Missing documented Hisn al-Muslim dhikr/duas digital edition, references, and repetition counts.';
+
     if (dhikrRaw is! Map) {
       errors.add(
         'Missing or malformed "dhikr_duas" section in pending_registries',
@@ -888,34 +956,44 @@ class ContentValidator {
       final status = dhikr['status'];
       if (status is! String) {
         errors.add('Dhikr registry status must be a string');
-      } else if (status != 'missing' && status != 'pending') {
-        errors.add('Contradictory or invalid dhikr registry status: "$status"');
-      }
-
-      final recordsCount = dhikr['records_count'];
-      if (recordsCount != null && (recordsCount is! int || recordsCount < 0)) {
-        errors.add('Dhikr records_count must be a non-negative integer');
-      }
-
-      final items = dhikr['items'];
-      if (items is! List) {
-        errors.add('Dhikr registry "items" field must be a list');
-      } else {
-        if (recordsCount is int && recordsCount > 0 && items.isEmpty) {
-          errors.add(
-            'Dhikr registry claims $recordsCount records but items list has 0',
-          );
+      } else if (status == 'bundled') {
+        dhikrValid = await _validateBundledHisn(
+          dhikr: dhikr,
+          normalizedRoot: normalizedRoot,
+          canonicalRoot: canonicalRoot,
+          errors: errors,
+          verified: verified,
+        );
+      } else if (status == 'missing' || status == 'pending') {
+        final recordsCount = dhikr['records_count'];
+        if (recordsCount != null && (recordsCount is! int || recordsCount < 0)) {
+          errors.add('Dhikr records_count must be a non-negative integer');
         }
-        if (items.isNotEmpty) {
-          if (status == 'missing') {
+
+        final items = dhikr['items'];
+        if (items is! List) {
+          errors.add('Dhikr registry "items" field must be a list');
+        } else {
+          if (recordsCount is int && recordsCount > 0 && items.isEmpty) {
             errors.add(
-              'Dhikr registry declares status="missing" but contains items',
+              'Dhikr registry claims $recordsCount records but items list has 0',
             );
           }
-          errors.add(
-            'Dhikr collection is unsupported at this milestone; dedicated validator pending',
-          );
+          if (items.isNotEmpty) {
+            if (status == 'missing') {
+              errors.add(
+                'Dhikr registry declares status="missing" but contains items',
+              );
+            }
+            errors.add(
+              'Dhikr collection is unsupported at this milestone; dedicated validator pending',
+            );
+          }
         }
+      } else {
+        errors.add(
+          'Contradictory or invalid dhikr registry status: "$status"',
+        );
       }
     }
 
@@ -1024,7 +1102,7 @@ class ContentValidator {
       }
     }
 
-    // Retain Quran images, audio, Hisn and human-review blockers
+    // Retain Quran images, audio, and human-review blockers
     pendingBlockers.add(
       'Missing 604 Medina Mushaf page images. '
       'Owner has no developer account/CDN access. Same-edition image alignment pending.',
@@ -1032,9 +1110,11 @@ class ContentValidator {
     pendingBlockers.add(
       'Missing 3 licensed adhan recordings (3 distinct voices including Fajr and <30s notification clips).',
     );
-    pendingBlockers.add(
-      'Missing documented Hisn al-Muslim dhikr/duas digital edition, references, and repetition counts.',
-    );
+
+    // Drop ONLY Hisn al-Muslim release blocker when valid
+    if (!dhikrValid) {
+      pendingBlockers.add(dhikrBlocker);
+    }
 
     // Drop ONLY the hadith release blocker when valid
     if (!hadithValid) {
@@ -1312,6 +1392,351 @@ class ContentValidator {
         }
       } catch (e) {
         errors.add('Hadith JSON parsing / validation error: $e');
+        valid = false;
+      }
+    }
+
+    return valid;
+  }
+
+  /// Strictly validates file-backed Hisn al-Muslim bundle against pinned constants,
+  /// counts, 267 sequential IDs, 132 chapters, 300 footnotes, and metadata.
+  static Future<bool> _validateBundledHisn({
+    required Map<String, dynamic> dhikr,
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required List<String> errors,
+    required List<String> verified,
+  }) async {
+    bool valid = true;
+
+    // 1. Source file (DOCX provenance)
+    final sourceFileRaw = dhikr['source_file'];
+    if (sourceFileRaw is! Map) {
+      errors.add('Dhikr registry missing "source_file" specification');
+      valid = false;
+    } else {
+      final sourceFile = sourceFileRaw.cast<String, dynamic>();
+      final path = sourceFile['path'];
+      final declaredSha = sourceFile['sha256'];
+
+      if (path is! String ||
+          !_isPathSafe(
+            relativePath: path,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid path for dhikr source_file: $path');
+        valid = false;
+      } else {
+        final f = File(p.join(normalizedRoot, path));
+        if (!await f.exists()) {
+          errors.add('Hisn al-Muslim source DOCX file not found: $path');
+          valid = false;
+        } else {
+          final bytes = await f.readAsBytes();
+          final actualSha = sha256.convert(bytes).toString().toLowerCase();
+
+          if (actualSha != kExpectedHisnSourceSha256) {
+            errors.add(
+              'Hisn al-Muslim source DOCX SHA-256 hash mismatch! '
+              'Expected $kExpectedHisnSourceSha256, actual $actualSha',
+            );
+            valid = false;
+          } else if (declaredSha != kExpectedHisnSourceSha256) {
+            errors.add(
+              'Hisn al-Muslim source DOCX declared hash mismatch! '
+              'Declared $declaredSha != expected $kExpectedHisnSourceSha256',
+            );
+            valid = false;
+          } else {
+            verified.add(
+              'Hisn al-Muslim source DOCX SHA-256 verified ($actualSha)',
+            );
+          }
+        }
+      }
+    }
+
+    // 2. Data file (compact JSON asset)
+    final dataFileRaw = dhikr['data_file'];
+    Uint8List? jsonBytes;
+    if (dataFileRaw is! Map) {
+      errors.add('Dhikr registry missing "data_file" specification');
+      valid = false;
+    } else {
+      final dataFile = dataFileRaw.cast<String, dynamic>();
+      final path = dataFile['path'];
+      final declaredSha = dataFile['sha256'];
+
+      if (path is! String ||
+          !_isPathSafe(
+            relativePath: path,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid path for dhikr data_file: $path');
+        valid = false;
+      } else {
+        final f = File(p.join(normalizedRoot, path));
+        if (!await f.exists()) {
+          errors.add('Hisn al-Muslim JSON asset file not found: $path');
+          valid = false;
+        } else {
+          jsonBytes = await f.readAsBytes();
+          final actualSha = sha256.convert(jsonBytes).toString().toLowerCase();
+
+          if (actualSha != kExpectedHisnJsonSha256) {
+            errors.add(
+              'Hisn al-Muslim JSON asset SHA-256 hash mismatch! '
+              'Expected $kExpectedHisnJsonSha256, actual $actualSha',
+            );
+            valid = false;
+          } else if (declaredSha != kExpectedHisnJsonSha256) {
+            errors.add(
+              'Hisn al-Muslim JSON asset declared hash mismatch! '
+              'Declared $declaredSha != expected $kExpectedHisnJsonSha256',
+            );
+            valid = false;
+          } else {
+            verified.add(
+              'Hisn al-Muslim JSON asset SHA-256 verified ($actualSha)',
+            );
+          }
+        }
+      }
+    }
+
+    // 3. Evidence doc
+    final evidenceDoc = dhikr['evidence_doc'];
+    if (evidenceDoc != null) {
+      if (evidenceDoc is! String ||
+          !_isPathSafe(
+            relativePath: evidenceDoc,
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+          )) {
+        errors.add('Unsafe or invalid evidence_doc path for dhikr: $evidenceDoc');
+        valid = false;
+      } else {
+        final evf = File(p.join(normalizedRoot, evidenceDoc));
+        if (!await evf.exists()) {
+          errors.add('Hisn al-Muslim evidence doc missing: $evidenceDoc');
+          valid = false;
+        }
+      }
+    }
+
+    // 4. Records count in manifest
+    final recordsCount = dhikr['records_count'];
+    if (recordsCount is! int || recordsCount != kExpectedHisnItemsCount) {
+      errors.add(
+        'Hisn al-Muslim records_count mismatch in manifest: expected $kExpectedHisnItemsCount, got $recordsCount',
+      );
+      valid = false;
+    }
+
+    // 5. Structural and semantic verification of JSON content
+    if (jsonBytes != null) {
+      try {
+        final decoded = jsonDecode(utf8.decode(jsonBytes));
+        if (decoded is! Map<String, dynamic>) {
+          errors.add('Hisn al-Muslim JSON root must be a JSON object');
+          return false;
+        }
+
+        final meta = decoded['metadata'];
+        if (meta is! Map<String, dynamic>) {
+          errors.add('Hisn al-Muslim JSON missing "metadata" section');
+          valid = false;
+        } else {
+          final totalChaps = meta['total_chapters'];
+          if (totalChaps != kExpectedHisnChaptersCount) {
+            errors.add(
+              'Hisn al-Muslim metadata total_chapters mismatch: expected $kExpectedHisnChaptersCount, got $totalChaps',
+            );
+            valid = false;
+          }
+          final totalItems = meta['total_items'];
+          if (totalItems != kExpectedHisnItemsCount) {
+            errors.add(
+              'Hisn al-Muslim metadata total_items mismatch: expected $kExpectedHisnItemsCount, got $totalItems',
+            );
+            valid = false;
+          }
+          final totalFns = meta['total_footnotes'];
+          if (totalFns != kExpectedHisnFootnotesCount) {
+            errors.add(
+              'Hisn al-Muslim metadata total_footnotes mismatch: expected $kExpectedHisnFootnotesCount, got $totalFns',
+            );
+            valid = false;
+          }
+          final sourceDocxSha = meta['source_docx_sha256'];
+          if (sourceDocxSha != kExpectedHisnSourceSha256) {
+            errors.add(
+              'Hisn al-Muslim metadata source_docx_sha256 mismatch: expected $kExpectedHisnSourceSha256, got $sourceDocxSha',
+            );
+            valid = false;
+          }
+        }
+
+        final chapters = decoded['chapters'];
+        if (chapters is! List || chapters.length != kExpectedHisnChaptersCount) {
+          errors.add(
+            'Hisn al-Muslim chapters list mismatch: expected $kExpectedHisnChaptersCount, got ${chapters is List ? chapters.length : "non-list"}',
+          );
+          valid = false;
+        } else {
+          for (int i = 0; i < chapters.length; i++) {
+            final chap = chapters[i];
+            if (chap is! Map<String, dynamic>) {
+              errors.add('Hisn al-Muslim chapter at index $i is not a JSON object');
+              valid = false;
+              break;
+            }
+            final expectedNum = i + 1;
+            if (chap['number'] != expectedNum) {
+              errors.add('Hisn al-Muslim chapter $i number mismatch: expected $expectedNum, got ${chap["number"]}');
+              valid = false;
+              break;
+            }
+            final title = chap['title'];
+            if (title is! String || title.trim().isEmpty) {
+              errors.add('Hisn al-Muslim chapter $expectedNum has empty title');
+              valid = false;
+              break;
+            }
+            final itemIds = chap['item_ids'];
+            if (itemIds is! List || itemIds.isEmpty) {
+              errors.add('Hisn al-Muslim chapter $expectedNum has empty or invalid item_ids');
+              valid = false;
+              break;
+            }
+          }
+        }
+
+        final items = decoded['items'];
+        if (items is! List || items.length != kExpectedHisnItemsCount) {
+          errors.add(
+            'Hisn al-Muslim items list mismatch: expected $kExpectedHisnItemsCount, got ${items is List ? items.length : "non-list"}',
+          );
+          valid = false;
+        } else {
+          final seenIds = <int>{};
+          final seenFootnotes = <String>{};
+
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            if (item is! Map<String, dynamic>) {
+              errors.add('Hisn al-Muslim item at index $i is not a JSON object');
+              valid = false;
+              break;
+            }
+
+            final expectedId = i + 1;
+            final id = item['id'];
+            if (id is! int || id != expectedId) {
+              errors.add('Hisn al-Muslim item at index $i has unexpected ID: $id (expected $expectedId)');
+              valid = false;
+              break;
+            }
+            if (seenIds.contains(id)) {
+              errors.add('Duplicate Hisn al-Muslim item ID: $id');
+              valid = false;
+              break;
+            }
+            seenIds.add(id);
+
+            final chapNum = item['chapter_number'];
+            if (chapNum is! int || chapNum < 1 || chapNum > kExpectedHisnChaptersCount) {
+              errors.add('Hisn al-Muslim item ID $id has invalid chapter_number: $chapNum');
+              valid = false;
+              break;
+            }
+
+            final chapTitle = item['chapter_title'];
+            if (chapTitle is! String || chapTitle.trim().isEmpty) {
+              errors.add('Hisn al-Muslim item ID $id has empty chapter_title');
+              valid = false;
+              break;
+            }
+
+            final text = item['text'];
+            if (text is! String || text.trim().isEmpty) {
+              errors.add('Hisn al-Muslim item ID $id has empty text');
+              valid = false;
+              break;
+            }
+
+            final paragraphs = item['paragraphs'];
+            if (paragraphs is! List || paragraphs.isEmpty) {
+              errors.add('Hisn al-Muslim item ID $id has empty or invalid paragraphs list');
+              valid = false;
+              break;
+            }
+
+            final fnIds = item['footnote_ids'];
+            if (fnIds is! List) {
+              errors.add('Hisn al-Muslim item ID $id has non-list footnote_ids');
+              valid = false;
+              break;
+            }
+
+            final fns = item['footnotes'];
+            if (fns is! List || fns.isEmpty) {
+              errors.add('Hisn al-Muslim item ID $id has empty footnotes list');
+              valid = false;
+              break;
+            }
+
+            for (final fn in fns) {
+              if (fn is! Map<String, dynamic>) {
+                errors.add('Hisn al-Muslim item ID $id has non-object footnote entry');
+                valid = false;
+                break;
+              }
+              final fnId = fn['id'];
+              final fnText = fn['text'];
+              if (fnId is! String || fnId.isEmpty || fnText is! String || fnText.trim().isEmpty) {
+                errors.add('Hisn al-Muslim item ID $id has invalid footnote: $fnId');
+                valid = false;
+                break;
+              }
+              seenFootnotes.add(fnId);
+            }
+
+            final repeatTarget = item['repeat_target'];
+            if (repeatTarget != null && (repeatTarget is! int || repeatTarget <= 0)) {
+              errors.add('Hisn al-Muslim item ID $id has invalid repeat_target: $repeatTarget');
+              valid = false;
+              break;
+            }
+          }
+
+          if (seenFootnotes.length != kExpectedHisnFootnotesCount) {
+            errors.add(
+              'Hisn al-Muslim referenced footnotes count mismatch: expected $kExpectedHisnFootnotesCount, got ${seenFootnotes.length}',
+            );
+            valid = false;
+          }
+
+          if (valid) {
+            verified.add(
+              'Hisn al-Muslim corpus structure verified: 267 items across 132 chapters with 300 footnotes',
+            );
+            verified.add(
+              'Hisn al-Muslim first item verified: Item 1 ("${(items.first['text'] as String).substring(0, 30)}...")',
+            );
+            verified.add(
+              'Hisn al-Muslim morning/evening section verified: Section 27 (Items 75..98)',
+            );
+            verified.add(
+              'Hisn al-Muslim last item verified: Item 267 ("${(items.last['text'] as String).substring(0, 30)}...")',
+            );
+          }
+        }
+      } catch (e) {
+        errors.add('Hisn al-Muslim JSON parsing / validation error: $e');
         valid = false;
       }
     }

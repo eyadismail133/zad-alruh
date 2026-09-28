@@ -166,9 +166,9 @@ void main() {
         await tester.ensureVisible(find.text('الأدعية'));
         await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الأدعية'));
-        expect(find.text('الأدعية المأثورة'), findsOneWidget);
+        expect(find.byType(DuasScreen), findsOneWidget);
         expect(
-          find.textContaining('مجموعة الأدعية قيد التدقيق'),
+          find.text('الأدعية والأذكار (حصن المسلم)'),
           findsOneWidget,
         );
 

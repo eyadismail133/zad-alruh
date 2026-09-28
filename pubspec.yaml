@@ -46,6 +46,7 @@ flutter:
     - assets/content/cities/cities15000.txt
     - assets/content/cities/GEONAMES-LICENSE-README.txt
     - assets/content/hadith/hadith-enc-sahih.json
+    - assets/content/hisn/hisn-muslim.json
 
   fonts:
     - family: IBM Plex Sans Arabic

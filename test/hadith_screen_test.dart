@@ -275,7 +275,7 @@ void main() {
 
       // Hadith verified item in content status card
       expect(find.text('موسوعة الأحاديث النبوية (٣٢١٣ حديثاً صحيحاً)'), findsOneWidget);
-      expect(find.text('مدمج ومتحقق من سلامة المصدر'), findsOneWidget);
+      expect(find.text('مدمج ومتحقق من سلامة المصدر'), findsWidgets);
 
       // HadeethEnc attribution card
       expect(find.text('نسب المصدر ورخصة موسوعة الأحاديث النبوية (HadeethEnc)'), findsOneWidget);

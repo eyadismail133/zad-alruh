@@ -193,8 +193,8 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Must list the 4 remaining pending release prerequisites (Hadith blocker is resolved)
-        expect(result.pendingReleaseBlockers.length, 4);
+        // Must list the 3 remaining pending release prerequisites (Hadith & Hisn blockers resolved)
+        expect(result.pendingReleaseBlockers.length, 3);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
@@ -211,7 +211,7 @@ void main() {
           result.pendingReleaseBlockers.any(
             (b) => b.contains('Hisn al-Muslim'),
           ),
-          isTrue,
+          isFalse,
         );
         expect(
           result.pendingReleaseBlockers.any(
@@ -270,6 +270,10 @@ void main() {
         p.join(tempDir.path, 'assets', 'content', 'hadith'),
       );
       await hadithDir.create(recursive: true);
+      final hisnDir = Directory(
+        p.join(tempDir.path, 'assets', 'content', 'hisn'),
+      );
+      await hisnDir.create(recursive: true);
 
       // Copy real bundled files into temp
       await File(
@@ -311,6 +315,24 @@ void main() {
           'hadith-enc-sahih.json',
         ),
       );
+      await File('assets/content/hisn/hisn-muslim-source.docx').copy(
+        p.join(
+          tempDir.path,
+          'assets',
+          'content',
+          'hisn',
+          'hisn-muslim-source.docx',
+        ),
+      );
+      await File('assets/content/hisn/hisn-muslim.json').copy(
+        p.join(
+          tempDir.path,
+          'assets',
+          'content',
+          'hisn',
+          'hisn-muslim.json',
+        ),
+      );
 
       // Create docs subdirectories and copy referenced source documentation
       final docsSourcesDir = Directory(p.join(tempDir.path, 'docs', 'sources'));
@@ -325,6 +347,9 @@ void main() {
       await File(
         'docs/sources/HADEETHENC.md',
       ).copy(p.join(tempDir.path, 'docs', 'sources', 'HADEETHENC.md'));
+      await File(
+        'docs/sources/HISN_ALMUSLIM.md',
+      ).copy(p.join(tempDir.path, 'docs', 'sources', 'HISN_ALMUSLIM.md'));
     });
 
     tearDown(() async {
@@ -344,7 +369,7 @@ void main() {
         expect(result.errors, isEmpty);
         expect(result.isDevelopmentValid, isTrue);
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 4);
+        expect(result.pendingReleaseBlockers.length, 3);
       },
     );
 
@@ -817,7 +842,7 @@ void main() {
 
     // 6. Dhikr & Hadith Registries Hardening
     test(
-      'dhikr registry rejects count-only integer with empty items list',
+      'dhikr registry with status missing rejects count-only integer with empty items list',
       () async {
         final manifestFile = File(
           p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
@@ -827,6 +852,7 @@ void main() {
                 as Map<String, dynamic>;
         final pending = json['pending_registries'] as Map<String, dynamic>;
         final dhikr = pending['dhikr_duas'] as Map<String, dynamic>;
+        dhikr['status'] = 'missing';
         dhikr['records_count'] = 45; // Claims 45 records but items is empty
         dhikr['items'] = <Map<String, dynamic>>[];
         await manifestFile.writeAsString(jsonEncode(json));
@@ -847,7 +873,7 @@ void main() {
     );
 
     test(
-      'dhikr registry rejects non-empty items as unsupported import',
+      'dhikr registry with status missing rejects non-empty items as unsupported import',
       () async {
         final manifestFile = File(
           p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
@@ -857,6 +883,7 @@ void main() {
                 as Map<String, dynamic>;
         final pending = json['pending_registries'] as Map<String, dynamic>;
         final dhikr = pending['dhikr_duas'] as Map<String, dynamic>;
+        dhikr['status'] = 'missing';
         dhikr['items'] = <Map<String, dynamic>>[
           <String, dynamic>{
             'id': 'dhikr_1',
@@ -876,6 +903,7 @@ void main() {
         expect(
           result.errors.any(
             (e) =>
+                e.contains('declares status="missing" but contains items') ||
                 e.contains('Dhikr collection is unsupported at this milestone'),
           ),
           isTrue,
@@ -883,7 +911,7 @@ void main() {
       },
     );
 
-    test('dhikr registry rejects non-list items field', () async {
+    test('dhikr registry with status missing rejects non-list items field', () async {
       final manifestFile = File(
         p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
       );
@@ -891,6 +919,7 @@ void main() {
           jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
       final pending = json['pending_registries'] as Map<String, dynamic>;
       final dhikr = pending['dhikr_duas'] as Map<String, dynamic>;
+      dhikr['status'] = 'missing';
       dhikr['items'] = 'not-a-list';
       await manifestFile.writeAsString(jsonEncode(json));
 
@@ -1011,6 +1040,7 @@ void main() {
           jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
       final pending = json['pending_registries'] as Map<String, dynamic>;
       final dhikr = pending['dhikr_duas'] as Map<String, dynamic>;
+      dhikr['status'] = 'missing';
       dhikr['records_count'] = -5;
       final hadith = pending['hadith'] as Map<String, dynamic>;
       hadith['status'] = 'missing';
@@ -1155,6 +1185,126 @@ void main() {
       expect(result.isDevelopmentValid, isFalse);
       expect(
         result.errors.any((e) => e.contains('Unsafe or invalid path for hadith source_file')),
+        isTrue,
+      );
+    });
+
+    test('hisn registry rejects altered SHA-256 for source DOCX copy', () async {
+      final docxFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hisn', 'hisn-muslim-source.docx'),
+      );
+      final original = await docxFile.readAsBytes();
+      final corrupted = Uint8List.fromList(original);
+      corrupted[corrupted.length - 1] ^= 0xFF;
+      await docxFile.writeAsBytes(corrupted);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hisn al-Muslim source DOCX SHA-256 hash mismatch')),
+        isTrue,
+      );
+    });
+
+    test('hisn registry rejects altered SHA-256 for JSON asset copy', () async {
+      final jsonFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hisn', 'hisn-muslim.json'),
+      );
+      final text = await jsonFile.readAsString();
+      await jsonFile.writeAsString('$text ');
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hisn al-Muslim JSON asset SHA-256 hash mismatch')),
+        isTrue,
+      );
+    });
+
+    test('hisn registry rejects missing source DOCX file', () async {
+      final docxFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hisn', 'hisn-muslim-source.docx'),
+      );
+      await docxFile.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hisn al-Muslim source DOCX file not found')),
+        isTrue,
+      );
+    });
+
+    test('hisn registry rejects missing JSON asset file', () async {
+      final jsonFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'hisn', 'hisn-muslim.json'),
+      );
+      await jsonFile.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hisn al-Muslim JSON asset file not found')),
+        isTrue,
+      );
+    });
+
+    test('hisn registry rejects manifest declared count mismatch', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final dhikr = pending['dhikr_duas'] as Map<String, dynamic>;
+      dhikr['records_count'] = 100;
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Hisn al-Muslim records_count mismatch in manifest')),
+        isTrue,
+      );
+    });
+
+    test('hisn registry rejects path traversal in source_file', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final dhikr = pending['dhikr_duas'] as Map<String, dynamic>;
+      dhikr['source_file']['path'] = '../../hisn.docx';
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Unsafe or invalid path for dhikr source_file')),
         isTrue,
       );
     });
@@ -1360,7 +1510,7 @@ void main() {
     );
 
     test(
-      'development validation passes for valid canonical workspace, but release mode retains remaining 4 release blockers',
+      'development validation passes for valid canonical workspace, but release mode retains remaining 3 release blockers',
       () async {
         final result = await ContentValidator.validate(
           workspaceRoot: tempDir.path,
@@ -1371,9 +1521,9 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Release mode MUST fail because 4 unacquired categories remain pending
+        // Release mode MUST fail because 3 unacquired categories remain pending
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 4);
+        expect(result.pendingReleaseBlockers.length, 3);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
@@ -1390,7 +1540,7 @@ void main() {
           result.pendingReleaseBlockers.any(
             (b) => b.contains('Hisn al-Muslim'),
           ),
-          isTrue,
+          isFalse,
         );
         expect(
           result.pendingReleaseBlockers.any(

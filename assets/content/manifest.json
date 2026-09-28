@@ -88,6 +88,25 @@
         "path": "assets/content/hadith/hadith-enc-sahih.json",
         "sha256": "94a69dbdb44144d2dad2ba0a3fa1ee73c7f7b456c46d945ea15f4332a2eeeda7"
       }
+    },
+    "hisn_almuslim": {
+      "source": "دار إسلام هاوس (IslamHouse)",
+      "url": "https://islamhouse.com/ar/books/2522",
+      "url_en": "https://islamhouse.com/en/books/2522",
+      "author": "د. سعيد بن علي بن وهف القحطاني",
+      "attachment_date": "2019-05-02",
+      "license": "IslamHouse Content & API Database Terms",
+      "license_url": "https://github.com/IslamHouse-API/multilingual-quran-hadith-islamic-content-database-api-hub",
+      "acquisition_date": "2026-09-28",
+      "evidence_doc": "docs/sources/HISN_ALMUSLIM.md",
+      "source_file": {
+        "path": "assets/content/hisn/hisn-muslim-source.docx",
+        "sha256": "7509ed8d485bd6f6af1b2edb12f4066f4d12d1959bcafc04697cd319c6ff3e8a"
+      },
+      "data_file": {
+        "path": "assets/content/hisn/hisn-muslim.json",
+        "sha256": "8655afe53935baf74fed92164fedb9f0ba7e989c23818f82bd231ebd6d7a773d"
+      }
     }
   },
   "pending_registries": {
@@ -102,12 +121,28 @@
       "pages": []
     },
     "dhikr_duas": {
-      "status": "missing",
+      "status": "bundled",
       "source_target": "Hisn al-Muslim (Fortress of the Muslim)",
-      "rights_status": "pending_digital_edition_permission",
-      "records_count": 0,
-      "items": [],
-      "blocker_reason": "Documented Hisn al-Muslim edition, digital reuse permission, references and repetition counts are pending acquisition."
+      "edition": "كتاب حصن المسلم word (IslamHouse attachment 2019-05-02)",
+      "author": "د. سعيد بن علي بن وهف القحطاني",
+      "source_url": "https://islamhouse.com/ar/books/2522",
+      "source_en_url": "https://islamhouse.com/en/books/2522",
+      "terms_url": "https://github.com/IslamHouse-API/multilingual-quran-hadith-islamic-content-database-api-hub",
+      "evidence_doc": "docs/sources/HISN_ALMUSLIM.md",
+      "license": "IslamHouse Content & API Database Terms",
+      "attribution": "IslamHouse.com / د. سعيد بن علي بن وهف القحطاني",
+      "records_count": 267,
+      "chapters_count": 132,
+      "footnotes_count": 300,
+      "source_file": {
+        "path": "assets/content/hisn/hisn-muslim-source.docx",
+        "sha256": "7509ed8d485bd6f6af1b2edb12f4066f4d12d1959bcafc04697cd319c6ff3e8a"
+      },
+      "data_file": {
+        "path": "assets/content/hisn/hisn-muslim.json",
+        "sha256": "8655afe53935baf74fed92164fedb9f0ba7e989c23818f82bd231ebd6d7a773d",
+        "expected_records": 267
+      }
     },
     "hadith": {
       "status": "bundled",

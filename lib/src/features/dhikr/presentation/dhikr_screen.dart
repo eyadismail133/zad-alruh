@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/empty_state_view.dart';
 import '../../../core/widgets/retryable_error_view.dart';
+import '../../hisn/presentation/controllers/hisn_provider.dart';
+import '../../hisn/presentation/hisn_chapter_screen.dart';
+import '../../more/presentation/duas_screen.dart';
 import '../../progress/data/models/dhikr_session.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
 
@@ -124,6 +126,41 @@ class _DhikrScreenState extends ConsumerState<DhikrScreen> {
     }
   }
 
+  void _navigateToChapter(BuildContext context, int chapterNumber) {
+    final repoAsync = ref.read(hisnRepositoryProvider);
+    final repo = repoAsync.valueOrNull;
+    if (repo != null) {
+      final chapter = repo.getChapter(chapterNumber);
+      if (chapter != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => HisnChapterScreen(
+              chapter: chapter,
+              repository: repo,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => DuasScreen(initialChapterNumber: chapterNumber),
+      ),
+    );
+  }
+
+  void _navigateToHisnIndex(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const DuasScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = ref.watch(activeDateBucketProvider);
@@ -172,6 +209,34 @@ class _DhikrScreenState extends ConsumerState<DhikrScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Sourced Adhkar Quick Shortcuts
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.wb_twilight_rounded, size: 16),
+                          label: const Text(
+                            'أذكار الصباح والمساء',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () => _navigateToChapter(context, 27),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.mosque_outlined, size: 16),
+                          label: const Text(
+                            'أذكار بعد الصلاة',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () => _navigateToChapter(context, 25),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
                   // Active Interactive Dhikr Counter Card
                   if (activeSession != null)
                     _buildActiveCounter(activeSession, isDark)
@@ -324,14 +389,8 @@ class _DhikrScreenState extends ConsumerState<DhikrScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Honest Empty State Notice for Dhikr Corpus
-                  const EmptyStateView(
-                    icon: Icons.auto_awesome,
-                    statusTag: 'قيد التدقيق والترخيص المعتمد',
-                    title: 'متون الأذكار المأثورة قيد التدقيق',
-                    message:
-                        'عداد التسبيح وحفظ الجلسات يعمل محلياً في قاعدة البيانات بشكل كامل ودائم. متون أذكار الصباح والمساء المعتمدة من كتاب حصن المسلم ستُدرج بنصوصها الموثقة وترجماتها بعد استكمال التدقيق والترخيص.',
-                  ),
+                  // Sourced Hisn al-Muslim Adhkar Section
+                  _buildSourcedAdhkarSection(context, isDark),
                 ],
               ),
             );
@@ -495,6 +554,144 @@ class _DhikrScreenState extends ConsumerState<DhikrScreen> {
             child: Text('بدء جلسة تسبيح ($_selectedTarget)'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSourcedAdhkarSection(BuildContext context, bool isDark) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.auto_stories_rounded,
+                  color: AppColors.forestPrimary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'أذكار مأثورة موثقة (حصن المسلم)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? AppColors.darkGoldAccent
+                          : AppColors.forestPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'أذكار وأدعية مأثورة بالنص الكامل والتخريج من كتاب حصن المسلم للشيخ د. سعيد بن علي بن وهف القحطاني رحمه الله.',
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildDhikrQuickLink(
+              context: context,
+              icon: Icons.wb_twilight_rounded,
+              title: 'أذكار الصباح والمساء',
+              subtitle: 'الباب ٢٧ · ٢٤ ذكراً ودعاءً مأثوراً',
+              onTap: () => _navigateToChapter(context, 27),
+              isDark: isDark,
+            ),
+            const Divider(height: 12),
+            _buildDhikrQuickLink(
+              context: context,
+              icon: Icons.mosque_outlined,
+              title: 'الأذكار بعد السلام من الصلاة',
+              subtitle: 'الباب ٢٥ · ٨ أذكار مأثورة بعد الصلاة',
+              onTap: () => _navigateToChapter(context, 25),
+              isDark: isDark,
+            ),
+            const Divider(height: 12),
+            _buildDhikrQuickLink(
+              context: context,
+              icon: Icons.menu_book_rounded,
+              title: 'فهرس حصن المسلم كاملاً',
+              subtitle: 'استعراض وبحث في ١٣٢ باباً و٢٦٧ ذكراً ودعاءً',
+              onTap: () => _navigateToHisnIndex(context),
+              isDark: isDark,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDhikrQuickLink({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: isDark
+                  ? AppColors.darkCardBorder
+                  : AppColors.forestSoftTint,
+              child: Icon(
+                icon,
+                size: 16,
+                color: isDark
+                    ? AppColors.darkGoldAccent
+                    : AppColors.forestPrimary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_left_rounded,
+              size: 18,
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+            ),
+          ],
+        ),
       ),
     );
   }
