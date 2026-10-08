@@ -1,0 +1,46 @@
+# =============================================================================
+# Zad Al-Ruh (زادُ الروح) - Owner Release Signing Configuration Template
+# =============================================================================
+#
+# INSTRUCTIONS FOR RELEASE OWNER:
+# 1. Copy this template to 'key.properties' in the 'android/' directory:
+#      cp android/key.properties.example android/key.properties
+#    (On Windows PowerShell: Copy-Item android/key.properties.example android/key.properties)
+#
+# 2. Populate all parameters below with your owner upload keystore credentials
+#    and approved production Application ID.
+#
+# 3. SECURITY RULE: NEVER commit 'key.properties' or keystore files (.jks / .keystore)
+#    to version control. 'android/.gitignore' is pre-configured to ignore them.
+#
+# 4. HOW TO GENERATE A SECURE UPLOAD KEYSTORE (if you do not already have one):
+#    Run using JDK 17 keytool:
+#      keytool -genkey -v -keystore android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# -----------------------------------------------------------------------------
+# REQUIRED SIGNING CREDENTIALS
+# -----------------------------------------------------------------------------
+# Path to keystore file. May be relative to the 'android/' root directory
+# (e.g., upload-keystore.jks) or an absolute filesystem path (e.g., D:/secure/keys/upload-keystore.jks).
+# Do not point to a directory; file must exist and be readable.
+storeFile=upload-keystore.jks
+
+# Keystore password (parsed as exact raw string without trimming; replace with real secret)
+storePassword=REPLACE_WITH_OWNER_KEYSTORE_PASSWORD
+
+# Key alias inside the keystore (parsed as exact raw string without trimming)
+keyAlias=REPLACE_WITH_OWNER_KEY_ALIAS
+
+# Key password (parsed as exact raw string without trimming; replace with real secret)
+keyPassword=REPLACE_WITH_OWNER_KEY_PASSWORD
+
+# -----------------------------------------------------------------------------
+# REQUIRED RELEASE APPLICATION ID (MANDATORY FOR NORMAL RELEASE)
+# -----------------------------------------------------------------------------
+# For normal signed release builds, an explicit, owner-approved production
+# Application ID is mandatory (e.g. com.zadalruh.app).
+#
+# Release builds will NOT implicitly publish under the development ID ('dev.zadalruh.zad_alruh').
+# If the development ID is ever chosen by the owner for production, that requires an explicit,
+# accepted review context. Placeholders and blank values will fail the build immediately.
+releaseApplicationId=REPLACE_WITH_OWNER_RELEASE_APPLICATION_ID
