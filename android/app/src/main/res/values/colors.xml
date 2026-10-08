@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Pre-31 light splash background: cream matching app palette -->
+    <color name="launch_background_color">#FBF8F0</color>
+    <!-- Adaptive launcher icon forest green background -->
+    <color name="ic_launcher_background_color">#15543F</color>
+</resources>
