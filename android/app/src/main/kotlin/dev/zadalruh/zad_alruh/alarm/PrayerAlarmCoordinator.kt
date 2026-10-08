@@ -326,6 +326,9 @@ class PrayerAlarmCoordinator(
                 keys.add(ev.eventKey)
             }
         }
+        store.getPendingCleanupEvents().forEach { ev ->
+            keys.add(ev.eventKey)
+        }
         return keys
     }
 
@@ -339,6 +342,40 @@ class PrayerAlarmCoordinator(
             postedOwnedNotificationKeys.remove(key)
         }
         return true
+    }
+
+    /**
+     * Attempts OS cancellation (AlarmManager pending intents and notifications) for all
+     * unresolved event identities durably tracked in store.pendingCleanup.
+     * Safely acknowledges and durably removes only confirmed cancellations from storage.
+     * Fails closed if any cancellation or durable acknowledgment fails.
+     */
+    private fun processPendingCleanupUnderLock(): Boolean {
+        val pendingEvents = store.getPendingCleanupEvents()
+        if (pendingEvents.isEmpty()) return true
+
+        val confirmedKeys = mutableSetOf<String>()
+        var allConfirmed = true
+
+        for (ev in pendingEvents) {
+            val alarmsCancelled = alarmScheduler.cancelAlarms(ev)
+            val notifCancelled = notificationGateway.cancelEventNotification(ev.eventKey)
+            if (alarmsCancelled && notifCancelled) {
+                confirmedKeys.add(ev.eventKey)
+                postedOwnedNotificationKeys.remove(ev.eventKey)
+            } else {
+                allConfirmed = false
+            }
+        }
+
+        if (confirmedKeys.isNotEmpty()) {
+            val ackOk = store.acknowledgeCleanedUpEvents(confirmedKeys)
+            if (!ackOk) {
+                allConfirmed = false
+            }
+        }
+
+        return allConfirmed && !store.hasPendingCleanup()
     }
 
     /**
@@ -511,7 +548,6 @@ class PrayerAlarmCoordinator(
         val plan = (validation as PlanValidationResult.Valid).plan
 
         // 1. Validate + CAS FIRST (do NOT cancel old alarms before CAS succeeds!)
-        val oldPlan = store.getActivePlan()
         val replaceResult = store.replacePlan(plan.expectedToken, plan, now)
 
         when (replaceResult) {
@@ -531,22 +567,16 @@ class PrayerAlarmCoordinator(
                 )
             }
             is ReplacePlanResult.Success -> {
-                // 2. CAS succeeded! Now cancel old alarms:
-                var oldCancelFailed = false
-                if (oldPlan != null) {
-                    for (ev in oldPlan.events) {
-                        val cancelled = alarmScheduler.cancelAlarms(ev)
-                        if (!cancelled) {
-                            oldCancelFailed = true
-                        }
-                    }
-                }
+                // 2. CAS succeeded! Now clean up old alarms and unresolved cleanup events:
+                val oldCleanupSuccess = processPendingCleanupUnderLock()
+                val oldCancelFailed = !oldCleanupSuccess
 
                 // 3. Schedule new alarms:
                 val canExact = alarmScheduler.canScheduleExactAlarms()
                 var attemptedEventsCount = 0
                 var exactScheduledCount = 0
                 var companionScheduledCount = 0
+                var pairedSuccessfullyScheduledCount = 0
                 var schedulingIncomplete = false
                 val ledger = store.getConsumedLedgerSnapshot()
 
@@ -587,6 +617,10 @@ class PrayerAlarmCoordinator(
                             } else {
                                 schedulingIncomplete = true
                             }
+
+                            if (exactOk && compOk) {
+                                pairedSuccessfullyScheduledCount++
+                            }
                         } else {
                             // Inexact companion fallback at event instant when exact is denied
                             val compOk = alarmScheduler.scheduleCompanion(
@@ -597,6 +631,7 @@ class PrayerAlarmCoordinator(
                             )
                             if (compOk) {
                                 companionScheduledCount++
+                                pairedSuccessfullyScheduledCount++
                             } else {
                                 schedulingIncomplete = true
                             }
@@ -606,13 +641,9 @@ class PrayerAlarmCoordinator(
 
                 val exactAlarmsUsed = exactScheduledCount > 0
                 val companionAlarmsUsed = companionScheduledCount > 0
-                val successfullyScheduledEventsCount = if (canExact) {
-                    minOf(exactScheduledCount, companionScheduledCount)
-                } else {
-                    companionScheduledCount
-                }
+                val successfullyScheduledEventsCount = pairedSuccessfullyScheduledCount
 
-                val hasFailures = oldCancelFailed || schedulingIncomplete || (attemptedEventsCount > 0 && (if (canExact) exactScheduledCount < attemptedEventsCount || companionScheduledCount < attemptedEventsCount else companionScheduledCount < attemptedEventsCount))
+                val hasFailures = oldCancelFailed || schedulingIncomplete || (attemptedEventsCount > 0 && pairedSuccessfullyScheduledCount < attemptedEventsCount)
 
                 if (hasFailures) {
                     return mapOf(
@@ -656,9 +687,7 @@ class PrayerAlarmCoordinator(
      * The generation token is durably invalidated FIRST before OS cancellation.
      */
     fun disableAlarms(): Map<String, Any?> = coordinatorLock.withLock {
-        val oldPlan = store.getActivePlan()
-
-        // 1. DURABLY INVALIDATE FIRST
+        // 1. DURABLY INVALIDATE FIRST (atomically moves activePlan events to pendingCleanup)
         val result = store.disable()
         when (result) {
             is DisableResult.PersistenceFailure -> {
@@ -669,22 +698,10 @@ class PrayerAlarmCoordinator(
                 )
             }
             is DisableResult.Success -> {
-                // 2. Perform OS cleanup:
-                var cleanupIncomplete = false
-                if (oldPlan != null) {
-                    for (ev in oldPlan.events) {
-                        val alarmsCancelled = alarmScheduler.cancelAlarms(ev)
-                        val notifCancelled = notificationGateway.cancelEventNotification(ev.eventKey)
-                        if (!alarmsCancelled || !notifCancelled) {
-                            cleanupIncomplete = true
-                        }
-                    }
-                }
-
+                // 2. Perform OS cleanup across all unresolved pending cleanup records:
+                val cleanupSuccess = processPendingCleanupUnderLock()
                 val stopped = stopActiveAdhanPlayback()
-                if (!stopped) {
-                    cleanupIncomplete = true
-                }
+                val cleanupIncomplete = !cleanupSuccess || !stopped
 
                 if (cleanupIncomplete) {
                     return mapOf(
@@ -712,9 +729,7 @@ class PrayerAlarmCoordinator(
      * The generation token is durably invalidated FIRST before OS cancellation.
      */
     fun resetAll(): Map<String, Any?> = coordinatorLock.withLock {
-        val oldPlan = store.getActivePlan()
-
-        // 1. DURABLY INVALIDATE & RESET FIRST
+        // 1. DURABLY INVALIDATE & RESET FIRST (atomically moves activePlan events to pendingCleanup, preserves prior pending)
         val result = store.reset()
         when (result) {
             is ResetResult.PersistenceFailure -> {
@@ -725,22 +740,10 @@ class PrayerAlarmCoordinator(
                 )
             }
             is ResetResult.Success -> {
-                // 2. Perform OS cleanup:
-                var cleanupIncomplete = false
-                if (oldPlan != null) {
-                    for (ev in oldPlan.events) {
-                        val alarmsCancelled = alarmScheduler.cancelAlarms(ev)
-                        val notifCancelled = notificationGateway.cancelEventNotification(ev.eventKey)
-                        if (!alarmsCancelled || !notifCancelled) {
-                            cleanupIncomplete = true
-                        }
-                    }
-                }
-
+                // 2. Perform OS cleanup across all unresolved pending cleanup records:
+                val cleanupSuccess = processPendingCleanupUnderLock()
                 val stopped = stopActiveAdhanPlayback()
-                if (!stopped) {
-                    cleanupIncomplete = true
-                }
+                val cleanupIncomplete = !cleanupSuccess || !stopped
 
                 if (cleanupIncomplete) {
                     return mapOf(
@@ -1119,6 +1122,7 @@ class PrayerAlarmCoordinator(
             "isServiceRunning" to serviceGateway.isServiceRunning(),
             "isManualPlaybackLeaseActive" to isManualPlaybackLeaseActive(),
             "futureEventsCount" to futureCount,
+            "pendingCleanupCount" to store.getPendingCleanupCount(),
             "cityId" to (plan?.cityId ?: 0),
             "cityNameAr" to (plan?.cityNameAr ?: ""),
             "timezone" to (plan?.timezone ?: ""),

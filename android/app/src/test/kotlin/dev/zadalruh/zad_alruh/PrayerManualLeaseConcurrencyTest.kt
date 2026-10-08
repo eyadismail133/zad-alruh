@@ -172,6 +172,7 @@ class PrayerManualLeaseConcurrencyTest {
                 "Owned prayer notification cancellation must be accepted before manual lease grant",
                 notifGateway.cancelledNotifications.contains(fajrKey)
             )
+            assertFalse(notifGateway.activeShortAlerts.contains(fajrKey))
             // 3. Ledger records SHORT_DELIVERED (truth preserved without rewrite)
             assertEquals(DeliveryState.SHORT_DELIVERED, store.getConsumedRecord(fajrKey)?.state)
         } finally {
@@ -338,5 +339,6 @@ class PrayerManualLeaseConcurrencyTest {
         assertEquals(true, retryResult["acquired"])
         assertTrue(coordinator.isManualPlaybackLeaseActive())
         assertTrue(notifGateway.cancelledNotifications.contains(fajrKey))
+        assertFalse(notifGateway.activeShortAlerts.contains(fajrKey))
     }
 }

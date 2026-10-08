@@ -365,4 +365,81 @@ class PrayerAlarmStoreTest {
             storeFile.delete()
         }
     }
+
+    @Test
+    fun testPendingCleanupPreservedAcrossDisableAndLoadedFromStorage() {
+        store.replacePlan(expectedToken = 1L, newPlan = samplePlan(1L), nowEpochMillis = now)
+        assertFalse(store.hasPendingCleanup())
+
+        // Disable moves active plan events into pendingCleanup
+        val disableRes = store.disable()
+        assertTrue(disableRes is DisableResult.Success)
+        assertTrue(store.hasPendingCleanup())
+        assertEquals(2, store.getPendingCleanupEvents().size)
+        assertNull(store.getActivePlan())
+
+        // Re-open fresh instance from disk storage bytes
+        val store2 = PrayerAlarmStore(storage)
+        assertTrue(store2.hasPendingCleanup())
+        assertEquals(2, store2.getPendingCleanupEvents().size)
+        assertNull(store2.getActivePlan())
+        assertFalse(store2.isEnabled())
+
+        // Acknowledge cleaned up events durably removes them
+        val ackOk = store2.acknowledgeCleanedUpEvents(setOf("360630:2026-10-07:fajr", "360630:2026-10-07:dhuhr"))
+        assertTrue(ackOk)
+        assertFalse(store2.hasPendingCleanup())
+
+        // Fresh reopen verifies durably removed
+        val store3 = PrayerAlarmStore(storage)
+        assertFalse(store3.hasPendingCleanup())
+    }
+
+    @Test
+    fun testPendingCleanupPreservedAcrossResetWithoutErasingEvidence() {
+        store.replacePlan(expectedToken = 1L, newPlan = samplePlan(1L), nowEpochMillis = now)
+        store.disable()
+        assertTrue(store.hasPendingCleanup())
+
+        // Reset must NOT erase unresolved cleanup evidence
+        val resetRes = store.reset()
+        assertTrue(resetRes is ResetResult.Success)
+        assertTrue(store.hasPendingCleanup())
+        assertEquals(2, store.getPendingCleanupEvents().size)
+
+        // Reopen from storage verifies durability
+        val store2 = PrayerAlarmStore(storage)
+        assertTrue(store2.hasPendingCleanup())
+        assertEquals(2, store2.getPendingCleanupEvents().size)
+    }
+
+    @Test
+    fun testAcknowledgeCleanedUpEventsFailsClosedOnStorageWriteFailure() {
+        store.replacePlan(expectedToken = 1L, newPlan = samplePlan(1L), nowEpochMillis = now)
+        store.disable()
+        assertTrue(store.hasPendingCleanup())
+
+        // Storage write fails during acknowledgment
+        storage.failWrites = true
+        val ackOk = store.acknowledgeCleanedUpEvents(setOf("360630:2026-10-07:fajr"))
+        assertFalse(ackOk)
+        // In-memory state rolled back; pending cleanup intact
+        assertEquals(2, store.getPendingCleanupEvents().size)
+
+        // Reopen verifies storage retained unresolved records
+        storage.failWrites = false
+        val store2 = PrayerAlarmStore(storage)
+        assertEquals(2, store2.getPendingCleanupEvents().size)
+    }
+
+    @Test
+    fun testOldFormatJsonWithoutPendingCleanupLoadsSafely() {
+        storage.setRaw("{\"enabled\":true,\"generationToken\":5}")
+        val oldStore = PrayerAlarmStore(storage)
+        assertTrue(oldStore.isEnabled())
+        assertEquals(5L, oldStore.getGenerationToken())
+        assertFalse(oldStore.hasPendingCleanup())
+        assertEquals(0, oldStore.getPendingCleanupCount())
+        assertTrue(oldStore.getPendingCleanupEvents().isEmpty())
+    }
 }

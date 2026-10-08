@@ -34,18 +34,20 @@ class FakeAlarmScheduler : AlarmSchedulerGateway {
     var failExact: Boolean = false
     var failCompanion: Boolean = false
     var failCancel: Boolean = false
+    val failExactEvents = mutableSetOf<String>()
+    val failCompanionEvents = mutableSetOf<String>()
 
     override fun canScheduleExactAlarms(): Boolean = canScheduleExact
 
     override fun scheduleExact(eventKey: String, triggerEpochMillis: Long, token: Long, requestCode: Int): Boolean {
-        if (failExact) return false
+        if (failExact || failExactEvents.contains(eventKey)) return false
         scheduledExact.add(eventKey)
         scheduledExactTimes[eventKey] = triggerEpochMillis
         return true
     }
 
     override fun scheduleCompanion(eventKey: String, triggerEpochMillis: Long, token: Long, requestCode: Int): Boolean {
-        if (failCompanion) return false
+        if (failCompanion || failCompanionEvents.contains(eventKey)) return false
         scheduledCompanion.add(eventKey)
         scheduledCompanionTimes[eventKey] = triggerEpochMillis
         return true
@@ -64,6 +66,7 @@ open class FakeNotificationGateway : NotificationGateway {
     var dndOrSilent: Boolean = false
     val blockedVoiceChannels = mutableSetOf<String>()
     val postedShortAlerts = mutableListOf<String>()
+    val activeShortAlerts = mutableSetOf<String>()
     val cancelledNotifications = mutableListOf<String>()
     var failPostShortAlert: Boolean = false
     var failCancelNotification: Boolean = false
@@ -86,6 +89,7 @@ open class FakeNotificationGateway : NotificationGateway {
     ): Boolean {
         if (failPostShortAlert) return false
         postedShortAlerts.add(eventKey)
+        activeShortAlerts.add(eventKey)
         return true
     }
 
@@ -102,6 +106,7 @@ open class FakeNotificationGateway : NotificationGateway {
     override fun cancelEventNotification(eventKey: String): Boolean {
         if (failCancelNotification) return false
         cancelledNotifications.add(eventKey)
+        activeShortAlerts.remove(eventKey)
         return true
     }
 }

@@ -98,6 +98,7 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
     private var generationToken: Long = 1L
     private var activePlan: PrayerPlan? = null
     private val consumedLedger: MutableMap<String, ConsumedRecord> = mutableMapOf()
+    private val pendingCleanup: MutableMap<String, PrayerEventRecord> = mutableMapOf()
 
     init {
         loadFromStorage()
@@ -157,12 +158,30 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
                     )
                 }
             }
+
+            val cleanupArr = root.optJSONArray("pendingCleanup")
+            pendingCleanup.clear()
+            if (cleanupArr != null) {
+                for (i in 0 until cleanupArr.length()) {
+                    val evObj = cleanupArr.optJSONObject(i) ?: continue
+                    val record = PrayerEventRecord(
+                        eventKey = evObj.getString("eventKey"),
+                        prayerKey = evObj.getString("prayerKey"),
+                        calculationCivilDate = evObj.getString("calculationCivilDate"),
+                        triggerEpochMillis = evObj.getLong("triggerEpochMillis"),
+                        voiceId = evObj.getString("voiceId"),
+                        mode = evObj.getString("mode")
+                    )
+                    pendingCleanup[record.eventKey] = record
+                }
+            }
         } catch (_: Exception) {
             // Corrupt file recovery: maintain safe initial defaults
             enabled = false
             generationToken = 1L
             activePlan = null
             consumedLedger.clear()
+            pendingCleanup.clear()
         }
     }
 
@@ -216,6 +235,20 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
         }
         root.put("consumedLedger", ledgerObj)
 
+        val cleanupArr = JSONArray()
+        for ((_, ev) in pendingCleanup) {
+            val evObj = JSONObject().apply {
+                put("eventKey", ev.eventKey)
+                put("prayerKey", ev.prayerKey)
+                put("calculationCivilDate", ev.calculationCivilDate)
+                put("triggerEpochMillis", ev.triggerEpochMillis)
+                put("voiceId", ev.voiceId)
+                put("mode", ev.mode)
+            }
+            cleanupArr.put(evObj)
+        }
+        root.put("pendingCleanup", cleanupArr)
+
         return root.toString()
     }
 
@@ -233,10 +266,39 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
         consumedLedger[eventKey]
     }
 
+    fun getPendingCleanupEvents(): List<PrayerEventRecord> = lock.withLock {
+        pendingCleanup.values.toList()
+    }
+
+    fun hasPendingCleanup(): Boolean = lock.withLock {
+        pendingCleanup.isNotEmpty()
+    }
+
+    fun getPendingCleanupCount(): Int = lock.withLock {
+        pendingCleanup.size
+    }
+
+    fun acknowledgeCleanedUpEvents(cleanedEventKeys: Set<String>): Boolean = lock.withLock {
+        if (cleanedEventKeys.isEmpty()) return true
+        val prevCleanup = pendingCleanup.toMutableMap()
+        for (key in cleanedEventKeys) {
+            pendingCleanup.remove(key)
+        }
+        val serialized = serializeToJson()
+        val ok = storageDriver.write(serialized)
+        if (!ok) {
+            pendingCleanup.clear()
+            pendingCleanup.putAll(prevCleanup)
+            return false
+        }
+        return true
+    }
+
     /**
      * Atomically replaces the current plan via CAS on expectedToken.
      * Preserves consumed ledger across generations for same city/date/prayer.
      * Performs bounded pruning of records older than 14 days without deleting current plan events.
+     * Retains previous plan events in pendingCleanup for OS cancellation.
      */
     fun replacePlan(
         expectedToken: Long,
@@ -255,6 +317,7 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
         val prevToken = generationToken
         val prevPlan = activePlan
         val prevLedger = consumedLedger.toMutableMap()
+        val prevCleanup = pendingCleanup.toMutableMap()
 
         // Prune bounded ledger: keep all records for newPlan events, and purge records older than 14 days
         val activeEventKeys = newPlan.events.map { it.eventKey }.toSet()
@@ -266,6 +329,11 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
             if (!isCurrentPlanEvent && entry.value.timestampMillis < retentionThreshold) {
                 iterator.remove()
             }
+        }
+
+        // Retain any old plan events in pendingCleanup
+        activePlan?.events?.forEach { ev ->
+            pendingCleanup[ev.eventKey] = ev
         }
 
         enabled = true
@@ -281,6 +349,8 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
             activePlan = prevPlan
             consumedLedger.clear()
             consumedLedger.putAll(prevLedger)
+            pendingCleanup.clear()
+            pendingCleanup.putAll(prevCleanup)
             return ReplacePlanResult.PersistenceFailure("فشل حفظ خطة المواعيد الجديدة في التخزين الدائم.")
         }
 
@@ -312,6 +382,7 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
      * Invalidates the current generation token and disables alarms.
      * The token generation is incremented BEFORE disable success is reported,
      * ensuring that any in-flight plan cannot re-enroll.
+     * Atomically moves any active plan events to pendingCleanup.
      */
     fun disable(): DisableResult = lock.withLock {
         val newToken = generationToken + 1L
@@ -319,9 +390,13 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
         val prevEnabled = enabled
         val prevToken = generationToken
         val prevPlan = activePlan
+        val prevCleanup = pendingCleanup.toMutableMap()
 
         enabled = false
         generationToken = newToken
+        activePlan?.events?.forEach { ev ->
+            pendingCleanup[ev.eventKey] = ev
+        }
         activePlan = null
 
         val serialized = serializeToJson()
@@ -330,6 +405,8 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
             enabled = prevEnabled
             generationToken = prevToken
             activePlan = prevPlan
+            pendingCleanup.clear()
+            pendingCleanup.putAll(prevCleanup)
             return DisableResult.PersistenceFailure("فشل حفظ حالة التعطيل في التخزين الدائم.")
         }
 
@@ -338,6 +415,7 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
 
     /**
      * Invalidates the current generation token, disables alarms, and clears the active plan and ledger.
+     * Retains all pendingCleanup records without erasing unresolved cleanup evidence.
      */
     fun reset(): ResetResult = lock.withLock {
         val newToken = generationToken + 1L
@@ -346,9 +424,13 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
         val prevToken = generationToken
         val prevPlan = activePlan
         val prevLedger = consumedLedger.toMutableMap()
+        val prevCleanup = pendingCleanup.toMutableMap()
 
         enabled = false
         generationToken = newToken
+        activePlan?.events?.forEach { ev ->
+            pendingCleanup[ev.eventKey] = ev
+        }
         activePlan = null
         consumedLedger.clear()
 
@@ -360,6 +442,8 @@ class PrayerAlarmStore(private val storageDriver: StorageDriver) {
             activePlan = prevPlan
             consumedLedger.clear()
             consumedLedger.putAll(prevLedger)
+            pendingCleanup.clear()
+            pendingCleanup.putAll(prevCleanup)
             return ResetResult.PersistenceFailure("فشل إعادة ضبط جدول المواعيد في التخزين الدائم.")
         }
 

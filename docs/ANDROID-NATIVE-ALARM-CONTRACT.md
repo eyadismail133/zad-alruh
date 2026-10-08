@@ -77,6 +77,11 @@ Dart must fetch this token before preparing a plan replacement to ensure atomic 
 ### 2.2 `replacePlan`
 Atomically replaces the persisted prayer alarm schedule using CAS on `expectedToken`.
 **Validate + CAS First Invariant:** Native code validates the full plan structure and executes atomic Compare-And-Swap on the durable store **BEFORE** modifying any `AlarmManager` alarms. If the token is stale or storage persistence fails, no active OS alarms are cancelled or modified. Only upon verified CAS success are previous alarms cancelled and new exact/companion alarms registered.
+**Durable Cleanup Migration & Retry:** Previous active plan events are atomically migrated into durable `pendingCleanup` within the same CAS storage transaction. The coordinator immediately attempts to cancel all pending cleanup events (cancelling both OS alarms and posted notifications). Confirmed cancellations are durably acknowledged (`store.acknowledgeCleanedUpEvents(...)`) and removed from disk. Any events whose OS cancellation fails remain safely persisted in `pendingCleanup` across app restarts and store reopens until subsequent calls confirm cancellation.
+**Paired Registration Counting:** `scheduledCount` reflects true per-event paired registrations:
+- When exact alarms are permitted (`canScheduleExactAlarms == true`), an event only increments `scheduledCount` if **both** its exact alarm and companion alarm succeed.
+- When exact alarms are denied (`canScheduleExactAlarms == false`), an event increments `scheduledCount` if its companion alarm succeeds.
+- Diagnostic fields `exactScheduledCount` and `companionScheduledCount` record raw successful registrations, while `scheduledCount` guarantees that an event is never falsely reported as scheduled if only one half of a required alarm pair succeeded.
 
 - **Arguments:**
   ```json
@@ -159,7 +164,7 @@ Atomically replaces the persisted prayer alarm schedule using CAS on `expectedTo
     "messageAr": "تم تحديث الخطة، ولكن تعذر اكتمال جدولة بعض التنبيهات في النظام."
   }
   ```
-  *(Note: `exactAlarmsUsed` is strictly `exactScheduledCount > 0` and `companionAlarmsUsed` is `companionScheduledCount > 0`, reflecting actual OS alarms registered rather than permission state).*
+  *(Note: `exactAlarmsUsed` is strictly `exactScheduledCount > 0` and `companionAlarmsUsed` is `companionScheduledCount > 0`, reflecting actual OS alarms registered rather than permission state. Any uncancelled previous events remain durably persisted in `pendingCleanup` for subsequent retries).*
 
 - **Failure Return (Stale Token / Invalidation):**
   ```json
@@ -185,8 +190,9 @@ Atomically replaces the persisted prayer alarm schedule using CAS on `expectedTo
 
 ### 2.3 `disableAlarms`
 Disables prayer alarms and stops any active adhan playback service.
-**Crucial Invariant:** The native generation token is incremented (`generationToken + 1`) and durably persisted as disabled **BEFORE** OS alarm cancellation and service termination take place. Any in-flight plan computed with an earlier token cannot re-enroll.
-If OS cleanup encounters errors (e.g., failure cancelling alarms or stopping service), native storage invalidation remains committed, but the method returns `success: false` with `authorizationInvalidated: true` to prevent Dart callers from clearing local state under the assumption that all OS alarms are eliminated.
+**Crucial Invariant:** The native generation token is incremented (`generationToken + 1`), active plan events are atomically migrated into durable `pendingCleanup`, and the plan is cleared (`activePlan = null`, `enabled = false`) in storage **BEFORE** OS alarm cancellation and service termination take place. Any in-flight plan computed with an earlier token cannot re-enroll.
+**Durable Cleanup Retry:** The coordinator attempts cancellation of all unresolved `pendingCleanup` events across both `AlarmSchedulerGateway.cancelAlarms(ev)` and `NotificationGateway.cancelEventNotification(ev.eventKey)`. Confirmed cancellations are durably acknowledged (`store.acknowledgeCleanedUpEvents(...)`) and removed from disk. If storage persistence during acknowledgement fails or OS cancellation fails, unresolved cleanup identities remain durably persisted across store reopens and app restarts for subsequent retries.
+If OS cleanup encounters errors (e.g., failure cancelling alarms, cancelling notifications, or stopping service), native storage invalidation remains committed, but the method returns `success: false` with `authorizationInvalidated: true` and `partialFailure: true` to prevent Dart callers from assuming that all OS alarms and notifications are eliminated.
 
 - **Arguments:** `null`
 - **Return Type (Success):**
@@ -216,8 +222,9 @@ If OS cleanup encounters errors (e.g., failure cancelling alarms or stopping ser
 
 ### 2.4 `resetAll`
 Invalidates authorization token, disables alarms, cancels pending OS alarms, stops active service, and wipes the durable consumed ledger and persisted active plan.
-**Crucial Invariant:** Monotonic token invalidation and ledger clearing are durably committed to storage **BEFORE** OS cancellations.
-If OS cleanup fails, returns `success: false` with `authorizationInvalidated: true` and the fresh incremented token.
+**Crucial Invariant:** Monotonic token invalidation, active plan event migration into `pendingCleanup`, and ledger clearing are durably committed to storage **BEFORE** OS cancellations.
+**Cleanup Evidence Preservation:** `resetAll` clears `consumedLedger` and `activePlan`, but strictly **retains uncancelled `pendingCleanup` records**. Unresolved cleanup identities are never wiped or discarded on reset, ensuring that future calls can continue attempting OS cancellations and that the system never falsely reports complete cleanup while OS alarms remain live.
+If OS cleanup fails (unresolved alarms, notifications, or service stop), returns `success: false` with `authorizationInvalidated: true`, `partialFailure: true`, and the fresh incremented token.
 
 - **Arguments:** `null`
 - **Return Type (Success):**
@@ -258,6 +265,7 @@ Returns current native diagnostic state for UI rendering and permission checks.
     "isServiceRunning": false,
     "isManualPlaybackLeaseActive": false,
     "futureEventsCount": 48,
+    "pendingCleanupCount": 0,
     "cityId": 360630,
     "cityNameAr": "القاهرة",
     "timezone": "Africa/Cairo",
@@ -265,6 +273,7 @@ Returns current native diagnostic state for UI rendering and permission checks.
     "consumedLedgerCount": 2
   }
   ```
+  *(Note: `pendingCleanupCount` is a non-negative integer indicating the count of unresolved event identities retained in durable store for pending OS alarm and notification cleanup. It aggregates unresolved events across failed plan replacements and cancellations without any speculative cap or dropping of unresolved IDs).*
 
 ---
 
@@ -272,7 +281,7 @@ Returns current native diagnostic state for UI rendering and permission checks.
 Acquires a process-local mutual exclusion lease for manual foreground audio (such as Quran recitation or adhan preview).
 Executes under the shared coordinator physical-start lock (`coordinatorLock`):
 1. Confirms immediate synchronous stop and resource release of any active native adhan playback before granting lease.
-2. Confirms cancellation of existing owned prayer event notifications so previous short fallback channel sound has a cancellation request accepted before manual playback begins.
+2. Confirms cancellation of existing owned prayer event notifications (including posted notifications, active short deliveries, and unresolved events tracked in durable `pendingCleanup`) so previous short fallback channel sound has a cancellation request accepted before manual playback begins.
 3. Validates `requestId` is bounded (`<= 256` chars) and non-blank.
 4. Binds the lease to the current Flutter engine session identity.
 5. An existing live owner lease is strictly protected and cannot be overwritten by a new request. If already leased, rejects with `LEASE_BUSY`, except genuine idempotent retry for the exact same session and `requestId`.
@@ -383,7 +392,7 @@ Invokes `AdhanMediaPlaybackService.stopActiveInstance()` directly under `coordin
 - Removes the foreground status notification and triggers `stopSelf()`.
 - Executes without sleeping on the main UI thread, polling loops, or starting unnecessary background services.
 - Confirmed resource release status is returned directly to Dart.
-- Cancels existing owned prayer event notifications under lock to terminate any playing short notification channel audio.
+- Cancels existing owned prayer event notifications under lock (including posted notifications, active short deliveries, and unresolved events tracked in durable `pendingCleanup`) to terminate any playing short notification channel audio.
 - Returns `true` only if both service stop and owned notification cancellations are confirmed.
 
 - **Return Type:**
