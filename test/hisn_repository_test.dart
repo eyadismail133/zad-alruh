@@ -355,6 +355,10 @@ void main() {
       final results = realRepository.search('75');
       expect(results.isNotEmpty, isTrue);
       expect(results.first.id, 75);
+
+      final resultsArabic = realRepository.search('٧٥');
+      expect(resultsArabic.isNotEmpty, isTrue);
+      expect(resultsArabic.first.id, 75);
     });
 
     test('search by chapter title returns all chapter items', () {

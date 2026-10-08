@@ -193,8 +193,8 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Must list the 2 remaining pending release prerequisites (Hadith, Hisn & Quran images blockers resolved)
-        expect(result.pendingReleaseBlockers.length, 2);
+        // Must list the 1 remaining pending release prerequisite (Hadith, Hisn, Quran images, and Adhan audio blockers resolved)
+        expect(result.pendingReleaseBlockers.length, 1);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
@@ -205,7 +205,7 @@ void main() {
           result.pendingReleaseBlockers.any(
             (b) => b.contains('3 licensed adhan recordings'),
           ),
-          isTrue,
+          isFalse,
         );
         expect(
           result.pendingReleaseBlockers.any(
@@ -274,6 +274,18 @@ void main() {
         p.join(tempDir.path, 'assets', 'content', 'hisn'),
       );
       await hisnDir.create(recursive: true);
+      final adhanAudioDir = Directory(
+        p.join(tempDir.path, 'assets', 'audio', 'adhan'),
+      );
+      await adhanAudioDir.create(recursive: true);
+      final iosRunnerDir = Directory(
+        p.join(tempDir.path, 'ios', 'Runner'),
+      );
+      await iosRunnerDir.create(recursive: true);
+      final androidRawDir = Directory(
+        p.join(tempDir.path, 'android', 'app', 'src', 'main', 'res', 'raw'),
+      );
+      await androidRawDir.create(recursive: true);
 
       // Copy real bundled files into temp
       await File(
@@ -353,6 +365,45 @@ void main() {
       await File(
         'docs/sources/KFQC_MUSHAF.md',
       ).copy(p.join(tempDir.path, 'docs', 'sources', 'KFQC_MUSHAF.md'));
+      await File(
+        'docs/sources/ADHAN_AUDIO.md',
+      ).copy(p.join(tempDir.path, 'docs', 'sources', 'ADHAN_AUDIO.md'));
+
+      final adhanFiles = [
+        'adam-converted.mp3',
+        'atcovi-original.mp3',
+        'malmo-fajr-extracted.mp3',
+        'adam-alert.wav',
+        'atcovi-alert.wav',
+        'malmo-fajr-alert.wav',
+      ];
+      for (final f in adhanFiles) {
+        await File('assets/audio/adhan/$f').copy(
+          p.join(tempDir.path, 'assets', 'audio', 'adhan', f),
+        );
+      }
+
+      final iosAlertFiles = [
+        'adam-alert.wav',
+        'atcovi-alert.wav',
+        'malmo-fajr-alert.wav',
+      ];
+      for (final f in iosAlertFiles) {
+        await File('ios/Runner/$f').copy(
+          p.join(tempDir.path, 'ios', 'Runner', f),
+        );
+      }
+
+      final androidAlertFiles = [
+        'adam_alert.wav',
+        'atcovi_alert.wav',
+        'malmo_fajr_alert.wav',
+      ];
+      for (final f in androidAlertFiles) {
+        await File('android/app/src/main/res/raw/$f').copy(
+          p.join(tempDir.path, 'android', 'app', 'src', 'main', 'res', 'raw', f),
+        );
+      }
 
       await File('assets/content/quran/kfqc-page-bounds.json').copy(
         p.join(
@@ -418,7 +469,19 @@ void main() {
         expect(result.errors, isEmpty);
         expect(result.isDevelopmentValid, isTrue);
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 2);
+        expect(result.pendingReleaseBlockers.length, 1);
+        expect(
+          result.pendingReleaseBlockers.any(
+            (b) => b.contains('Qualified human reviewer'),
+          ),
+          isTrue,
+        );
+        expect(
+          result.pendingReleaseBlockers.any(
+            (b) => b.contains('3 licensed adhan recordings'),
+          ),
+          isFalse,
+        );
       },
     );
 
@@ -831,7 +894,7 @@ void main() {
     );
 
     test(
-      'audio registry rejects declared voices or clips as unsupported import',
+      'audio registry with status missing rejects declared voices or clips',
       () async {
         final manifestFile = File(
           p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
@@ -841,6 +904,7 @@ void main() {
                 as Map<String, dynamic>;
         final pending = json['pending_registries'] as Map<String, dynamic>;
         final audio = pending['adhan_audio'] as Map<String, dynamic>;
+        audio['status'] = 'missing';
         audio['voices'] = <Map<String, dynamic>>[
           <String, dynamic>{'id': 'voice_1', 'performer': 'Muaddhin A'},
         ];
@@ -853,11 +917,338 @@ void main() {
 
         expect(result.isDevelopmentValid, isFalse);
         expect(
-          result.errors.any((e) => e.contains('unsupported at this milestone')),
+          result.errors.any(
+            (e) => e.contains('status="missing" but contains declared voice or clip entries'),
+          ),
           isTrue,
         );
       },
     );
+
+    test(
+      'audio registry with status pending rejects declared voices or clips',
+      () async {
+        final manifestFile = File(
+          p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+        );
+        final json =
+            jsonDecode(await manifestFile.readAsString())
+                as Map<String, dynamic>;
+        final pending = json['pending_registries'] as Map<String, dynamic>;
+        final audio = pending['adhan_audio'] as Map<String, dynamic>;
+        audio['status'] = 'pending';
+        audio['voices'] = <Map<String, dynamic>>[
+          <String, dynamic>{'id': 'voice_1', 'performer': 'Muaddhin A'},
+        ];
+        await manifestFile.writeAsString(jsonEncode(json));
+
+        final result = await ContentValidator.validate(
+          workspaceRoot: tempDir.path,
+          isDevelopmentMode: true,
+        );
+
+        expect(result.isDevelopmentValid, isFalse);
+        expect(
+          result.errors.any(
+            (e) => e.contains('registry status is "pending" instead of "bundled"'),
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test('audio registry rejects unknown or unauthorized voice ID', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final audio = pending['adhan_audio'] as Map<String, dynamic>;
+      final voices = (audio['voices'] as List).cast<Map<String, dynamic>>();
+      voices[0]['id'] = 'unauthorized_voice';
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Invalid or unauthorized voice ID')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects duplicate voice ID', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final audio = pending['adhan_audio'] as Map<String, dynamic>;
+      final voices = (audio['voices'] as List).cast<Map<String, dynamic>>();
+      voices[1]['id'] = 'adam'; // Duplicate 'adam'
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Duplicate voice ID')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects invalid Fajr voice designation', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final audio = pending['adhan_audio'] as Map<String, dynamic>;
+      final voices = (audio['voices'] as List).cast<Map<String, dynamic>>();
+      for (final v in voices) {
+        if (v['id'] == 'malmo_fajr') v['is_fajr'] = false;
+      }
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Exactly one Fajr voice must be designated')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects tampered full MP3 recording bytes and hash', () async {
+      final mp3File = File(
+        p.join(tempDir.path, 'assets', 'audio', 'adhan', 'adam-converted.mp3'),
+      );
+      final original = await mp3File.readAsBytes();
+      final tampered = Uint8List.fromList(original);
+      tampered[100] = tampered[100] ^ 0xFF;
+      await mp3File.writeAsBytes(tampered);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('audio file SHA on disk mismatch')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects tampered alert WAV clip bytes and hash', () async {
+      final wavFile = File(
+        p.join(tempDir.path, 'assets', 'audio', 'adhan', 'adam-alert.wav'),
+      );
+      final original = await wavFile.readAsBytes();
+      final tampered = Uint8List.fromList(original);
+      tampered[1000] = tampered[1000] ^ 0xFF;
+      await wavFile.writeAsBytes(tampered);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('alert file SHA on disk mismatch')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects tampered native iOS Runner alert copy', () async {
+      final iosWavFile = File(
+        p.join(tempDir.path, 'ios', 'Runner', 'adam-alert.wav'),
+      );
+      final original = await iosWavFile.readAsBytes();
+      final tampered = Uint8List.fromList(original);
+      tampered[500] = tampered[500] ^ 0xFF;
+      await iosWavFile.writeAsBytes(tampered);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('iOS Runner alert clip SHA mismatch')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects tampered native Android raw alert copy', () async {
+      final androidWavFile = File(
+        p.join(tempDir.path, 'android', 'app', 'src', 'main', 'res', 'raw', 'adam_alert.wav'),
+      );
+      final original = await androidWavFile.readAsBytes();
+      final tampered = Uint8List.fromList(original);
+      tampered[500] = tampered[500] ^ 0xFF;
+      await androidWavFile.writeAsBytes(tampered);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Android res/raw alert clip SHA mismatch')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects prohibited OGG or FLAC file in ios/Runner', () async {
+      final forbiddenFile = File(
+        p.join(tempDir.path, 'ios', 'Runner', 'prohibited.ogg'),
+      );
+      await forbiddenFile.writeAsString('fake ogg audio content');
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Prohibited audio format on iOS')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects mismatched canonical license or source URL', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final audio = pending['adhan_audio'] as Map<String, dynamic>;
+      final voices = (audio['voices'] as List).cast<Map<String, dynamic>>();
+      voices[0]['source_url'] = 'https://tampered-source.org/fake.mp3';
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('source_url mismatch')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing or empty evidence doc', () async {
+      final docFile = File(
+        p.join(tempDir.path, 'docs', 'sources', 'ADHAN_AUDIO.md'),
+      );
+      await docFile.writeAsString(''); // Empty file
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Empty adhan audio evidence document')),
+        isTrue,
+      );
+    });
+
+    test('inspectWavHeader parses custom RIFF chunks with LIST metadata before data chunk', () {
+      final bb = BytesBuilder();
+      bb.add(ascii.encode('RIFF'));
+      final riffSizeBd = ByteData(4)..setUint32(0, 100, Endian.little);
+      bb.add(riffSizeBd.buffer.asUint8List());
+      bb.add(ascii.encode('WAVE'));
+
+      // 'fmt ' chunk (16 bytes payload)
+      bb.add(ascii.encode('fmt '));
+      final fmtSizeBd = ByteData(4)..setUint32(0, 16, Endian.little);
+      bb.add(fmtSizeBd.buffer.asUint8List());
+      final fmtBd = ByteData(16);
+      fmtBd.setUint16(0, 1, Endian.little); // PCM
+      fmtBd.setUint16(2, 1, Endian.little); // Mono
+      fmtBd.setUint32(4, 22050, Endian.little); // Sample rate
+      fmtBd.setUint32(8, 44100, Endian.little); // Byte rate
+      fmtBd.setUint16(12, 2, Endian.little); // Block align
+      fmtBd.setUint16(14, 16, Endian.little); // 16-bit
+      bb.add(fmtBd.buffer.asUint8List());
+
+      // 'LIST' chunk before 'data' (4 bytes payload: 'INFO')
+      bb.add(ascii.encode('LIST'));
+      final listSizeBd = ByteData(4)..setUint32(0, 4, Endian.little);
+      bb.add(listSizeBd.buffer.asUint8List());
+      bb.add(ascii.encode('INFO'));
+
+      // 'data' chunk (8 bytes header + 40 bytes payload)
+      bb.add(ascii.encode('data'));
+      final dataSizeBd = ByteData(4)..setUint32(0, 40, Endian.little);
+      bb.add(dataSizeBd.buffer.asUint8List());
+      bb.add(Uint8List(40)); // 40 bytes of zero data
+
+      final bytes = bb.takeBytes();
+      ByteData.sublistView(bytes).setUint32(4, bytes.length - 8, Endian.little);
+
+      final res = ContentValidator.inspectWavHeader(bytes);
+      expect(res.isValid, isTrue);
+      expect(res.dataOffset, equals(56));
+      expect(res.dataSize, equals(40));
+      expect(res.channels, equals(1));
+      expect(res.sampleRate, equals(22050));
+      expect(res.bitDepth, equals(16));
+    });
+
+    test('analyzeWavWaveform calculates accurate peak, RMS and flags silence vs signal', () {
+      // 1. All zero samples -> silent
+      final silentBytes = Uint8List(100);
+      final silentMetrics = ContentValidator.analyzeWavWaveform(
+        bytes: silentBytes,
+        dataOffset: 0,
+        dataSize: 100,
+        sampleRate: 22050,
+      );
+      expect(silentMetrics.hasNonZeroSignal, isFalse);
+      expect(silentMetrics.peakAmplitude, equals(0.0));
+      expect(silentMetrics.rmsAmplitude, equals(0.0));
+
+      // 2. Constant 50% amplitude (16384 out of 32768)
+      final activeBytes = Uint8List(200);
+      final activeBd = ByteData.sublistView(activeBytes);
+      for (int i = 0; i < 100; i++) {
+        activeBd.setInt16(i * 2, 16384, Endian.little);
+      }
+      final activeMetrics = ContentValidator.analyzeWavWaveform(
+        bytes: activeBytes,
+        dataOffset: 0,
+        dataSize: 200,
+        sampleRate: 22050,
+      );
+      expect(activeMetrics.hasNonZeroSignal, isTrue);
+      expect(activeMetrics.peakAmplitude, closeTo(0.5, 0.001));
+      expect(activeMetrics.rmsAmplitude, closeTo(0.5, 0.001));
+      expect(activeMetrics.onsetRmsAmplitude, closeTo(0.5, 0.001));
+    });
 
     test('audio registry rejects non-list voices or clips field', () async {
       final manifestFile = File(
@@ -885,6 +1276,394 @@ void main() {
         result.errors.any(
           (e) => e.contains('"notification_clips" field must be a list'),
         ),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing whole ios/Runner directory', () async {
+      final iosDir = Directory(p.join(tempDir.path, 'ios', 'Runner'));
+      await iosDir.delete(recursive: true);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) => e.contains('Missing required iOS Runner directory: ios/Runner'),
+        ),
+        isTrue,
+      );
+      expect(
+        result.errors.any(
+          (e) => e.contains('Missing iOS Runner alert clip'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing whole android res/raw directory', () async {
+      final rawDir = Directory(
+        p.join(tempDir.path, 'android', 'app', 'src', 'main', 'res', 'raw'),
+      );
+      await rawDir.delete(recursive: true);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) => e.contains(
+            'Missing required Android res/raw directory: android/app/src/main/res/raw',
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        result.errors.any(
+          (e) => e.contains('Missing Android res/raw alert clip'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing whole assets/audio/adhan directory', () async {
+      final adhanDir = Directory(p.join(tempDir.path, 'assets', 'audio', 'adhan'));
+      await adhanDir.delete(recursive: true);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) => e.contains(
+            'Missing required adhan assets directory: assets/audio/adhan',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing individual iOS Runner alert clip', () async {
+      final f = File(p.join(tempDir.path, 'ios', 'Runner', 'malmo-fajr-alert.wav'));
+      await f.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) => e.contains('Missing iOS Runner alert clip: ios/Runner/malmo-fajr-alert.wav'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing individual Android res/raw alert clip', () async {
+      final f = File(
+        p.join(tempDir.path, 'android', 'app', 'src', 'main', 'res', 'raw', 'malmo_fajr_alert.wav'),
+      );
+      await f.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) => e.contains('Missing Android res/raw alert clip: android/app/src/main/res/raw/malmo_fajr_alert.wav'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing individual adhan full MP3 file', () async {
+      final f = File(p.join(tempDir.path, 'assets', 'audio', 'adhan', 'adam-converted.mp3'));
+      await f.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Voice "adam" audio file missing')),
+        isTrue,
+      );
+    });
+
+    test('audio registry rejects missing individual adhan alert WAV file', () async {
+      final f = File(p.join(tempDir.path, 'assets', 'audio', 'adhan', 'adam-alert.wav'));
+      await f.delete();
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('Voice "adam" alert file missing')),
+        isTrue,
+      );
+    });
+
+    test(
+      'audio registry rejects invalid voice alert_clip duration across zero, negative, 1, 30, and 31',
+      () async {
+        for (final invalidDuration in [0, -5, 1, 30.0, 31.0]) {
+          final manifestFile = File(
+            p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+          );
+          final json =
+              jsonDecode(await manifestFile.readAsString())
+                  as Map<String, dynamic>;
+          final pending = json['pending_registries'] as Map<String, dynamic>;
+          final audio = pending['adhan_audio'] as Map<String, dynamic>;
+          final voices =
+              (audio['voices'] as List).cast<Map<String, dynamic>>();
+          voices[0]['alert_clip']['duration_seconds'] = invalidDuration;
+          await manifestFile.writeAsString(jsonEncode(json));
+
+          final result = await ContentValidator.validate(
+            workspaceRoot: tempDir.path,
+            isDevelopmentMode: true,
+          );
+
+          expect(
+            result.isDevelopmentValid,
+            isFalse,
+            reason: 'Failed to reject voice alert duration: $invalidDuration',
+          );
+          expect(
+            result.errors.any(
+              (e) =>
+                  e.contains('alert_clip duration must be exactly 27.0') ||
+                  e.contains('does not match inspected WAV duration'),
+            ),
+            isTrue,
+            reason:
+                'Expected duration error for voice alert duration: $invalidDuration',
+          );
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+
+    test('audio registry rejects invalid voice alert_clip format (e.g. ogg)', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final audio = pending['adhan_audio'] as Map<String, dynamic>;
+      final voices =
+          (audio['voices'] as List).cast<Map<String, dynamic>>();
+      voices[0]['alert_clip']['format'] = 'ogg';
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('alert_clip format must be "wav"')),
+        isTrue,
+      );
+    });
+
+    test(
+      'audio registry rejects invalid notification_clips duration across zero, negative, 1, 30, and 31',
+      () async {
+        for (final invalidDuration in [0, -5, 1, 30.0, 31.0]) {
+          final manifestFile = File(
+            p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+          );
+          final json =
+              jsonDecode(await manifestFile.readAsString())
+                  as Map<String, dynamic>;
+          final pending = json['pending_registries'] as Map<String, dynamic>;
+          final audio = pending['adhan_audio'] as Map<String, dynamic>;
+          final clips =
+              (audio['notification_clips'] as List).cast<Map<String, dynamic>>();
+          clips[0]['duration_seconds'] = invalidDuration;
+          await manifestFile.writeAsString(jsonEncode(json));
+
+          final result = await ContentValidator.validate(
+            workspaceRoot: tempDir.path,
+            isDevelopmentMode: true,
+          );
+
+          expect(
+            result.isDevelopmentValid,
+            isFalse,
+            reason: 'Failed to reject notification clip duration: $invalidDuration',
+          );
+          expect(
+            result.errors.any(
+              (e) => e.contains('Notification clip duration mismatch'),
+            ),
+            isTrue,
+            reason:
+                'Expected duration error for notification clip duration: $invalidDuration',
+          );
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+
+    test('audio registry rejects invalid notification_clips format (e.g. ogg)', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final audio = pending['adhan_audio'] as Map<String, dynamic>;
+      final clips =
+          (audio['notification_clips'] as List).cast<Map<String, dynamic>>();
+      clips[0]['format'] = 'ogg';
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any(
+          (e) => e.contains('Notification clip format mismatch'),
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'audio registry rejects invalid audio_file duration across zero, negative, and mismatched values',
+      () async {
+        for (final invalidDuration in [0, -10, 100]) {
+          final manifestFile = File(
+            p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+          );
+          final json =
+              jsonDecode(await manifestFile.readAsString())
+                  as Map<String, dynamic>;
+          final pending = json['pending_registries'] as Map<String, dynamic>;
+          final audio = pending['adhan_audio'] as Map<String, dynamic>;
+          final voices =
+              (audio['voices'] as List).cast<Map<String, dynamic>>();
+          voices[0]['audio_file']['duration_seconds'] = invalidDuration;
+          await manifestFile.writeAsString(jsonEncode(json));
+
+          final result = await ContentValidator.validate(
+            workspaceRoot: tempDir.path,
+            isDevelopmentMode: true,
+          );
+
+          expect(
+            result.isDevelopmentValid,
+            isFalse,
+            reason: 'Failed to reject audio duration: $invalidDuration',
+          );
+          expect(
+            result.errors.any(
+              (e) => e.contains('audio_file duration_seconds mismatch'),
+            ),
+            isTrue,
+            reason:
+                'Expected duration error for audio duration: $invalidDuration',
+          );
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+
+    test('audio registry rejects invalid audio_file format (e.g. wav instead of mp3)', () async {
+      final manifestFile = File(
+        p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
+      );
+      final json =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      final pending = json['pending_registries'] as Map<String, dynamic>;
+      final audio = pending['adhan_audio'] as Map<String, dynamic>;
+      final voices =
+          (audio['voices'] as List).cast<Map<String, dynamic>>();
+      voices[0]['audio_file']['format'] = 'wav';
+      await manifestFile.writeAsString(jsonEncode(json));
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('audio_file format must be "mp3"')),
+        isTrue,
+      );
+    });
+
+    test('analyzeWavWaveform detects onset RMS energy below threshold on dead onset', () {
+      final pcmData = Uint8List(22050 * 2 * 2); // 2 seconds of 22050Hz 16-bit
+      final bd = ByteData.sublistView(pcmData);
+      // First second (22050 samples) is silent (0)
+      // Second second has non-zero signal (amplitude 16384 out of 32768)
+      for (int i = 22050; i < 44100; i++) {
+        bd.setInt16(i * 2, 16384, Endian.little);
+      }
+      final metrics = ContentValidator.analyzeWavWaveform(
+        bytes: pcmData,
+        dataOffset: 0,
+        dataSize: pcmData.length,
+        sampleRate: 22050,
+      );
+      expect(metrics.hasNonZeroSignal, isTrue);
+      expect(metrics.onsetRmsAmplitude, equals(0.0));
+      expect(
+        metrics.onsetRmsAmplitude < ContentValidator.kExpectedAdhanAlertOnsetRmsLowerBound,
+        isTrue,
+      );
+      expect(metrics.rmsAmplitude, greaterThan(0.2));
+    });
+
+    test('audio registry rejects alert WAV with dead or silent onset energy', () async {
+      final wavFile = File(
+        p.join(tempDir.path, 'assets', 'audio', 'adhan', 'adam-alert.wav'),
+      );
+      final original = await wavFile.readAsBytes();
+      final tampered = Uint8List.fromList(original);
+      // Clear first 22050 samples (44100 bytes) after dataOffset 78 to 0 (silent onset)
+      for (int i = 0; i < 44100; i++) {
+        tampered[78 + i] = 0;
+      }
+      await wavFile.writeAsBytes(tampered);
+
+      final result = await ContentValidator.validate(
+        workspaceRoot: tempDir.path,
+        isDevelopmentMode: true,
+      );
+
+      expect(result.isDevelopmentValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('onset RMS energy too low')),
         isTrue,
       );
     });
@@ -1359,7 +2138,7 @@ void main() {
     });
 
     // 7. Human Review Hardening
-    test('human review rejects approved: true as unsupported import', () async {
+    test('human review rejects approved: true without valid evidence', () async {
       final manifestFile = File(
         p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
       );
@@ -1378,16 +2157,16 @@ void main() {
       expect(result.isDevelopmentValid, isFalse);
       expect(
         result.errors.any(
-          (e) => e.contains(
-            'Human review approval is unsupported at this milestone',
-          ),
+          (e) =>
+              e.contains('evidence_path is missing') ||
+              e.contains('Contradictory human review status'),
         ),
         isTrue,
       );
     });
 
     test(
-      'human review rejects declared evidence or reviewer without file IO',
+      'human review rejects declared evidence or reviewer without complete valid evidence',
       () async {
         final manifestFile = File(
           p.join(tempDir.path, 'assets', 'content', 'manifest.json'),
@@ -1413,24 +2192,14 @@ void main() {
         expect(
           result.errors.any(
             (e) => e.contains(
-              'Human review evidence is unsupported at this milestone',
+              'Human review declared evidence or reviewer claims while status is "pending"',
             ),
           ),
           isTrue,
         );
         expect(
           result.errors.any(
-            (e) => e.contains(
-              'Human review evidence SHA is unsupported at this milestone',
-            ),
-          ),
-          isTrue,
-        );
-        expect(
-          result.errors.any(
-            (e) => e.contains(
-              'Human reviewer declarations are unsupported at this milestone',
-            ),
+            (e) => e.contains('Human review evidence file not found'),
           ),
           isTrue,
         );
@@ -1559,7 +2328,7 @@ void main() {
     );
 
     test(
-      'development validation passes for valid canonical workspace, but release mode retains remaining 2 release blockers',
+      'development validation passes for valid canonical workspace, but release mode retains remaining 1 release blocker',
       () async {
         final result = await ContentValidator.validate(
           workspaceRoot: tempDir.path,
@@ -1570,9 +2339,9 @@ void main() {
         expect(result.isDevelopmentValid, isTrue);
         expect(result.errors, isEmpty);
 
-        // Release mode MUST fail because 2 unacquired categories remain pending
+        // Release mode MUST fail because 1 unacquired category remains pending (human reviewer)
         expect(result.isReleaseReady, isFalse);
-        expect(result.pendingReleaseBlockers.length, 2);
+        expect(result.pendingReleaseBlockers.length, 1);
         expect(
           result.pendingReleaseBlockers.any(
             (b) => b.contains('604 Medina Mushaf page images'),
@@ -1583,7 +2352,7 @@ void main() {
           result.pendingReleaseBlockers.any(
             (b) => b.contains('3 licensed adhan recordings'),
           ),
-          isTrue,
+          isFalse,
         );
         expect(
           result.pendingReleaseBlockers.any(

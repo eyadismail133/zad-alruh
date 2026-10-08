@@ -552,8 +552,11 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
               ),
               const SizedBox(height: 8),
               // Footer row: Repeat badge & Footnotes count
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   if (item.repeatTarget != null)
                     Container(

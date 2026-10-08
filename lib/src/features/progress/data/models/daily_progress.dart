@@ -10,7 +10,21 @@ class DailyProgress {
   final bool dailyDuaCompleted;
   final int quranGoalPages;
   final int quranPagesRead;
+  final Set<int> confirmedPages;
+  final int morningCompletedCount;
+  final int eveningCompletedCount;
+  final bool shared100Completed;
+  final int? dailyDuaItemId;
+  final bool isLegacyRecord;
   final DateTime? updatedAt;
+
+  // Separately labelled historical metadata from legacy bare or pre-v3 rows
+  final bool? legacyQuranCompleted;
+  final bool? legacyMorningDhikrCompleted;
+  final bool? legacyEveningDhikrCompleted;
+  final bool? legacyPostPrayerDhikrCompleted;
+  final bool? legacyDailyDuaCompleted;
+  final int? legacyQuranPagesRead;
 
   const DailyProgress({
     required this.dateBucket,
@@ -21,7 +35,19 @@ class DailyProgress {
     this.dailyDuaCompleted = false,
     this.quranGoalPages = 2,
     this.quranPagesRead = 0,
+    this.confirmedPages = const <int>{},
+    this.morningCompletedCount = 0,
+    this.eveningCompletedCount = 0,
+    this.shared100Completed = false,
+    this.dailyDuaItemId,
+    this.isLegacyRecord = false,
     this.updatedAt,
+    this.legacyQuranCompleted,
+    this.legacyMorningDhikrCompleted,
+    this.legacyEveningDhikrCompleted,
+    this.legacyPostPrayerDhikrCompleted,
+    this.legacyDailyDuaCompleted,
+    this.legacyQuranPagesRead,
   });
 
   int get completedTasksCount {
@@ -48,7 +74,19 @@ class DailyProgress {
     bool? dailyDuaCompleted,
     int? quranGoalPages,
     int? quranPagesRead,
+    Set<int>? confirmedPages,
+    int? morningCompletedCount,
+    int? eveningCompletedCount,
+    bool? shared100Completed,
+    int? dailyDuaItemId,
+    bool? isLegacyRecord,
     DateTime? updatedAt,
+    bool? legacyQuranCompleted,
+    bool? legacyMorningDhikrCompleted,
+    bool? legacyEveningDhikrCompleted,
+    bool? legacyPostPrayerDhikrCompleted,
+    bool? legacyDailyDuaCompleted,
+    int? legacyQuranPagesRead,
   }) {
     return DailyProgress(
       dateBucket: dateBucket ?? this.dateBucket,
@@ -59,7 +97,19 @@ class DailyProgress {
       dailyDuaCompleted: dailyDuaCompleted ?? this.dailyDuaCompleted,
       quranGoalPages: quranGoalPages ?? this.quranGoalPages,
       quranPagesRead: quranPagesRead ?? this.quranPagesRead,
+      confirmedPages: confirmedPages ?? this.confirmedPages,
+      morningCompletedCount: morningCompletedCount ?? this.morningCompletedCount,
+      eveningCompletedCount: eveningCompletedCount ?? this.eveningCompletedCount,
+      shared100Completed: shared100Completed ?? this.shared100Completed,
+      dailyDuaItemId: dailyDuaItemId ?? this.dailyDuaItemId,
+      isLegacyRecord: isLegacyRecord ?? this.isLegacyRecord,
       updatedAt: updatedAt ?? this.updatedAt,
+      legacyQuranCompleted: legacyQuranCompleted ?? this.legacyQuranCompleted,
+      legacyMorningDhikrCompleted: legacyMorningDhikrCompleted ?? this.legacyMorningDhikrCompleted,
+      legacyEveningDhikrCompleted: legacyEveningDhikrCompleted ?? this.legacyEveningDhikrCompleted,
+      legacyPostPrayerDhikrCompleted: legacyPostPrayerDhikrCompleted ?? this.legacyPostPrayerDhikrCompleted,
+      legacyDailyDuaCompleted: legacyDailyDuaCompleted ?? this.legacyDailyDuaCompleted,
+      legacyQuranPagesRead: legacyQuranPagesRead ?? this.legacyQuranPagesRead,
     );
   }
 
@@ -77,9 +127,18 @@ class DailyProgress {
     };
   }
 
-  factory DailyProgress.fromMap(Map<String, dynamic> map) {
+  factory DailyProgress.fromMap(Map<String, dynamic> map, {
+    Set<int> confirmedPages = const <int>{},
+    int morningCompletedCount = 0,
+    int eveningCompletedCount = 0,
+    bool shared100Completed = false,
+    int? dailyDuaItemId,
+    bool isLegacyRecord = false,
+  }) {
+    final bucket = map['date_bucket'] as String? ?? '';
+    final legacy = isLegacyRecord || !bucket.contains('|');
     return DailyProgress(
-      dateBucket: map['date_bucket'] as String? ?? '',
+      dateBucket: bucket,
       quranCompleted: (map['quran_completed'] as num?)?.toInt() == 1,
       morningDhikrCompleted: (map['morning_dhikr_completed'] as num?)?.toInt() == 1,
       eveningDhikrCompleted: (map['evening_dhikr_completed'] as num?)?.toInt() == 1,
@@ -87,7 +146,19 @@ class DailyProgress {
       dailyDuaCompleted: (map['daily_dua_completed'] as num?)?.toInt() == 1,
       quranGoalPages: (map['quran_goal_pages'] as num?)?.toInt() ?? 2,
       quranPagesRead: (map['quran_pages_read'] as num?)?.toInt() ?? 0,
+      confirmedPages: confirmedPages,
+      morningCompletedCount: morningCompletedCount,
+      eveningCompletedCount: eveningCompletedCount,
+      shared100Completed: shared100Completed,
+      dailyDuaItemId: dailyDuaItemId,
+      isLegacyRecord: legacy,
       updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'] as String) : null,
+      legacyQuranCompleted: (map['quran_completed'] as num?)?.toInt() == 1,
+      legacyMorningDhikrCompleted: (map['morning_dhikr_completed'] as num?)?.toInt() == 1,
+      legacyEveningDhikrCompleted: (map['evening_dhikr_completed'] as num?)?.toInt() == 1,
+      legacyPostPrayerDhikrCompleted: (map['post_prayer_dhikr_completed'] as num?)?.toInt() == 1,
+      legacyDailyDuaCompleted: (map['daily_dua_completed'] as num?)?.toInt() == 1,
+      legacyQuranPagesRead: (map['quran_pages_read'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -102,7 +173,19 @@ class DailyProgress {
         other.postPrayerDhikrCompleted == postPrayerDhikrCompleted &&
         other.dailyDuaCompleted == dailyDuaCompleted &&
         other.quranGoalPages == quranGoalPages &&
-        other.quranPagesRead == quranPagesRead;
+        other.quranPagesRead == quranPagesRead &&
+        setEquals(other.confirmedPages, confirmedPages) &&
+        other.morningCompletedCount == morningCompletedCount &&
+        other.eveningCompletedCount == eveningCompletedCount &&
+        other.shared100Completed == shared100Completed &&
+        other.dailyDuaItemId == dailyDuaItemId &&
+        other.isLegacyRecord == isLegacyRecord &&
+        other.legacyQuranCompleted == legacyQuranCompleted &&
+        other.legacyMorningDhikrCompleted == legacyMorningDhikrCompleted &&
+        other.legacyEveningDhikrCompleted == legacyEveningDhikrCompleted &&
+        other.legacyPostPrayerDhikrCompleted == legacyPostPrayerDhikrCompleted &&
+        other.legacyDailyDuaCompleted == legacyDailyDuaCompleted &&
+        other.legacyQuranPagesRead == legacyQuranPagesRead;
   }
 
   @override
@@ -115,8 +198,14 @@ class DailyProgress {
         dailyDuaCompleted,
         quranGoalPages,
         quranPagesRead,
+        Object.hashAll(confirmedPages),
+        morningCompletedCount,
+        eveningCompletedCount,
+        shared100Completed,
+        dailyDuaItemId,
+        isLegacyRecord,
       );
 
   @override
-  String toString() => 'DailyProgress($dateBucket: $completedTasksCount/5, Quran: $quranPagesRead/$quranGoalPages)';
+  String toString() => 'DailyProgress($dateBucket: $completedTasksCount/5, Quran: $quranPagesRead/$quranGoalPages, morning: $morningCompletedCount/22, evening: $eveningCompletedCount/20)';
 }

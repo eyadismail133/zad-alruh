@@ -37,4 +37,30 @@ class ArabicNormalizer {
         .replaceAll(_whitespaceRegex, ' ')
         .trim();
   }
+
+  /// Converts Arabic-Indic (٠-٩) and Eastern Arabic / Persian (۰-۹) digits to ASCII digits (0-9).
+  static String normalizeDigits(String text) {
+    if (text.isEmpty) return '';
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      final code = text.codeUnitAt(i);
+      // Arabic-Indic digits ٠-٩ (U+0660 - U+0669)
+      if (code >= 0x0660 && code <= 0x0669) {
+        buffer.writeCharCode(0x0030 + (code - 0x0660));
+      }
+      // Eastern Arabic-Indic / Persian digits ۰-۹ (U+06F0 - U+06F9)
+      else if (code >= 0x06F0 && code <= 0x06F9) {
+        buffer.writeCharCode(0x0030 + (code - 0x06F0));
+      } else {
+        buffer.writeCharCode(code);
+      }
+    }
+    return buffer.toString();
+  }
+
+  /// Parses an integer string, converting any Arabic-Indic or Eastern Arabic digits to standard digits.
+  static int? parseArabicInt(String text) {
+    final ascii = normalizeDigits(text.trim());
+    return int.tryParse(ascii);
+  }
 }

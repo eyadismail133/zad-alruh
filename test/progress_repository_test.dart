@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:zad_alruh/src/core/database/app_database.dart';
+import 'package:zad_alruh/src/features/hisn/domain/models/hisn_daily_catalog.dart';
 import 'package:zad_alruh/src/features/progress/data/models/bookmark.dart';
+import 'package:zad_alruh/src/features/progress/data/models/daily_source_confirmation.dart';
 import 'package:zad_alruh/src/features/progress/data/models/favorite.dart';
 import 'package:zad_alruh/src/features/progress/data/models/reading_progress.dart';
 import 'package:zad_alruh/src/features/progress/data/models/user_preferences.dart';
@@ -15,15 +18,71 @@ import 'package:zad_alruh/src/features/progress/presentation/controllers/progres
 import 'package:zad_alruh/src/features/quran/data/quran_repository.dart';
 import 'package:zad_alruh/src/features/quran/data/sources/quran_asset_loader.dart';
 
+class _FakeHydratedPreferencesController extends PreferencesController {
+  final UserPreferences initialPrefs;
+  _FakeHydratedPreferencesController(this.initialPrefs);
+
+  @override
+  Future<UserPreferences> build() async => initialPrefs;
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
   final databaseFactory = databaseFactoryFfi;
+
+  const channelName = 'dev.zadalruh.zad_alruh/prayer_alarm';
 
   late Directory tempDir;
   late String dbPath;
   late QuranRepository quranRepo;
 
   setUpAll(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel(channelName), (call) async {
+      if (call.method == 'resetAll') {
+        return <String, dynamic>{
+          'success': true,
+          'authorizationInvalidated': true,
+          'token': 1,
+          'messageAr': 'تمت إعادة ضبط مواعيد الأذان بنجاح',
+        };
+      }
+      if (call.method == 'disableAlarms') {
+        return <String, dynamic>{
+          'success': true,
+          'authorizationInvalidated': true,
+          'token': 1,
+          'messageAr': 'تم تعطيل مواعيد الأذان وإلغاء التنبيهات بنجاح',
+        };
+      }
+      if (call.method == 'getState') {
+        return <String, dynamic>{
+          'enabled': false,
+          'generationToken': 1,
+          'canScheduleExactAlarms': true,
+          'notificationsAllowed': true,
+          'isPlaybackStatusChannelBlocked': false,
+          'isDndOrSilentActive': false,
+          'isServiceRunning': false,
+          'isManualPlaybackLeaseActive': false,
+          'futureEventsCount': 0,
+          'pendingCleanupCount': 0,
+          'cityId': 360630,
+          'cityNameAr': 'القاهرة',
+          'timezone': 'Africa/Cairo',
+          'coverageHorizonUtc': 1800000000,
+          'consumedLedgerCount': 0,
+        };
+      }
+      if (call.method == 'stopActivePlayback') {
+        return <String, dynamic>{
+          'stopped': true,
+        };
+      }
+      return null;
+    });
+
     final textBytes = await File(
       'assets/content/quran/quran-uthmani.txt',
     ).readAsBytes();
@@ -34,6 +93,11 @@ void main() {
       textBytes: textBytes,
       xmlBytes: xmlBytes,
     );
+  });
+
+  tearDownAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel(channelName), null);
   });
 
   setUp(() async {
@@ -85,6 +149,16 @@ void main() {
           ),
         );
 
+        // Seed legacy-only date to verify legacy columns persist while current completion remains false
+        await repo1.updateDailyTask(
+          dateBucket: '2026-09-26',
+          quranCompleted: true,
+          morningDhikrCompleted: true,
+          quranPagesRead: 4,
+          quranGoalPages: 4,
+        );
+
+        // Seed bare 2026-09-27 historical fallback row evidence
         await repo1.updateDailyTask(
           dateBucket: '2026-09-27',
           quranCompleted: true,
@@ -92,6 +166,20 @@ void main() {
           quranPagesRead: 4,
           quranGoalPages: 4,
         );
+        for (int p = 1; p <= 4; p++) {
+          await repo1.confirmQuranPage(
+            dateBucket: 'Asia/Riyadh|2026-09-27',
+            pageNumber: p,
+          );
+        }
+        for (final itemId in HisnDailyCatalog.morningItemIds) {
+          await repo1.setHisnDailyItemProgress(
+            dateBucket: 'Asia/Riyadh|2026-09-27',
+            period: DhikrPeriod.morning,
+            itemId: itemId,
+            isCompleted: true,
+          );
+        }
 
         final bookmarkId = await repo1.createBookmark(
           name: 'صفحة الحزب الأول',
@@ -136,12 +224,27 @@ void main() {
         expect(reopenedPrefs.quranDefaultGoal, 4);
         expect(reopenedPrefs.activeDhikrSessionId, 'session_active_01');
 
-        final dailyProgress = await repo2.getDailyProgress('2026-09-27');
+        // Verify legacy-only date has legacy evidence but current completion remains false
+        final legacyOnlyProgress = await repo2.getDailyProgress('2026-09-26');
+        expect(legacyOnlyProgress.legacyQuranCompleted, isTrue);
+        expect(legacyOnlyProgress.legacyMorningDhikrCompleted, isTrue);
+        expect(legacyOnlyProgress.legacyQuranPagesRead, 4);
+        expect(legacyOnlyProgress.quranGoalPages, 4);
+        expect(legacyOnlyProgress.quranCompleted, isFalse);
+        expect(legacyOnlyProgress.morningDhikrCompleted, isFalse);
+        expect(legacyOnlyProgress.completedTasksCount, 0);
+
+        final dailyProgress = await repo2.getDailyProgress('Asia/Riyadh|2026-09-27');
+        expect(dailyProgress.legacyQuranCompleted, isTrue);
+        expect(dailyProgress.legacyMorningDhikrCompleted, isTrue);
+        expect(dailyProgress.legacyQuranPagesRead, 4);
+        expect(dailyProgress.quranGoalPages, 4);
         expect(dailyProgress.quranCompleted, isTrue);
         expect(dailyProgress.morningDhikrCompleted, isTrue);
         expect(dailyProgress.eveningDhikrCompleted, isFalse);
         expect(dailyProgress.quranPagesRead, 4);
-        expect(dailyProgress.quranGoalPages, 4);
+        expect(dailyProgress.confirmedPages.length, 4);
+        expect(dailyProgress.morningCompletedCount, 22);
         expect(dailyProgress.completedTasksCount, 2);
 
         final bookmarks = await repo2.getBookmarks();
@@ -519,9 +622,27 @@ void main() {
           // Start 10 seconds before midnight Cairo time (23:59:50 Cairo = 20:59:50 UTC)
           DateTime simulatedNow = DateTime.utc(2026, 9, 26, 20, 59, 50);
           final container = ProviderContainer(
-            overrides: [clockProvider.overrideWithValue(() => simulatedNow)],
+            overrides: [
+              clockProvider.overrideWithValue(() => simulatedNow),
+              preferencesControllerProvider.overrideWith(
+                () => _FakeHydratedPreferencesController(
+                  const UserPreferences(
+                    selectedTimezone: 'Africa/Cairo',
+                    selectedCity: 'القاهرة',
+                  ),
+                ),
+              ),
+            ],
           );
 
+          // Assert no guessed bucket before preferences hydration
+          final unhydratedBucket = container.read(activeDateBucketProvider);
+          expect(unhydratedBucket, '');
+
+          // Flush microtasks to complete preferences hydration
+          async.flushMicrotasks();
+
+          // After hydration, date bucket is populated with Cairo timezone
           final initialBucket = container.read(activeDateBucketProvider);
           expect(initialBucket, 'Africa/Cairo|2026-09-26');
 
@@ -565,28 +686,24 @@ void main() {
         final cairoBucket = container.read(activeDateBucketProvider);
         expect(cairoBucket, 'Africa/Cairo|2026-09-27');
 
-        // 2. Complete Quran task in Cairo bucket
+        // 2. Complete Quran task in Cairo bucket by confirming 2 distinct pages (default goal = 2)
         await container
-            .read(dailyProgressControllerProvider(cairoBucket).notifier)
-            .toggleTask(quranCompleted: true);
+            .read(dailyQuranPagesControllerProvider(cairoBucket).notifier)
+            .confirmPage(1);
+        await container
+            .read(dailyQuranPagesControllerProvider(cairoBucket).notifier)
+            .confirmPage(2);
         final cairoProgress1 = await container.read(
           dailyProgressControllerProvider(cairoBucket).future,
         );
         expect(cairoProgress1.quranCompleted, isTrue);
+        expect(cairoProgress1.quranPagesRead, 2);
         expect(cairoProgress1.dailyDuaCompleted, isFalse);
 
         // 3. Switch city & timezone to Riyadh via preferencesControllerProvider
-        final currentPrefs = await container.read(
-          preferencesControllerProvider.future,
-        );
         await container
             .read(preferencesControllerProvider.notifier)
-            .updatePreferences(
-              currentPrefs.copyWith(
-                selectedCity: 'الرياض',
-                selectedTimezone: 'Asia/Riyadh',
-              ),
-            );
+            .setCity('الرياض', 'Asia/Riyadh');
 
         // 4. activeDateBucketProvider automatically updates to Riyadh on same calendar date
         final riyadhBucket = container.read(activeDateBucketProvider);
@@ -597,26 +714,27 @@ void main() {
           dailyProgressControllerProvider(riyadhBucket).future,
         );
         expect(riyadhProgress1.quranCompleted, isFalse);
+        expect(riyadhProgress1.dailyDuaCompleted, isFalse);
 
-        // 6. Complete Dua task in Riyadh bucket
+        // 6. Complete Dua task in Riyadh bucket with authentic Hisn ID 1
+        const riyadhDuaKey = DailySourceKey(
+          dateBucket: 'Asia/Riyadh|2026-09-27',
+          taskKey: DailySourceTasks.dailyDua,
+        );
         await container
-            .read(dailyProgressControllerProvider(riyadhBucket).notifier)
-            .toggleTask(dailyDuaCompleted: true);
+            .read(dailySourceConfirmationControllerProvider(riyadhDuaKey).notifier)
+            .setConfirmation(isCompleted: true, hisnItemId: 1);
         final riyadhProgress2 = await container.read(
           dailyProgressControllerProvider(riyadhBucket).future,
         );
         expect(riyadhProgress2.dailyDuaCompleted, isTrue);
+        expect(riyadhProgress2.dailyDuaItemId, 1);
         expect(riyadhProgress2.quranCompleted, isFalse);
 
         // 7. Switch back to Cairo
         await container
             .read(preferencesControllerProvider.notifier)
-            .updatePreferences(
-              currentPrefs.copyWith(
-                selectedCity: 'القاهرة',
-                selectedTimezone: 'Africa/Cairo',
-              ),
-            );
+            .setCity('القاهرة', 'Africa/Cairo');
 
         final returnedCairoBucket = container.read(activeDateBucketProvider);
         expect(returnedCairoBucket, 'Africa/Cairo|2026-09-27');
@@ -626,6 +744,7 @@ void main() {
           dailyProgressControllerProvider(cairoBucket).future,
         );
         expect(cairoProgressPreserved.quranCompleted, isTrue);
+        expect(cairoProgressPreserved.quranPagesRead, 2);
         expect(cairoProgressPreserved.dailyDuaCompleted, isFalse);
 
         // 9. Verify Riyadh progress also remains intact
@@ -633,6 +752,7 @@ void main() {
           dailyProgressControllerProvider(riyadhBucket).future,
         );
         expect(riyadhProgressPreserved.dailyDuaCompleted, isTrue);
+        expect(riyadhProgressPreserved.dailyDuaItemId, 1);
         expect(riyadhProgressPreserved.quranCompleted, isFalse);
 
         container.dispose();
@@ -661,18 +781,19 @@ void main() {
         final qualifiedProgress = await repo.getDailyProgress(
           'Africa/Cairo|2026-09-27',
         );
-        expect(qualifiedProgress.quranCompleted, isTrue);
-        expect(qualifiedProgress.dailyDuaCompleted, isTrue);
+        expect(qualifiedProgress.legacyQuranCompleted, isTrue);
+        expect(qualifiedProgress.legacyDailyDuaCompleted, isTrue);
+        expect(qualifiedProgress.isLegacyRecord, isTrue);
 
-        // Updating via qualified key updates the same legacy record
+        // Updating via qualified key updates the daily progress record
         await repo.updateDailyTask(
           dateBucket: 'Africa/Cairo|2026-09-27',
           morningDhikrCompleted: true,
         );
 
         final updated = await repo.getDailyProgress('Africa/Cairo|2026-09-27');
-        expect(updated.morningDhikrCompleted, isTrue);
-        expect(updated.quranCompleted, isTrue);
+        expect(updated.legacyMorningDhikrCompleted, isTrue);
+        expect(updated.legacyQuranCompleted, isTrue);
 
         await repo.close();
       },

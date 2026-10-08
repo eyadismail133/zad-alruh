@@ -1,7 +1,7 @@
 name: zad_alruh
 description: "Zad Alruh - Islamic Spiritual Companion"
 publish_to: "none"
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: ">=3.11.0 <4.0.0"
@@ -22,6 +22,8 @@ dependencies:
   adhan:
     path: third_party/adhan
   hijri: 3.0.1
+  just_audio: ^0.10.6
+  audio_session: ^0.2.4
 
 dev_dependencies:
   flutter_test:
@@ -50,6 +52,7 @@ flutter:
     - assets/content/cities/GEONAMES-LICENSE-README.txt
     - assets/content/hadith/hadith-enc-sahih.json
     - assets/content/hisn/hisn-muslim.json
+    - assets/audio/adhan/
 
   fonts:
     - family: IBM Plex Sans Arabic

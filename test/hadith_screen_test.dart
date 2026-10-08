@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:url_launcher_platform_interface/link.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
+import 'package:zad_alruh/src/core/theme/app_theme.dart';
 import 'package:zad_alruh/src/core/widgets/empty_state_view.dart';
 import 'package:zad_alruh/src/core/widgets/retryable_error_view.dart';
 import 'package:zad_alruh/src/features/hadith/data/hadith_repository_impl.dart';
@@ -18,6 +22,25 @@ class _TestAssetBundle extends Fake implements AssetBundle {
   Future<String> loadString(String key, {bool cache = true}) async => '';
 }
 
+class _FakeUrlLauncher extends UrlLauncherPlatform {
+  String? lastLaunchedUrl;
+  LaunchOptions? lastOptions;
+  bool returnSuccess = false;
+
+  @override
+  LinkDelegate? get linkDelegate => null;
+
+  @override
+  Future<bool> canLaunch(String url) async => true;
+
+  @override
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    lastLaunchedUrl = url;
+    lastOptions = options;
+    return returnSuccess;
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -25,11 +48,75 @@ void main() {
   late HadithRepository realRepository;
 
   setUpAll(() async {
+    // Assert font files exist and load Amiri Quran + all 4 weights of IBM Plex Sans Arabic
+    final amiriFile = File('assets/fonts/Amiri-Quran-Regular.ttf');
+    expect(await amiriFile.exists(), isTrue, reason: 'Amiri Quran font asset must exist');
+    final amiriBytes = await amiriFile.readAsBytes();
+    final fontLoaderAmiri = FontLoader('Amiri Quran');
+    fontLoaderAmiri.addFont(Future.value(ByteData.sublistView(amiriBytes)));
+    await fontLoaderAmiri.load();
+
+    final fontLoaderPlex = FontLoader('IBM Plex Sans Arabic');
+    for (final fontPath in [
+      'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
+      'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
+      'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
+      'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
+    ]) {
+      final f = File(fontPath);
+      expect(await f.exists(), isTrue, reason: '$fontPath font asset must exist');
+      final bytes = await f.readAsBytes();
+      fontLoaderPlex.addFont(Future.value(ByteData.sublistView(bytes)));
+    }
+    await fontLoaderPlex.load();
+
+    final flutterRoot = Platform.environment['FLUTTER_ROOT'] ?? 'D:/tools/flutter';
+    final iconFile = File('$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
+    ByteData iconData;
+    if (iconFile.existsSync()) {
+      final bytes = await iconFile.readAsBytes();
+      expect(bytes.isNotEmpty, isTrue, reason: 'MaterialIcons font file must not be empty');
+      iconData = ByteData.sublistView(bytes);
+    } else {
+      iconData = await rootBundle.load('fonts/MaterialIcons-Regular.otf');
+      expect(iconData.lengthInBytes, greaterThan(0), reason: 'MaterialIcons rootBundle font data must not be empty');
+    }
+    final fontLoaderIcons = FontLoader('MaterialIcons')
+      ..addFont(Future.value(iconData));
+    await fontLoaderIcons.load();
+
     final file = File('assets/content/hadith/hadith-enc-sahih.json');
     expect(await file.exists(), isTrue, reason: 'Hadith JSON asset must exist');
     realJsonBytes = await file.readAsBytes();
     realRepository = HadithRepositoryImpl.fromBytes(realJsonBytes);
   });
+
+  Widget buildTestApp({
+    required Widget child,
+    List<Override> overrides = const [],
+    MediaQueryData? mediaQuery,
+  }) {
+    Widget content = MaterialApp(
+      theme: AppTheme.lightTheme,
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      home: child,
+    );
+    if (mediaQuery != null) {
+      content = MediaQuery(
+        data: mediaQuery,
+        child: content,
+      );
+    }
+    return ProviderScope(
+      overrides: [
+        hadithRepositoryProvider.overrideWith((ref) => realRepository),
+        ...overrides,
+      ],
+      child: content,
+    );
+  }
 
   group('Hadith Corpus Integrity & Repository', () {
     test('bundled JSON parses exactly 3,213 authentic records with v1.7.0 metadata', () {
@@ -77,10 +164,14 @@ void main() {
       expect(res1, isNotEmpty);
       expect(res1.any((h) => h.id == 66541), isTrue);
 
-      // Search by exact ID
+      // Search by exact ID (Latin and Arabic-Indic)
       final res2 = realRepository.search('1751');
       expect(res2, isNotEmpty);
       expect(res2.first.id, 1751);
+
+      final res2Arabic = realRepository.search('١٧٥١');
+      expect(res2Arabic, isNotEmpty);
+      expect(res2Arabic.first.id, 1751);
 
       // Empty query returns all
       expect(realRepository.search('').length, 3213);
@@ -152,11 +243,13 @@ void main() {
 
   group('HadithScreen UI Presentation & Workflows', () {
     testWidgets('renders list with search field, total count header, and lazy items', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: HadithScreen(repository: realRepository),
-          ),
+        buildTestApp(
+          child: HadithScreen(repository: realRepository),
         ),
       );
       await tester.pumpAndSettle();
@@ -176,11 +269,13 @@ void main() {
     });
 
     testWidgets('search filters list, displays results count, and clearing restores all', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: HadithScreen(repository: realRepository),
-          ),
+        buildTestApp(
+          child: HadithScreen(repository: realRepository),
         ),
       );
       await tester.pumpAndSettle();
@@ -205,11 +300,13 @@ void main() {
     });
 
     testWidgets('empty search state shows EmptyStateView with guidance', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: HadithScreen(repository: realRepository),
-          ),
+        buildTestApp(
+          child: HadithScreen(repository: realRepository),
         ),
       );
       await tester.pumpAndSettle();
@@ -222,6 +319,10 @@ void main() {
     });
 
     testWidgets('tapping hadith card navigates to HadithDetailScreen with full text and attribution', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -230,10 +331,8 @@ void main() {
       });
 
       await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: HadithScreen(repository: realRepository),
-          ),
+        buildTestApp(
+          child: HadithScreen(repository: realRepository),
         ),
       );
       await tester.pumpAndSettle();
@@ -259,6 +358,10 @@ void main() {
     });
 
     testWidgets('SourcesScreen renders Hadith verified status and attribution card', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -267,8 +370,8 @@ void main() {
       });
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: SourcesScreen(bundle: _TestAssetBundle()),
+        buildTestApp(
+          child: SourcesScreen(bundle: _TestAssetBundle()),
         ),
       );
       await tester.pumpAndSettle();
@@ -284,10 +387,14 @@ void main() {
     });
 
     testWidgets('HadithScreen error state renders helpful Arabic message and retry control without leaking internal exception', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       var loadAttempts = 0;
 
       await tester.pumpWidget(
-        ProviderScope(
+        buildTestApp(
           overrides: [
             hadithRepositoryProvider.overrideWith((ref) async {
               loadAttempts++;
@@ -297,9 +404,7 @@ void main() {
               return realRepository;
             }),
           ],
-          child: const MaterialApp(
-            home: HadithScreen(),
-          ),
+          child: const HadithScreen(),
         ),
       );
       await tester.pumpAndSettle();
@@ -325,5 +430,165 @@ void main() {
       expect(find.text('3213 حديثاً صحيحاً'), findsOneWidget);
       expect(find.byType(RetryableErrorView), findsNothing);
     });
+
+    for (final size in const [Size(320, 480), Size(480, 320)]) {
+      testWidgets('HadithScreen and HadithDetailScreen render without overflow at ${size.width.toInt()}x${size.height.toInt()} textScale 2.0 with full source hadith 1751', (tester) async {
+        addTearDown(() async {
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+        });
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final fakeLauncher = _FakeUrlLauncher()..returnSuccess = false;
+        final originalLauncher = UrlLauncherPlatform.instance;
+        UrlLauncherPlatform.instance = fakeLauncher;
+        addTearDown(() {
+          UrlLauncherPlatform.instance = originalLauncher;
+        });
+
+        final clipboardLog = <MethodCall>[];
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+          clipboardLog.add(methodCall);
+          return null;
+        });
+
+        final hadith1751 = realRepository.allHadiths.firstWhere((h) => h.id == 1751);
+
+        // 1. Initial list view with 2.0 text scale
+        await tester.pumpWidget(
+          buildTestApp(
+            mediaQuery: MediaQueryData(
+              size: size,
+              textScaler: const TextScaler.linear(2.0),
+            ),
+            child: const HadithScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull, reason: 'Initial load at ${size.width.toInt()}x${size.height.toInt()} textScale 2.0 must not overflow');
+        expect(find.byType(HadithScreen), findsOneWidget);
+
+        // 2. Search for ١٧٥١ in Arabic-Indic digits
+        final searchField = find.byType(TextField);
+        expect(searchField, findsOneWidget);
+        await tester.enterText(searchField, '١٧٥١');
+        await tester.pumpAndSettle();
+
+        expect(find.text('#1751'), findsOneWidget);
+
+        // 3. Hit tap real card to navigate to HadithDetailScreen
+        await tester.tap(find.text('#1751'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull, reason: 'Navigation to HadithDetailScreen must not overflow');
+        expect(find.byType(HadithDetailScreen), findsOneWidget);
+
+        // 4. Assert actual detail MediaQuery textScaler 2.0 context
+        expect(
+          MediaQuery.textScalerOf(tester.element(find.byType(HadithDetailScreen))).scale(10),
+          20,
+        );
+
+        // 5. Initial grade / appbar / title checks on materialized top card
+        expect(find.text('حديث #1751'), findsOneWidget);
+        expect(find.text(hadith1751.grade), findsWidgets);
+        expect(find.text(hadith1751.title), findsOneWidget);
+
+        // 6. Test AppBar copy tooltip action 'نسخ رابط الحديث' copies EXACT hadith.link
+        final appBarCopyBtn = find.byTooltip('نسخ رابط الحديث');
+        expect(appBarCopyBtn.hitTestable(), findsOneWidget);
+        await tester.tap(appBarCopyBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('تم نسخ رابط الحديث بنجاح: ${hadith1751.link}'), findsOneWidget);
+        final firstCopyCall = clipboardLog.lastWhere((call) => call.method == 'Clipboard.setData');
+        expect((firstCopyCall.arguments as Map)['text'], hadith1751.link);
+
+        // Await snackbar duration so it dismisses and does not overlay bottom controls
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+
+        // 7. Bounded measured ListView margin drag helper (no ensureVisible/jumpTo/hardcoded geometry)
+        final listRect = tester.getRect(find.byType(ListView).first);
+        Future<void> scrollUntilVisible(Finder targetFinder, {int maxDrags = 40, double delta = -120.0}) async {
+          for (int i = 0; i < maxDrags; i++) {
+            if (targetFinder.hitTestable().evaluate().isNotEmpty) return;
+            if (targetFinder.evaluate().isNotEmpty) {
+              final center = tester.getCenter(targetFinder.first);
+              if (center.dy >= listRect.top + 10 && center.dy <= listRect.bottom - 10) return;
+            }
+            await tester.dragFrom(Offset(listRect.left + 4, listRect.center.dy), Offset(0, delta));
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull, reason: 'No RenderFlex overflow during bounded drag towards $targetFinder (step $i)');
+          }
+          expect(targetFinder.hitTestable(), findsWidgets, reason: 'Target $targetFinder must be hit-testable within bounded margin drags');
+        }
+
+        // 8. Progressively scroll to actual canonical hadith1751.hadithText and assert FULL original text
+        final hadithTextFinder = find.text(hadith1751.hadithText);
+        await scrollUntilVisible(hadithTextFinder);
+        expect(hadithTextFinder.hitTestable(), findsOneWidget);
+        expect(find.text(hadith1751.hadithText), findsOneWidget);
+
+        // 9. Scroll to التخريج والمصدر header (hit) and actual hadith1751.takhrij finder/assert
+        final takhrijHeader = find.text('التخريج والمصدر');
+        await scrollUntilVisible(takhrijHeader);
+        expect(takhrijHeader.hitTestable(), findsOneWidget);
+
+        final takhrijTextFinder = find.text(hadith1751.takhrij);
+        await scrollUntilVisible(takhrijTextFinder);
+        expect(takhrijTextFinder.hitTestable(), findsOneWidget);
+        expect(find.text(hadith1751.takhrij), findsOneWidget);
+
+        // 10. Scroll to source header and assert provenance URLs
+        final sourceHeader = find.text('المصدر والتوثيق');
+        await scrollUntilVisible(sourceHeader);
+        expect(sourceHeader.hitTestable(), findsOneWidget);
+        expect(find.textContaining('HadeethEnc.com'), findsWidgets);
+        expect(find.textContaining(hadith1751.link), findsWidgets);
+
+        // 11. Actually hit 'فتح في المتصفح' with SDK launcher returning false then stable fallback
+        final openUrlButton = find.text('فتح في المتصفح');
+        await scrollUntilVisible(openUrlButton);
+        expect(openUrlButton.hitTestable(), findsOneWidget);
+        await tester.tap(openUrlButton);
+        await tester.pumpAndSettle();
+
+        expect(fakeLauncher.lastLaunchedUrl, hadith1751.link);
+        expect(find.text('تعذر فتح الرابط في المتصفح الخارجي.'), findsOneWidget);
+
+        // 12. Existing SnackBar 'نسخ الرابط' action copies exact URL
+        final snackBarCopyAction = find.widgetWithText(SnackBarAction, 'نسخ الرابط');
+        expect(snackBarCopyAction, findsOneWidget);
+        await tester.tap(snackBarCopyAction);
+        await tester.pumpAndSettle();
+
+        expect(find.text('تم نسخ رابط الحديث بنجاح: ${hadith1751.link}'), findsOneWidget);
+        final fallbackCopyCall = clipboardLog.lastWhere((call) => call.method == 'Clipboard.setData');
+        expect((fallbackCopyCall.arguments as Map)['text'], hadith1751.link);
+
+        // Await snackbar duration so it dismisses and does not overlay the footer button
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+
+        // 13. Source card footer button 'نسخ الرابط' copies exact URL
+        final footerCopyButton = find.widgetWithText(OutlinedButton, 'نسخ الرابط');
+        await scrollUntilVisible(footerCopyButton);
+        expect(footerCopyButton.hitTestable(), findsOneWidget);
+        await tester.tap(footerCopyButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text('تم نسخ رابط الحديث بنجاح: ${hadith1751.link}'), findsOneWidget);
+        final footerCopyCall = clipboardLog.lastWhere((call) => call.method == 'Clipboard.setData');
+        expect((footerCopyCall.arguments as Map)['text'], hadith1751.link);
+      });
+    }
   });
 }

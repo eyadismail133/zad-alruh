@@ -2,59 +2,161 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
+import '../../hisn/domain/models/hisn_daily_catalog.dart';
+import '../../hisn/presentation/daily/daily_dua_screen.dart';
+import '../../hisn/presentation/daily/daily_hisn_checklist_screen.dart';
+import '../../hisn/presentation/daily/post_prayer_daily_screen.dart';
 import '../../more/presentation/settings_screen.dart';
 import '../../prayer/domain/models/prayer_day.dart';
 import '../../prayer/domain/models/prayer_event.dart';
 import '../../prayers/presentation/controllers/prayers_controller.dart';
+import '../../progress/data/models/daily_progress.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
 import '../../quran/presentation/controllers/quran_navigation_controller.dart';
+import '../../quran/presentation/quran_reader_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateTab;
 
   const HomeScreen({super.key, this.onNavigateTab});
 
-  Future<void> _toggleTask(
+  void _navigateToQuranReader(BuildContext context, WidgetRef ref, int page) {
+    ref.read(quranNavigationProvider.notifier).openReader(page);
+    if (onNavigateTab != null) {
+      onNavigateTab!(1);
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => QuranReaderScreen(initialPage: page),
+        ),
+      );
+    }
+  }
+
+  void _showQuranGoalDialog(
     BuildContext context,
     WidgetRef ref,
-    String today, {
-    bool? quranCompleted,
-    bool? dailyDuaCompleted,
-  }) async {
-    try {
-      await ref
-          .read(dailyProgressControllerProvider(today).notifier)
-          .toggleTask(
-            quranCompleted: quranCompleted,
-            dailyDuaCompleted: dailyDuaCompleted,
-          );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red.shade800,
-            content: const Text('تعذر حفظ التقدم اليومي.'),
-            action: SnackBarAction(
-              label: 'إعادة المحاولة',
-              textColor: Colors.white,
-              onPressed: () => _toggleTask(
-                context,
-                ref,
-                today,
-                quranCompleted: quranCompleted,
-                dailyDuaCompleted: dailyDuaCompleted,
+    int currentGoal,
+  ) {
+    int selectedGoal = currentGoal;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Text('تحديد هدف القراءة اليومي'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'اختر عدد الصفحات المستهدف قراءتها يومياً (١ إلى ٦٠٤ صفحات):',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: selectedGoal > 1
+                            ? () => setDialogState(() => selectedGoal--)
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkCardBorder : AppColors.forestSoftTint,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                          ),
+                        ),
+                        child: Text(
+                          '$selectedGoal ${selectedGoal == 1 ? 'صفحة' : selectedGoal == 2 ? 'صفحتان' : selectedGoal <= 10 ? 'صفحات' : 'صفحة'}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: selectedGoal < 604
+                            ? () => setDialogState(() => selectedGoal++)
+                            : null,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [2, 4, 8, 10, 20].map((quick) {
+                      return ChoiceChip(
+                        label: Text('$quick'),
+                        selected: selectedGoal == quick,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setDialogState(() => selectedGoal = quick);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
-            ),
-          ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await ref
+                          .read(preferencesControllerProvider.notifier)
+                          .setQuranGoal(selectedGoal);
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.red.shade800,
+                            content: const Text('تعذر حفظ هدف القراءة.'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('حفظ الهدف'),
+                ),
+              ],
+            );
+          },
         );
-      }
-    }
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final readingAsync = ref.watch(readingProgressControllerProvider);
-    final today = ref.watch(activeDateBucketProvider);
+    final readiness = ref.watch(dateReadinessProvider);
+    final today = readiness.isReady
+        ? readiness.activeBucket!
+        : ref.watch(activeDateBucketProvider);
     final dailyAsync = ref.watch(dailyProgressControllerProvider(today));
     final prayerStateAsync = ref.watch(prayerTimesControllerProvider);
 
@@ -151,8 +253,8 @@ class HomeScreen extends ConsumerWidget {
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: isDark
-                                ? AppColors.darkGoldAccent
-                                : AppColors.goldDark,
+                              ? AppColors.darkGoldAccent
+                              : AppColors.goldDark,
                           ),
                         ),
                       ],
@@ -236,10 +338,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                           ),
                           onPressed: () {
-                            ref
-                                .read(quranNavigationProvider.notifier)
-                                .openReader(reading.lastPage);
-                            onNavigateTab?.call(1);
+                            _navigateToQuranReader(context, ref, reading.lastPage);
                           },
                           child: const Text(
                             'كمّل وِردك  ←',
@@ -278,169 +377,190 @@ class HomeScreen extends ConsumerWidget {
 
               const SizedBox(height: 14),
 
-              // Daily 5-Task Card
-              dailyAsync.when(
-                data: (daily) {
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkSurface
-                          : AppColors.cardSurface,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: isDark
-                            ? AppColors.darkCardBorder
-                            : AppColors.cardBorder,
+              // Daily 5-Task Card (Truthful Source-Based Progress)
+              Builder(
+                builder: (context) {
+                  if (readiness.isLoading) {
+                    return Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (readiness.hasError) {
+                    return RetryableErrorView(
+                      message: 'تعذر تهيئة التاريخ والمنطقة الزمنية المعتمدة.',
+                      onRetry: () => ref.refresh(preferencesControllerProvider),
+                    );
+                  }
+
+                  return dailyAsync.when(
+                    data: (daily) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkSurface
+                              : AppColors.cardSurface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.darkCardBorder
+                                : AppColors.cardBorder,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'إنجازك اليوم',
-                                    style: TextStyle(
-                                      fontSize: 10,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'إنجازك اليوم (${formatDisplayDate(today)})',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isDark
+                                              ? AppColors.darkTextMuted
+                                              : AppColors.textMuted,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'القرآن والأذكار اليومية',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark
+                                              ? AppColors.darkTextPrimary
+                                              : AppColors.textDark,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Completion Ring / Badge
+                                Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
                                       color: isDark
-                                          ? AppColors.darkTextMuted
-                                          : AppColors.textMuted,
+                                          ? AppColors.darkGoldAccent
+                                          : AppColors.goldAccent,
+                                      width: 3.5,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'القرآن والأذكار',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark
-                                          ? AppColors.darkTextPrimary
-                                          : AppColors.textDark,
+                                  child: Center(
+                                    child: Text(
+                                      '${daily.completionPercentage}٪',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? AppColors.darkGoldAccent
+                                            : AppColors.forestPrimary,
+                                      ),
                                     ),
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // Meter Bar
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: daily.completionRatio,
+                                minHeight: 6,
+                                backgroundColor: isDark
+                                    ? AppColors.darkCardBorder
+                                    : const Color(0xFFD9DFCC),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  isDark
+                                      ? AppColors.darkForestPrimary
+                                      : AppColors.forestLight,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            // Completion Ring / Badge
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark
-                                      ? AppColors.darkGoldAccent
-                                      : AppColors.goldAccent,
-                                  width: 3.5,
-                                ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${daily.completedTasksCount} من ٥ خطوات يومية مكتملة',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark
+                                    ? AppColors.darkTextMuted
+                                    : AppColors.textSubtle,
                               ),
-                              child: Center(
-                                child: Text(
-                                  '${daily.completionPercentage}٪',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? AppColors.darkGoldAccent
-                                        : AppColors.forestPrimary,
-                                  ),
-                                ),
-                              ),
+                            ),
+                            const Divider(height: 18),
+
+                            // 5 Working Routes Task Rows
+                            // Task 1: Quran Reading
+                            _buildQuranTaskRow(
+                              daily: daily,
+                              readingPage: readingAsync.valueOrNull?.lastPage ?? 1,
+                              isDark: isDark,
+                              context: context,
+                              ref: ref,
+                            ),
+
+                            // Task 2: Morning Dhikr (22 items)
+                            _buildMorningDhikrTaskRow(
+                              daily: daily,
+                              isDark: isDark,
+                              context: context,
+                            ),
+
+                            // Task 3: Evening Dhikr (20 items)
+                            _buildEveningDhikrTaskRow(
+                              daily: daily,
+                              isDark: isDark,
+                              context: context,
+                            ),
+
+                            // Task 4: Post-Prayer Dhikr (Chapter 25)
+                            _buildPostPrayerTaskRow(
+                              daily: daily,
+                              isDark: isDark,
+                              context: context,
+                            ),
+
+                            // Task 5: Daily Dua (Hisn al-Muslim)
+                            _buildDailyDuaTaskRow(
+                              daily: daily,
+                              isDark: isDark,
+                              context: context,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        // Meter Bar
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: daily.completionRatio,
-                            minHeight: 6,
-                            backgroundColor: isDark
-                                ? AppColors.darkCardBorder
-                                : const Color(0xFFD9DFCC),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              isDark
-                                  ? AppColors.darkForestPrimary
-                                  : AppColors.forestLight,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${daily.completedTasksCount} من ٥ خطوات يومية مكتملة',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isDark
-                                ? AppColors.darkTextMuted
-                                : AppColors.textSubtle,
-                          ),
-                        ),
-                        const Divider(height: 18),
-                        // 5 Independent Tasks Checklist
-                        _buildTaskCheckbox(
-                          title: 'وِرد القرآن (${daily.quranGoalPages} صفحات)',
-                          value: daily.quranCompleted,
-                          onChanged: (val) {
-                            _toggleTask(
-                              context,
-                              ref,
-                              today,
-                              quranCompleted: val,
-                            );
-                          },
-                          isDark: isDark,
-                        ),
-                        _buildTaskCheckbox(
-                          title: 'أذكار الصباح (تُحتسب آلياً مع اكتمال الورد)',
-                          value: daily.morningDhikrCompleted,
-                          onChanged: null,
-                          isDark: isDark,
-                        ),
-                        _buildTaskCheckbox(
-                          title: 'أذكار المساء (تُحتسب آلياً مع اكتمال الورد)',
-                          value: daily.eveningDhikrCompleted,
-                          onChanged: null,
-                          isDark: isDark,
-                        ),
-                        _buildTaskCheckbox(
-                          title:
-                              'أذكار بعد الصلاة (تُحتسب آلياً مع اكتمال الورد)',
-                          value: daily.postPrayerDhikrCompleted,
-                          onChanged: null,
-                          isDark: isDark,
-                        ),
-                        _buildTaskCheckbox(
-                          title: 'دعاء اليوم',
-                          value: daily.dailyDuaCompleted,
-                          onChanged: (val) {
-                            _toggleTask(
-                              context,
-                              ref,
-                              today,
-                              dailyDuaCompleted: val,
-                            );
-                          },
-                          isDark: isDark,
-                        ),
-                      ],
+                      );
+                    },
+                    loading: () => Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (err, _) => RetryableErrorView(
+                      message: 'تعذر تحميل التقدم اليومي.',
+                      onRetry: () => ref
+                          .read(dailyProgressControllerProvider(today).notifier)
+                          .retry(),
                     ),
                   );
                 },
-                loading: () => const SizedBox.shrink(),
-                error: (err, _) => RetryableErrorView(
-                  message: err.toString(),
-                  onRetry: () => ref
-                      .read(dailyProgressControllerProvider(today).notifier)
-                      .retry(),
-                ),
               ),
 
               const SizedBox(height: 14),
@@ -884,45 +1004,305 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTaskCheckbox({
-    required String title,
-    required bool value,
-    required ValueChanged<bool>? onChanged,
+  Widget _buildQuranTaskRow({
+    required DailyProgress daily,
+    required int readingPage,
     required bool isDark,
+    required BuildContext context,
+    required WidgetRef ref,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        children: [
-          SizedBox(
-            height: 24,
-            width: 24,
-            child: Checkbox(
-              value: value,
-              activeColor: isDark
-                  ? AppColors.darkForestPrimary
-                  : AppColors.forestPrimary,
-              onChanged: onChanged == null
-                  ? null
-                  : (val) {
-                      if (val != null) onChanged(val);
-                    },
+    return InkWell(
+      key: const Key('home_task_quran'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => _navigateToQuranReader(context, ref, readingPage),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+        child: Row(
+          children: [
+            Icon(
+              daily.quranCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 20,
+              color: daily.quranCompleted
+                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 11,
-                color: value
-                    ? (isDark ? AppColors.darkTextMuted : AppColors.textSubtle)
-                    : (isDark ? AppColors.darkTextPrimary : AppColors.textDark),
-                decoration: value ? TextDecoration.lineThrough : null,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'وِرد القرآن (${daily.quranPagesRead} من ${daily.quranGoalPages} صفحات)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                      decoration: daily.quranCompleted ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  Text(
+                    daily.quranCompleted ? 'مكتمل بحمد الله' : 'اضغط للمتابعة والقراءة في المصحف',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
+                ],
               ),
             ),
+            IconButton(
+              key: const Key('home_task_quran_goal_button'),
+              icon: const Icon(Icons.tune, size: 16),
+              tooltip: 'تعديل الهدف اليومي',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _showQuranGoalDialog(context, ref, daily.quranGoalPages),
+            ),
+            const Icon(Icons.chevron_left, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMorningDhikrTaskRow({
+    required DailyProgress daily,
+    required bool isDark,
+    required BuildContext context,
+  }) {
+    return InkWell(
+      key: const Key('home_task_morning_dhikr'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => const DailyHisnChecklistScreen(period: DhikrPeriod.morning),
           ),
-        ],
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+        child: Row(
+          children: [
+            Icon(
+              daily.morningDhikrCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 20,
+              color: daily.morningDhikrCompleted
+                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'أذكار الصباح (${daily.morningCompletedCount} من ${HisnDailyCatalog.morningTotalCount} ذكراً)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                      decoration: daily.morningDhikrCompleted ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  Text(
+                    daily.morningDhikrCompleted
+                        ? 'مكتملة بحمد الله'
+                        : 'اضغط لفتح قائمة أذكار الصباح الموثقة',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEveningDhikrTaskRow({
+    required DailyProgress daily,
+    required bool isDark,
+    required BuildContext context,
+  }) {
+    return InkWell(
+      key: const Key('home_task_evening_dhikr'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => const DailyHisnChecklistScreen(period: DhikrPeriod.evening),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+        child: Row(
+          children: [
+            Icon(
+              daily.eveningDhikrCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 20,
+              color: daily.eveningDhikrCompleted
+                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'أذكار المساء (${daily.eveningCompletedCount} من ${HisnDailyCatalog.eveningTotalCount} ذكراً)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                      decoration: daily.eveningDhikrCompleted ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  Text(
+                    daily.eveningDhikrCompleted
+                        ? 'مكتملة بحمد الله'
+                        : 'اضغط لفتح قائمة أذكار المساء الموثقة',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostPrayerTaskRow({
+    required DailyProgress daily,
+    required bool isDark,
+    required BuildContext context,
+  }) {
+    return InkWell(
+      key: const Key('home_task_post_prayer'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => const PostPrayerDailyScreen(),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+        child: Row(
+          children: [
+            Icon(
+              daily.postPrayerDhikrCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 20,
+              color: daily.postPrayerDhikrCompleted
+                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'أذكار بعد الصلاة (الباب ٢٥)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                      decoration: daily.postPrayerDhikrCompleted ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  Text(
+                    daily.postPrayerDhikrCompleted
+                        ? 'مسجلة بحمد الله'
+                        : 'اضغط لفتح أذكار بعد الصلاة من حصن المسلم',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDailyDuaTaskRow({
+    required DailyProgress daily,
+    required bool isDark,
+    required BuildContext context,
+  }) {
+    final hasChosen = daily.dailyDuaItemId != null;
+    final isDone = daily.dailyDuaCompleted;
+
+    return InkWell(
+      key: const Key('home_task_daily_dua'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => const DailyDuaScreen(),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+        child: Row(
+          children: [
+            Icon(
+              isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 20,
+              color: isDone
+                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'دعاء اليوم (حصن المسلم)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                      decoration: isDone ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  Text(
+                    hasChosen
+                        ? (isDone ? 'ذكر #${daily.dailyDuaItemId} (مكتمل بحمد الله)' : 'ذكر #${daily.dailyDuaItemId} (بانتظار القراءة)')
+                        : 'اضغط لاختيار وقراءة دعاء اليوم من حصن المسلم',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left, size: 18),
+          ],
+        ),
       ),
     );
   }

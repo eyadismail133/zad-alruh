@@ -241,8 +241,8 @@ class HisnRepositoryImpl implements HisnRepository {
       return allItems;
     }
 
-    // Direct ID lookup if user typed pure number
-    final intQuery = int.tryParse(trimmed);
+    // Direct ID lookup if user typed pure number (ASCII, Arabic-Indic, or Persian digits)
+    final intQuery = ArabicNormalizer.parseArabicInt(trimmed) ?? int.tryParse(trimmed);
     if (intQuery != null && _byId.containsKey(intQuery)) {
       final direct = _byId[intQuery]!;
       final result = <HisnItem>[direct];

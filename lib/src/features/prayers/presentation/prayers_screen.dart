@@ -5,20 +5,67 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../../../core/widgets/retryable_error_view.dart';
 import '../../more/presentation/settings_screen.dart';
+import '../../prayer/domain/models/adhan_voice.dart';
 import '../../prayer/domain/models/prayer_event.dart';
+import '../../prayer/presentation/controllers/prayer_notification_controller.dart';
+import '../../progress/data/models/user_preferences.dart';
+import '../../progress/presentation/controllers/progress_controller.dart';
+import 'controllers/adhan_audio_controller.dart';
 import 'controllers/prayers_controller.dart';
+import 'widgets/city_search_picker_dialog.dart';
 
-class PrayersScreen extends ConsumerWidget {
+class PrayersScreen extends ConsumerStatefulWidget {
   const PrayersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrayersScreen> createState() => _PrayersScreenState();
+}
+
+class _PrayersScreenState extends ConsumerState<PrayersScreen> {
+  late AdhanAudioController _audioController;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _audioController = ref.read(adhanAudioControllerProvider.notifier);
+  }
+
+  @override
+  void dispose() {
+    _audioController.stop().catchError((_) {});
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final prayerStateAsync = ref.watch(prayerTimesControllerProvider);
+    final prefs = ref.watch(preferencesControllerProvider).valueOrNull;
+    final audioState = ref.watch(adhanAudioControllerProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('مواقيت الصلاة'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.volume_up_outlined),
+            tooltip: 'أصوات الأذان وتجربة الاستماع',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: prayerStateAsync.when(
@@ -34,14 +81,15 @@ class PrayersScreen extends ConsumerWidget {
                       cityName: state.unsupportedCity ?? 'غير محدد',
                       timezone: state.unsupportedTimezone ?? 'غير محدد',
                       isDark: isDark,
+                      cityId: null,
                     ),
                     const SizedBox(height: 24),
                     EmptyStateView(
                       icon: Icons.location_off_outlined,
-                      statusTag: 'مدينة غير مدعومة',
-                      title: 'المدينة المحددة غير مدعومة حالياً',
+                      statusTag: 'مدينة غير محددة',
+                      title: 'المدينة المحددة غير مطابقة لقاعدة البيانات',
                       message:
-                          'المدينة المحددة «${state.unsupportedCity}» بمنطقتها الزمنية «${state.unsupportedTimezone}» غير متطابقة مع المدن الثماني المعتمدة حالياً في حساب المواقيت الفلكية الدقيقة. يرجى اختيار إحدى المدن المدعومة من شاشة الإعدادات.',
+                          'المدينة المحددة «${state.unsupportedCity}» بمنطقتها الزمنية «${state.unsupportedTimezone}» غير متطابقة مع قاعدة بيانات المدن المعتمدة. يرجى اختيار مدينة من قاعدة البيانات.',
                       action: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isDark
@@ -56,17 +104,17 @@ class PrayersScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const SettingsScreen(),
-                            ),
-                          );
+                        onPressed: () async {
+                          final picked = await CitySearchPickerDialog.show(context);
+                          if (picked != null && context.mounted) {
+                            await ref
+                                .read(preferencesControllerProvider.notifier)
+                                .setSelectedCity(picked);
+                          }
                         },
-                        icon: const Icon(Icons.tune, size: 18),
+                        icon: const Icon(Icons.search, size: 18),
                         label: const Text(
-                          'فتح الإعدادات لاختيار مدينة مدعومة',
+                          'اختيار مدينة من قاعدة البيانات',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -92,6 +140,16 @@ class PrayersScreen extends ConsumerWidget {
                     context: context,
                     cityName: city.arabicName ?? city.name,
                     timezone: city.timezone,
+                    isDark: isDark,
+                    cityId: city.id,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Calculation Method Banner
+                  _buildCalculationMethodCard(
+                    context: context,
+                    state: state,
                     isDark: isDark,
                   ),
 
@@ -235,6 +293,18 @@ class PrayersScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                   ],
 
+                  // Adhan Audio Voice & Preview Info Card
+                  _buildAdhanAudioCard(
+                    context: context,
+                    generalVoiceId: prefs?.generalAdhanVoice ?? 'adam',
+                    fajrVoiceId: prefs?.fajrAdhanVoice ?? 'malmo_fajr',
+                    audioState: audioState,
+                    isDark: isDark,
+                    preferences: prefs,
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Context & Meta Details Card
                   _buildContextDetailsCard(
                     state: state,
@@ -266,6 +336,7 @@ class PrayersScreen extends ConsumerWidget {
     required String cityName,
     required String timezone,
     required bool isDark,
+    int? cityId,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -330,15 +401,31 @@ class PrayersScreen extends ConsumerWidget {
                   foregroundColor: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 ),
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  final picked = await CitySearchPickerDialog.show(
                     context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SettingsScreen(),
-                    ),
+                    currentCityId: cityId,
                   );
+                  if (picked != null && context.mounted) {
+                    try {
+                      await ref
+                          .read(preferencesControllerProvider.notifier)
+                          .setSelectedCity(picked);
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.red.shade800,
+                            content: const Text(
+                              'تعذر حفظ المدينة المختارة. يرجى إعادة المحاولة.',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  }
                 },
-                icon: const Icon(Icons.tune, size: 15),
+                icon: const Icon(Icons.search, size: 15),
                 label: const Text(
                   'تغيير',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
@@ -347,6 +434,76 @@ class PrayersScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCalculationMethodCard({
+    required BuildContext context,
+    required PrayerState state,
+    required bool isDark,
+  }) {
+    final effective = state.effectiveSettings;
+    final methodName = state.calculationMethodArabicName;
+    final isCustomOverride = effective != null &&
+        effective.settings.calculationMethod !=
+            effective.city.defaultCalculationMethod;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.darkSurface.withAlpha(120)
+            : AppColors.forestSoftTint.withAlpha(40),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.tune,
+            size: 16,
+            color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$methodName${isCustomOverride ? " (تخصيص يدوي)" : " (افتراضي المدينة)"}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.darkTextMuted : AppColors.forestMedium,
+              ),
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+            child: Text(
+              'ضبط',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color:
+                    isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -457,36 +614,86 @@ class PrayersScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: heroConstraints.maxWidth),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(35),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.notifications_off_outlined,
-                        size: 12,
-                        color: Colors.white70,
+              Builder(
+                builder: (context) {
+                  final notifState = ref.watch(prayerNotificationStateProvider);
+                  final IconData notifIcon;
+                  final Color notifColor;
+                  final String notifText;
+
+                  switch (notifState.status) {
+                    case PrayerNotificationStatus.activeExact:
+                      notifIcon = Icons.notifications_active_outlined;
+                      notifColor = Colors.white;
+                      final countText = notifState.acceptedScheduledCount != null
+                          ? '${notifState.acceptedScheduledCount} موعد مجدول'
+                          : '${notifState.plannedFutureEventsCount} موعد مخطط';
+                      notifText =
+                          'تنبيه الأذان الدقيق مفعّل ($countText)';
+                      break;
+                    case PrayerNotificationStatus.activeInexact:
+                      notifIcon = Icons.notifications_outlined;
+                      notifColor = isDark
+                          ? AppColors.darkGoldAccent
+                          : AppColors.goldAccent;
+                      final countText = notifState.acceptedScheduledCount != null
+                          ? ' (${notifState.acceptedScheduledCount} موعد تقريبي)'
+                          : '';
+                      notifText = 'تنبيه الأذان مفعّل بتوقيت تقريبي$countText';
+                      break;
+                    case PrayerNotificationStatus.recoveryRequired:
+                      notifIcon = Icons.warning_amber_rounded;
+                      notifColor = Colors.amber.shade300;
+                      notifText = 'تنبيهات الأذان تتطلب التأكيد في الإعدادات';
+                      break;
+                    case PrayerNotificationStatus.permissionDenied:
+                      notifIcon = Icons.notifications_paused_outlined;
+                      notifColor = Colors.white70;
+                      notifText = 'إذن الإشعارات متوقف في النظام';
+                      break;
+                    default:
+                      notifIcon = Icons.notifications_off_outlined;
+                      notifColor = Colors.white70;
+                      notifText = 'التنبيهات التلقائية غير مفعّلة حالياً';
+                      break;
+                  }
+
+                  return ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxWidth: heroConstraints.maxWidth),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                      SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'التنبيهات التلقائية غير مفعّلة حالياً',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.white70,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(35),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            notifIcon,
+                            size: 12,
+                            color: notifColor,
                           ),
-                        ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              notifText,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: notifColor,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ],
           );
@@ -755,6 +962,230 @@ class PrayersScreen extends ConsumerWidget {
               color: isDark ? AppColors.darkTextMuted : AppColors.textSubtle,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdhanAudioCard({
+    required BuildContext context,
+    required String generalVoiceId,
+    required String fajrVoiceId,
+    required AdhanAudioState audioState,
+    required bool isDark,
+    UserPreferences? preferences,
+  }) {
+    final generalVoice = AdhanVoice.findById(generalVoiceId) ?? AdhanVoice.adam;
+    final fajrVoice = AdhanVoice.findById(fajrVoiceId) ?? AdhanVoice.malmoFajr;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.volume_up_outlined,
+                size: 18,
+                color:
+                    isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'تسجيلات الأذان المتوفرة',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color:
+                        isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.tune, size: 14),
+                label: const Text(
+                  'تغيير الأصوات',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (preferences?.voiceRecoveryNotice == true) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.amber.shade900.withAlpha(50)
+                    : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDark
+                      ? AppColors.darkGoldAccent
+                      : Colors.amber.shade700,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: isDark
+                        ? AppColors.darkGoldAccent
+                        : Colors.amber.shade800,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text(
+                      'تمت استعادة أصوات الأذان الافتراضية لعدم صلاحية الاختيار المحفوظ سابقاً.',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          Text(
+            '• الصلوات العامة: ${generalVoice.nameAr} (${generalVoice.title})',
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.4,
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '• أذان الفجر: ${fajrVoice.nameAr} (${fajrVoice.title})',
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.4,
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+            ),
+          ),
+          if (audioState.status == AdhanAudioStatus.error &&
+              audioState.errorMessage != null) ...[
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.shade900.withAlpha(40),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade700),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      audioState.errorMessage!,
+                      style: const TextStyle(fontSize: 10, color: Colors.red),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 14),
+                    onPressed: () => _audioController.stop().catchError((_) {}),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (audioState.isPlaying || audioState.isLoading) ...[
+            const Divider(height: 16),
+            Row(
+              children: [
+                Icon(
+                  audioState.isLoading
+                      ? Icons.hourglass_top_rounded
+                      : Icons.graphic_eq_rounded,
+                  size: 18,
+                  color: isDark
+                      ? AppColors.darkGoldAccent
+                      : AppColors.forestPrimary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'جاري الاستماع: ${AdhanVoice.findById(audioState.activeVoiceId ?? '')?.nameAr ?? ''} (${_formatDuration(audioState.position)} / ${_formatDuration(audioState.totalDuration)})',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textDark,
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                     backgroundColor: Colors.red.shade700,
+                     foregroundColor: Colors.white,
+                     padding:
+                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                  icon: const Icon(Icons.stop_rounded, size: 16),
+                  label: const Text('إيقاف', style: TextStyle(fontSize: 11)),
+                  onPressed: () {
+                    _audioController.stop().catchError((_) {});
+                  },
+                ),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                  icon: const Icon(Icons.play_circle_outline, size: 16),
+                  label: const Text(
+                    'معاينة أذان الصلوات العامة',
+                    style: TextStyle(fontSize: 10.5),
+                  ),
+                  onPressed: () {
+                    _audioController.playVoice(generalVoice);
+                  },
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                  icon: const Icon(Icons.play_circle_outline, size: 16),
+                  label: const Text(
+                    'معاينة أذان الفجر',
+                    style: TextStyle(fontSize: 10.5),
+                  ),
+                  onPressed: () {
+                    _audioController.playVoice(fajrVoice);
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

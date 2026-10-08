@@ -216,12 +216,121 @@
       }
     },
     "adhan_audio": {
-      "status": "missing",
+      "status": "bundled",
       "expected_voices_count": 3,
-      "voices": [],
-      "notification_clips": [],
-      "rights_status": "pending_licensing",
-      "blocker_reason": "Owner has no audio recordings or bundling licenses. Real performer names, 3 distinct voices including Fajr, and permitted short excerpt rights are pending."
+      "rights_status": "licensed_free_content",
+      "evidence_doc": "docs/sources/ADHAN_AUDIO.md",
+      "total_full_audio_bytes": 6268520,
+      "total_alert_clip_bytes": 3572334,
+      "voices": [
+        {
+          "id": "adam",
+          "is_fajr": false,
+          "name_ar": "أذان (تسجيل عام)",
+          "title": "Beautiful adhan",
+          "performer_or_source": "Adam-synagda",
+          "license": "Creative Commons CC0 1.0 Universal",
+          "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+          "source_url": "https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg",
+          "audio_file": {
+            "path": "assets/audio/adhan/adam-converted.mp3",
+            "sha256": "c3fa9ae67d8cf65474dec44194d8b6a76c2f04ef188c916cf9c4dd6f8eb28dc7",
+            "bytes": 1848886,
+            "format": "mp3",
+            "duration_seconds": 154
+          },
+          "alert_clip": {
+            "path": "assets/audio/adhan/adam-alert.wav",
+            "sha256": "de9c50bbf6dbaa6b6d4d6306bdafe2fcfa1139372701859e7b1359f802559c01",
+            "bytes": 1190778,
+            "format": "wav",
+            "codec": "pcm_s16le",
+            "sample_rate": 22050,
+            "channels": 1,
+            "duration_seconds": 27.0
+          }
+        },
+        {
+          "id": "atcovi",
+          "is_fajr": false,
+          "name_ar": "أذان (المصدر: Atcovi)",
+          "title": "The Adhan - Muslim Call to Prayer - Aaqib Azeez",
+          "performer_or_source": "Atcovi",
+          "license": "Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)",
+          "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "source_url": "https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3",
+          "audio_file": {
+            "path": "assets/audio/adhan/atcovi-original.mp3",
+            "sha256": "0faa59e2028bbb2f60a670b53ec89ffcf628f3c195b43fb41d9bdbc99000c1b3",
+            "bytes": 1448294,
+            "format": "mp3",
+            "duration_seconds": 87
+          },
+          "alert_clip": {
+            "path": "assets/audio/adhan/atcovi-alert.wav",
+            "sha256": "d2e743b31815184e6a9ac2f7dc4fabc775f12742405ae9ea9e2f88df014784df",
+            "bytes": 1190778,
+            "format": "wav",
+            "codec": "pcm_s16le",
+            "sample_rate": 22050,
+            "channels": 1,
+            "duration_seconds": 27.0
+          }
+        },
+        {
+          "id": "malmo_fajr",
+          "is_fajr": true,
+          "name_ar": "أذان الفجر - المركز الإسلامي في مالمو",
+          "title": "Eid al-Fitr Fajr azan at Malmö Mosque - 19 August 2012",
+          "performer_or_source": "المركز الإسلامي في مالمو (Islamic Center Malmö)",
+          "license": "Creative Commons Attribution 3.0 Unported (CC BY 3.0)",
+          "license_url": "https://creativecommons.org/licenses/by/3.0/",
+          "source_url": "https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm",
+          "audio_file": {
+            "path": "assets/audio/adhan/malmo-fajr-extracted.mp3",
+            "sha256": "7027122a58eaded2e4fd2c721188e3a25a1d5371e4cd6a6b5b39e7a200e4f68c",
+            "bytes": 2971340,
+            "format": "mp3",
+            "duration_seconds": 248
+          },
+          "alert_clip": {
+            "path": "assets/audio/adhan/malmo-fajr-alert.wav",
+            "sha256": "ac164747ac415c424905575ffc8c33fb8edc5cf99a67903b16b32b9e87666e4a",
+            "bytes": 1190778,
+            "format": "wav",
+            "codec": "pcm_s16le",
+            "sample_rate": 22050,
+            "channels": 1,
+            "duration_seconds": 27.0
+          }
+        }
+      ],
+      "notification_clips": [
+        {
+          "voice_id": "adam",
+          "path": "assets/audio/adhan/adam-alert.wav",
+          "sha256": "de9c50bbf6dbaa6b6d4d6306bdafe2fcfa1139372701859e7b1359f802559c01",
+          "bytes": 1190778,
+          "format": "wav",
+          "duration_seconds": 27.0
+        },
+        {
+          "voice_id": "atcovi",
+          "path": "assets/audio/adhan/atcovi-alert.wav",
+          "sha256": "d2e743b31815184e6a9ac2f7dc4fabc775f12742405ae9ea9e2f88df014784df",
+          "bytes": 1190778,
+          "format": "wav",
+          "duration_seconds": 27.0
+        },
+        {
+          "voice_id": "malmo_fajr",
+          "path": "assets/audio/adhan/malmo-fajr-alert.wav",
+          "sha256": "ac164747ac415c424905575ffc8c33fb8edc5cf99a67903b16b32b9e87666e4a",
+          "bytes": 1190778,
+          "format": "wav",
+          "duration_seconds": 27.0
+        }
+      ]
     },
     "human_review": {
       "status": "pending",

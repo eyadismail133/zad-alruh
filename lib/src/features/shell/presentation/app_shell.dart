@@ -1,24 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../dhikr/presentation/dhikr_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../more/presentation/more_screen.dart';
+import '../../prayer/domain/services/prayer_notification_coordinator.dart';
+import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
 import '../../prayers/presentation/prayers_screen.dart';
 import '../../quran/presentation/quran_screen.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
 
-  void _onSelectTab(int index) {
-    setState(() {
-      _currentIndex = index;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref
+            .read(prayerNotificationCoordinatorProvider)
+            .reconcile(passive: true);
+      }
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      ref.read(adhanAudioControllerProvider.notifier).stop().catchError((_) {});
+    } else if (state == AppLifecycleState.resumed) {
+      ref
+          .read(prayerNotificationCoordinatorProvider)
+          .reconcile(passive: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _onSelectTab(int index) {
+    if (_currentIndex != index) {
+      ref.read(adhanAudioControllerProvider.notifier).stop().catchError((_) {});
+      setState(() {
+        _currentIndex = index;
+      });
+    }
   }
 
   @override

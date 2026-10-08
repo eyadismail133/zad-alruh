@@ -1,8 +1,12 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
+import '../../hisn/domain/models/hisn_daily_catalog.dart';
 import '../../hisn/presentation/controllers/hisn_provider.dart';
+import '../../hisn/presentation/daily/daily_hisn_checklist_screen.dart';
+import '../../hisn/presentation/daily/post_prayer_daily_screen.dart';
 import '../../hisn/presentation/hisn_chapter_screen.dart';
 import '../../more/presentation/duas_screen.dart';
 import '../../progress/data/models/dhikr_session.dart';
@@ -70,8 +74,14 @@ class _DhikrScreenState extends ConsumerState<DhikrScreen> {
     );
   }
 
+  String _generateSessionId({String prefix = 'session'}) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final random = Random().nextInt(10000);
+    return '${prefix}_${now}_$random';
+  }
+
   Future<void> _startNewSession(String dateBucket) async {
-    final newId = generateSessionId(prefix: 'session');
+    final newId = _generateSessionId(prefix: 'session');
     try {
       await ref.read(dhikrSessionsControllerProvider(dateBucket).notifier).startSession(
             sessionId: newId,
@@ -209,35 +219,71 @@ class _DhikrScreenState extends ConsumerState<DhikrScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Sourced Adhkar Quick Shortcuts
+                  // Sourced Adhkar Daily Checklists Shortcuts (Morning 22, Evening 20, Post-Prayer)
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          icon: const Icon(Icons.wb_twilight_rounded, size: 16),
+                          icon: const Icon(Icons.wb_sunny_outlined, size: 14),
                           label: const Text(
-                            'أذكار الصباح والمساء',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            'أذكار الصباح (٢٢)',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                           ),
-                          onPressed: () => _navigateToChapter(context, 27),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => const DailyHisnChecklistScreen(
+                                  period: DhikrPeriod.morning,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: OutlinedButton.icon(
-                          icon: const Icon(Icons.mosque_outlined, size: 16),
+                          icon: const Icon(Icons.nights_stay_outlined, size: 14),
+                          label: const Text(
+                            'أذكار المساء (٢٠)',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => const DailyHisnChecklistScreen(
+                                  period: DhikrPeriod.evening,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.mosque_outlined, size: 14),
                           label: const Text(
                             'أذكار بعد الصلاة',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                           ),
-                          onPressed: () => _navigateToChapter(context, 25),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => const PostPrayerDailyScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Active Interactive Dhikr Counter Card
+                  // Active Interactive Dhikr Counter Card (Personal Independent Tasbeeh)
                   if (activeSession != null)
                     _buildActiveCounter(activeSession, isDark)
                   else
@@ -389,7 +435,7 @@ class _DhikrScreenState extends ConsumerState<DhikrScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Sourced Hisn al-Muslim Adhkar Section
+                  // Sourced Hisn al-Muslim Adhkar Book Section (Chapters 27, 25 & Index)
                   _buildSourcedAdhkarSection(context, isDark),
                 ],
               ),

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,7 +26,28 @@ void main() {
   late Uint8List cityBytes;
   late CityRepository cityRepo;
 
-  setUpAll(() {
+  setUpAll(() async {
+    for (final entry in <String, List<String>>{
+      'IBM Plex Sans Arabic': [
+        'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
+        'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
+        'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
+        'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
+      ],
+      'Amiri Quran': ['assets/fonts/Amiri-Quran-Regular.ttf'],
+      'MaterialIcons': [
+        '${Platform.environment['FLUTTER_ROOT'] ?? 'D:/tools/flutter'}/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+      ],
+    }.entries) {
+      final loader = FontLoader(entry.key);
+      for (final font in entry.value) {
+        final bytes = await File(font).readAsBytes();
+        expect(bytes, isNotEmpty);
+        loader.addFont(Future.value(ByteData.sublistView(bytes)));
+      }
+      await loader.load();
+    }
+
     final file = File('assets/content/cities/cities15000.txt');
     expect(file.existsSync(), isTrue, reason: 'cities15000.txt must exist');
     cityBytes = file.readAsBytesSync();
@@ -67,7 +88,9 @@ void main() {
         find.byType(RetryableErrorView).evaluate().isEmpty &&
         DateTime.now().isBefore(deadline)) {
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
     }
     await tester.pump();
   }
@@ -137,18 +160,27 @@ void main() {
         // Navigate to Settings
         await tapAndSettle(tester, find.text('الإعدادات'));
         expect(find.text('إعدادات التطبيق'), findsOneWidget);
+        final settingsScroll = find
+            .descendant(
+              of: find.byType(SettingsScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first;
         await tester.scrollUntilVisible(
-          find.text('إعادة ضبط البيانات المحلية'),
+          find.byType(SwitchListTile),
           200,
-          scrollable: find.byType(Scrollable).last,
+          scrollable: settingsScroll,
         );
-        expect(find.text('إعادة ضبط البيانات المحلية'), findsOneWidget);
-
-        // Verify notification switch is disabled until scheduler exists (Finding 10)
         final switchListTile = tester.widget<SwitchListTile>(
           find.byType(SwitchListTile),
         );
-        expect(switchListTile.onChanged, isNull);
+        expect(switchListTile.onChanged, isNotNull);
+        await tester.scrollUntilVisible(
+          find.text('إعادة ضبط كافة البيانات المحلية'),
+          200,
+          scrollable: settingsScroll,
+        );
+        expect(find.text('إعادة ضبط كافة البيانات المحلية'), findsOneWidget);
 
         // Pop Settings back to More tab
         await popRoute(tester);
@@ -167,10 +199,7 @@ void main() {
         await pumpBounded(tester);
         await tapAndSettle(tester, find.text('الأدعية'));
         expect(find.byType(DuasScreen), findsOneWidget);
-        expect(
-          find.text('الأدعية والأذكار (حصن المسلم)'),
-          findsOneWidget,
-        );
+        expect(find.text('الأدعية والأذكار (حصن المسلم)'), findsOneWidget);
 
         // Pop Duas
         await popRoute(tester);
@@ -256,7 +285,7 @@ void main() {
     );
 
     testWidgets(
-      'Home checklist disables corpus-dependent items while allowing Quran/Dua confirmations (Finding 8)',
+      'Home exposes five working daily task routes without auto-confirming a reading',
       (tester) async {
         final db = AppDatabase(
           databaseFactory: databaseFactory,
@@ -266,29 +295,33 @@ void main() {
 
         await pumpTestApp(tester, repo);
 
-        // Find all checkboxes in daily checklist
-        final checkboxes = tester
-            .widgetList<Checkbox>(find.byType(Checkbox))
-            .toList();
-        expect(checkboxes.length, 5);
-
-        // Checkbox 0: Quran goal -> interactive
-        expect(checkboxes[0].onChanged, isNotNull);
-
-        // Checkbox 1, 2, 3: Morning, Evening, Post-prayer dhikr -> disabled (corpus-dependent)
-        expect(checkboxes[1].onChanged, isNull);
-        expect(checkboxes[2].onChanged, isNull);
-        expect(checkboxes[3].onChanged, isNull);
-
-        // Checkbox 4: Dua of the day -> interactive
-        expect(checkboxes[4].onChanged, isNotNull);
-
-        // Tap Dua of the day checkbox
-        await tester.tap(find.byWidget(checkboxes[4]));
-        await pumpBounded(tester);
-
-        // Verify completion updated to 20% (Western digits with Arabic percent sign)
-        expect(find.text('20٪'), findsOneWidget);
+        for (final task in [
+          'home_task_quran',
+          'home_task_morning_dhikr',
+          'home_task_evening_dhikr',
+          'home_task_post_prayer',
+          'home_task_daily_dua',
+        ]) {
+          final taskFinder = find.byKey(Key(task));
+          await tester.ensureVisible(taskFinder);
+          expect(tester.widget<InkWell>(taskFinder).onTap, isNotNull);
+        }
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(ZadAlruhApp)),
+        );
+        final bucket = container.read(activeDateBucketProvider);
+        await tester.ensureVisible(find.byKey(const Key('home_task_quran')));
+        await tapAndSettle(tester, find.byKey(const Key('home_task_quran')));
+        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+        final daily = (await tester.runAsync(
+          () => repo.getDailyProgress(bucket),
+        ))!;
+        expect(daily.quranPagesRead, 0);
+        expect(
+          daily.completedTasksCount,
+          0,
+          reason: 'Opening a task is not a reading confirmation',
+        );
 
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
@@ -525,46 +558,61 @@ void main() {
 
         // 1. Make DB read-only
         final rawDb = await db.database;
-        await rawDb.execute('PRAGMA query_only = ON;');
 
-        // Attempt UI mutation: toggle dua checkbox
-        final duaCheckbox = find.byType(Checkbox).last;
-        await tester.tap(duaCheckbox);
+        // Confirm an actual reader page; the database rejects the real write.
+        await tapAndSettle(tester, find.text('كمّل وِردك  ←'));
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(ZadAlruhApp)),
+        );
+        final bucket = container.read(activeDateBucketProvider);
+        await tester.runAsync(() async {
+          await container.read(
+            dailyQuranPagesControllerProvider(bucket).future,
+          );
+          await container
+              .read(readingProgressControllerProvider.notifier)
+              .drainPendingWrites();
+          await rawDb.execute('PRAGMA query_only = ON;');
+        });
         await pumpBounded(tester);
-
-        // UI surfaces Arabic SnackBar with retry action and no unhandled exception
+        final confirmPage = find.byKey(const Key('quran_page_confirm'));
+        await tester.ensureVisible(confirmPage);
+        final hitDeadline = DateTime.now().add(const Duration(seconds: 5));
+        while (confirmPage.hitTestable().evaluate().isEmpty &&
+            DateTime.now().isBefore(hitDeadline)) {
+          await tester.pump(const Duration(milliseconds: 50));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+        }
+        expect(
+          confirmPage.hitTestable(),
+          findsOneWidget,
+          reason:
+              'Actual page confirmation must be reachable: ${tester.getRect(confirmPage)}',
+        );
+        await tapAndSettle(tester, confirmPage);
         expect(tester.takeException(), isNull);
-        expect(find.textContaining('تعذر حفظ التقدم اليومي'), findsOneWidget);
-
-        // Scope finder to SnackBar/SnackBarAction to exercise intended mutation retry (two legitimate retry controls exist: page RetryableErrorView + SnackBarAction)
+        expect(find.textContaining('تعذر حفظ تأكيد الصفحة'), findsOneWidget);
         final snackBarRetryAction = find.descendant(
           of: find.byType(SnackBar),
           matching: find.text('إعادة المحاولة'),
         );
         expect(snackBarRetryAction, findsOneWidget);
-
-        // Also verify page RetryableErrorView has its own legitimate retry control
-        final pageRetryControl = find.descendant(
-          of: find.byType(RetryableErrorView),
-          matching: find.text('إعادة المحاولة'),
-        );
-        expect(pageRetryControl, findsOneWidget);
-
-        // Restore DB to read-write mode
+        expect(await rawDb.query('daily_quran_pages'), isEmpty);
         await rawDb.execute('PRAGMA query_only = OFF;');
-
-        // Tap SnackBar retry action
         await tapAndSettle(tester, snackBarRetryAction);
-
-        // Progress successfully updated to 20%
         expect(tester.takeException(), isNull);
-        expect(find.text('20٪'), findsOneWidget);
+        final confirmedRows = await rawDb.query('daily_quran_pages');
+        expect(confirmedRows, hasLength(1));
+        expect(confirmedRows.single['page_number'], 1);
+        await tapAndSettle(tester, find.byTooltip('العودة إلى الفهرس'));
 
         // 2. Test Dialog input preservation under read-only SQLite
         await rawDb.execute('PRAGMA query_only = ON;');
 
-        // Navigate to Quran tab
-        await tapAndSettle(tester, find.byIcon(Icons.menu_book_outlined));
+        // Reader back action already returned to the active Quran index.
+        expect(find.text('القرآن الكريم'), findsOneWidget);
 
         // Open Add Bookmark dialog
         await tapAndSettle(tester, find.byIcon(Icons.bookmark_add_outlined));

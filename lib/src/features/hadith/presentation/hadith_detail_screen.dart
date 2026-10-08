@@ -99,8 +99,11 @@ class HadithDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -204,14 +207,16 @@ class HadithDetailScreen extends StatelessWidget {
                                 : AppColors.forestPrimary,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            'نص الحديث النبوي الشريف',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? AppColors.darkGoldAccent
-                                  : AppColors.forestPrimary,
+                          Expanded(
+                            child: Text(
+                              'نص الحديث النبوي الشريف',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? AppColors.darkGoldAccent
+                                    : AppColors.forestPrimary,
+                              ),
                             ),
                           ),
                         ],
@@ -266,14 +271,16 @@ class HadithDetailScreen extends StatelessWidget {
                             color: AppColors.forestPrimary,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            'التخريج والمصدر',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.textDark,
+                          Expanded(
+                            child: Text(
+                              'التخريج والمصدر',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textDark,
+                              ),
                             ),
                           ),
                         ],
@@ -311,14 +318,16 @@ class HadithDetailScreen extends StatelessWidget {
                               color: AppColors.forestPrimary,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'شرح الحديث',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? AppColors.darkTextPrimary
-                                    : AppColors.textDark,
+                            Expanded(
+                              child: Text(
+                                'شرح الحديث',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textDark,
+                                ),
                               ),
                             ),
                           ],
@@ -357,14 +366,16 @@ class HadithDetailScreen extends StatelessWidget {
                               color: AppColors.forestPrimary,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'معاني المفردات',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? AppColors.darkTextPrimary
-                                    : AppColors.textDark,
+                            Expanded(
+                              child: Text(
+                                'معاني المفردات',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textDark,
+                                ),
                               ),
                             ),
                           ],
@@ -403,14 +414,16 @@ class HadithDetailScreen extends StatelessWidget {
                               color: AppColors.forestPrimary,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'الفوائد المستنبطة',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? AppColors.darkTextPrimary
-                                    : AppColors.textDark,
+                            Expanded(
+                              child: Text(
+                                'الفوائد المستنبطة',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textDark,
+                                ),
                               ),
                             ),
                           ],
@@ -449,14 +462,16 @@ class HadithDetailScreen extends StatelessWidget {
                             color: AppColors.forestPrimary,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            'المصدر والتوثيق',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.textDark,
+                          Expanded(
+                            child: Text(
+                              'المصدر والتوثيق',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textDark,
+                              ),
                             ),
                           ),
                         ],

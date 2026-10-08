@@ -264,11 +264,11 @@ class _SourcesScreenState extends State<SourcesScreen> {
                         ),
                         const Divider(height: 16),
                         _buildContentStatusItem(
-                          title: 'التسجيلات الصوتية والتلاوات',
-                          status: 'قيد المراجعة والاعتماد',
-                          isBundled: false,
+                          title: 'تسجيلات الأذان والتنبيهات المدمجة',
+                          status: 'مدمجة ومحققة المصدر',
+                          isBundled: true,
                           detail:
-                              'لا يحتوي الإصدار الحالي على تلاوات صوتية أو أزرار تشغيل تلاوة غير محققة محلياً، لحين تدقيق رخص التلاوات.',
+                              '٣ تسجيلات أذان كاملة حرة الترخيص (تسجيل عام برخصة CC0، وتسجيل منسوب للمصدر Atcovi برخصة CC BY-SA 4.0، وأذان فجر منسوب للمركز الإسلامي في مالمو برخصة CC BY 3.0) مدمجة محلياً بصيغة MP3، مع ٣ مقاطع تنبيهية PCM WAV بطول ٢٧ ثانية. التحقق التقني من بصمة الملفات والشارات الصوتية مكتمل، والمراجعة الشرعية البشرية والاستماع قيد الإجراء.',
                           isDark: isDark,
                         ),
                       ],
@@ -308,7 +308,7 @@ class _SourcesScreenState extends State<SourcesScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'يعمل التطبيق بشكل كامل دون الحاجة لأي اتصال بالإنترنت، ولا يطلب صلاحية الوصول للشبكة لتشغيل وظائف القرآن والبحث والأذكار. التصفح والبحث واستعراض العلامات كلها تجري محلياً ١٠٠٪ دون أي اعتماد على خوادم أو واجهات برمجية خارجية.',
+                          'تصفح وقراءة المصحف الشريف كاملاً (نصاً وصوراً)، والبحث القرآني، وصحيح الأحاديث، وأذكار حصن المسلم، وحساب مواقيت الصلاة، ومعاينة تسجيلات الأذان تجري محلياً ١٠٠٪ دون حاجة لأي اتصال بالإنترنت. عند اختيار المستخدم الصريح للاستماع لتلاوة سورة كاملة، يتصل التطبيق عبر بروتوكول HTTPS المشفر بخوادم MP3Quran المفتوحة للبث المباشر، وتتلقى تلك الخوادم بيانات الطلب الاعتيادية بما فيها عنوان IP.',
                           style: TextStyle(
                             fontSize: 11,
                             height: 1.6,
@@ -352,7 +352,7 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 const SizedBox(height: 24),
                 Center(
                   child: Text(
-                    'زاد الروح · تطبيق إسلامي بدون خوادم أو تتبع · الإصدار ٠.١.٠',
+                    'زاد الروح · تطبيق إسلامي بدون خوادم أو تتبع · الإصدار ٠.٢.٠',
                     style: TextStyle(
                       fontSize: 11,
                       color: isDark
@@ -1054,6 +1054,390 @@ class _SourcesScreenState extends State<SourcesScreen> {
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      // 8. Adhan Audio Attribution & Licensing Card
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.volume_up_rounded,
+                    color: AppColors.forestPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'نسب المصادر وتراخيص تسجيلات الأذان (Adhan Audio Sources)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Voice 1: Adam-synagda
+              Text(
+                '١. أذان (تسجيل عام) · الترخيص: المشاع الإبداعي رخصة الإهداء للملك العام (CC0 1.0)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkGoldAccent : AppColors.forestMedium,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'المصدر: ويكيميديا كومنز (Beautiful_adhan.ogg)\nالمؤلف والرافع: Adam-synagda (عمل شخصي، أُهدي للملك العام تحت CC0 1.0 Universal)\nالعنوان الأصلي: Beautiful adhan\nالمدة: دقيقتان و٣٤ ثانية (١٥٤ ثانية) · الحجم: ١,٨٤٨,٨٨٦ بايت بصيغة MP3.\nالمقطع المشتق للتنبيهات: مقطع PCM WAV بطول ٢٧ ثانية بصوت أحادي ٢٢٠٥٠ هرتز (١,١٩٠,٧٧٨ بايت).',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.open_in_browser, size: 12),
+                    label: const Text('صفحة تسجيل Adam-synagda', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg',
+                      'تسجيل Adam-synagda',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text('نسخ رابط المصدر', style: TextStyle(fontSize: 10)),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg',
+                      'رابط مصدر Adam-synagda',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text('نسخ رابط رخصة CC0', style: TextStyle(fontSize: 10)),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://creativecommons.org/publicdomain/zero/1.0/',
+                      'رخصة CC0 1.0',
+                    ),
+                  ),
+                ],
+              ),
+
+              const Divider(height: 20),
+
+              // Voice 2: Atcovi
+              Text(
+                '٢. أذان (المصدر: Atcovi) · الترخيص: المشاع الإبداعي نَسب المُصنَّف - الترخيص بالمثل (CC BY-SA 4.0)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkGoldAccent : AppColors.forestMedium,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'المصدر: ويكيميديا كومنز (The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3)\nالمؤلف والرافع المنسوب: Atcovi (العنوان الأصلي يذكر Aaqib Azeez، ولا يؤكد التطبيق هوية المؤذن بما يتجاوز الحقائق الموثقة في صفحة المصدر)\nالعنوان الأصلي: The Adhan - Muslim Call to Prayer - Aaqib Azeez\nالمدة: دقيقة و٢٧ ثانية (٨٧ ثانية) · الحجم: ١,٤٤٨,٢٩٤ بايت بصيغة MP3.\nالمقطع المشتق للتنبيهات: مقطع PCM WAV بطول ٢٧ ثانية بصوت أحادي ٢٢٠٥٠ هرتز (١,١٩٠,٧٧٨ بايت)، ويخضع لنفس رخصة الترخيص بالمثل (CC BY-SA 4.0).',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.open_in_browser, size: 12),
+                    label: const Text('صفحة تسجيل Atcovi', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3',
+                      'تسجيل Atcovi',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text('نسخ رابط المصدر', style: TextStyle(fontSize: 10)),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3',
+                      'رابط مصدر Atcovi',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text('نسخ رابط رخصة CC BY-SA 4.0', style: TextStyle(fontSize: 10)),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://creativecommons.org/licenses/by-sa/4.0/',
+                      'رخصة CC BY-SA 4.0',
+                    ),
+                  ),
+                ],
+              ),
+
+              const Divider(height: 20),
+
+              // Voice 3: Islamic Center Malmö
+              Text(
+                '٣. أذان الفجر - المركز الإسلامي في مالمو · الترخيص: المشاع الإبداعي نَسب المُصنَّف (CC BY 3.0)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkGoldAccent : AppColors.forestMedium,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'المصدر: ويكيميديا كومنز (Eid_al-Fitr_Fajr_azan_at_Malmö_Mosque_-_19_August_2012.webm)\nالمؤلف المنسوب: المركز الإسلامي في مالمو (Islamic Center Malmö)\nالعنوان الأصلي: Eid al-Fitr Fajr azan at Malmö Mosque - 19 August 2012\nطبيعة التسجيل: يصف المصدر التسجيل بأنه أذان صلاة الفجر بمسجد مالمو يوم عيد الفطر ٢٠١٢م. المراجعة الموثقة في صفحة المصدر هي فحص آلي لرخصة المشاع الإبداعي بواسطة بوت ويكيميديا كومنز (وليس تدقيقاً شرعياً أو صوتياً بشرياً).\nالاستخراج والتحويل: تم استخراج الصوت بصيغة MP3 بواسطة FFmpeg (٢,٩٧١,٣٤٠ بايت، ٤ دقائق و٨ ثوانٍ / ٢٤٨ ثانية)، مع اشتقاق مقطع تنبيهي PCM WAV بطول ٢٧ ثانية بصوت أحادي ٢٢٠٥٠ هرتز (١,١٩٠,٧٧٨ بايت) يخضع لرخصة CC BY 3.0.',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.open_in_browser, size: 12),
+                    label: const Text('صفحة تسجيل مالمو', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm',
+                      'تسجيل أذان مالمو',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text('نسخ رابط المصدر', style: TextStyle(fontSize: 10)),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm',
+                      'رابط مصدر أذان مالمو',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text('نسخ رابط رخصة CC BY 3.0', style: TextStyle(fontSize: 10)),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://creativecommons.org/licenses/by/3.0/',
+                      'رخصة CC BY 3.0',
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Disclaimer Banner
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.teal.shade900.withAlpha(40)
+                      : const Color(0xFFEFF5F0),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.teal.shade700
+                        : AppColors.forestLight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'إشعار وضوابط الاستماع والتدقيق الشرعي والفني:',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkGoldAccent
+                            : AppColors.forestPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'كافة التسجيلات الصوتية تعمل محلياً دون أي اتصال بالإنترنت أو تتبع. الفحوصات البرمجية الصارمة تطابق البصمات الرقمية المحددة (SHA-256) وتتحقق من وجود إشارة صوتية غير صفرية في مقاطع التنبيه ضمن الحدود الرقمية، لكن الفحص الآلي للبصمات والأرقام لا يُثبت صحة الأداء الشرعي أو سلامة الألفاظ المنطوقة، وتظل المراجعة الشرعية البشرية والاستماع قيد الإجراء المستمر.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        height: 1.5,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 12),
+
+      // 9. Quran Audio Recitation Attribution & Licensing Card (MP3Quran.net)
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.headphones_rounded,
+                    color: AppColors.forestPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'نسب وتراخيص تلاوة القرآن الكريم (MP3Quran Recitation Sources)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              Text(
+                'بيانات القارئ والمصحف والرواية:',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkGoldAccent : AppColors.goldDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '• القارئ: الشيخ مشاري بن راشد العفاسي (معرف القارئ: 123 في فهرس المزود)\n'
+                '• المصحف: مصحف حفص عن عاصم - مرتل (معرف المصحف: 123، معرف الرواية: 1)\n'
+                '• النطاق: متاح لجميع سور القرآن الكريم الـ 114 سورة كاملة (001.mp3 وحتى 114.mp3)\n'
+                '• المزود: موقع MP3Quran (MP3Quran.net)\n'
+                '• خادم البث: خادم الوسائط HTTPS المباشر (cdn.mp3quran.net)',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.6,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                'حقوق الاستخدام وترخيص المزود:',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkGoldAccent : AppColors.goldDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'تتيح شروط موقع MP3Quran المنشورة (قسم حقوق الاستخدام) لكافة الزوار والمطورين الاستفادة من المواد والتسجيلات الصوتية والروابط المتاحة لنشر المحتوى القرآني، مع اختيار التطبيق عزو المصدر تقديراً لجهودهم دون افتراض ذلك شرطاً قانونياً ملزماً من المزود، ولا يدّعي التطبيق أي تزكية رسمية أو رعاية من الموقع.',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.6,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                'سياسة تسجيل الخوادم وخصوصية الاتصال:',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.darkGoldAccent : AppColors.goldDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'توضح سياسة الخصوصية المنشورة لموقع MP3Quran أن خوادمه تسجل آلياً معلومات الطلب الاعتيادية عند الاتصال (عنوان IP، تاريخ ووقت الوصول، نوع المتصفح ونظام التشغيل، الدولة، ورابط الإحالة). يُرجى ملاحظة أن انطباق هذه السياسة على طلبات شبكة توزيع المحتوى (CDN) ومدة احتفاظ خوادم الـ CDN بتلك السجلات غير مؤكدين (unconfirmed)، ولا ينبغي افتراض انطباق سياسة موقع المزود على طلبات الـ CDN تلقائياً دون ادعاء معالجة عابرة أو حذف فوري. لا يدمج تطبيق زاد الروح أي حزم تتبع أو إعلانات أو تحليلات خاصة بالمزود.',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.6,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.open_in_new, size: 14),
+                    label: const Text('موقع MP3Quran', style: TextStyle(fontSize: 11)),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://www.mp3quran.net',
+                      'موقع MP3Quran',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.privacy_tip_outlined, size: 14),
+                    label: const Text('سياسة الخصوصية وحقوق الاستخدام', style: TextStyle(fontSize: 11)),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://www.mp3quran.net/ar/privacy',
+                      'سياسة خصوصية MP3Quran',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.api_outlined, size: 14),
+                    label: const Text('واجهة المطورين API', style: TextStyle(fontSize: 11)),
+                    onPressed: () => _openUrl(
+                      context,
+                      'https://www.mp3quran.net/ar/api',
+                      'واجهة المطورين MP3Quran API',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 14),
+                    label: const Text('نسخ مسار الخادم', style: TextStyle(fontSize: 11)),
+                    onPressed: () => _copyLink(
+                      context,
+                      'https://cdn.mp3quran.net/audio/mishary-alafasy/r1/',
+                      'مسار خادم التلاوة',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -1,4 +1,16 @@
-# Milestone acceptance status
+## Current Android revision — 2026-10-09
+
+Android is the active target; iOS work is paused. The older milestone rows below describe historical builds and must not be read as evidence for a new APK.
+
+Completed scoped verification before the current notification integration edits: native Android 111 JUnit tests (commits `ee743e7`, `4508779`); progress/settings 69 tests; manual audio/reset 12 tests; SDK audio/preferences 32 tests; reader layout/navigation 36 tests; Quran/audio/source interface 77 tests; daily checklist/dua interface 13 tests; Hisn interface/repository 38 tests; Hadith interface 16 tests; notification planner 36 tests; human-review validator 33 tests. Each focused gate passed, with the analyzer passing after the corresponding completed Dart task. These counts are separate runs, not a unique full-suite total or approval of the subsequent notification integration edits.
+
+Hisn/Hadith compact interface review and Android notification integration are closed for this testing revision. Root repaired the legacy test harness regressions without weakening production validation. The final full Flutter suite passed **528 tests with zero failures** (2m07s), and `flutter analyze --no-pub` found no issues. A fresh debug APK was built from a physical ASCII source snapshot after verifying 833 files against the original checkout; the junction alone did not resolve JNI's Unicode path failure. APK verification passed for all 619 runtime content/audio files, all 604 Mushaf images, uncompressed audio and APK v2 signing. See [the current APK report](ANDROID-APK-2026-10-09.md) for the exact artifact, hash and limits.
+
+Physical phone playback and OEM background delivery remain unverified: ADB reported no connected device at handoff. ZIP and ELF LOAD 16KB checks passed, but six prebuilt libraries failed the GNU_RELRO end alignment check; no 16KB runtime acceptance is claimed. Google Play submission still needs these compatibility/device gates, the owner's account, signing identity, publisher/support details and required content review. Canonical human-review metadata remains pending; no religious certification is claimed.
+
+Content development validation passed; strict release validation remains blocked by qualified human review. The exported review inventory contains 624 source hashes, including provenance files and paused iOS audio copies; only the required Android runtime subset belongs in an APK. No synthetic test approval was written to the canonical review manifest.
+
+# Historical milestone acceptance status
 
 This record separates implemented work, verified work and external prerequisites. No item implies religious certification or store approval.
 
@@ -16,9 +28,10 @@ This record separates implemented work, verified work and external prerequisites
 | Visual preview | Screenshots rendered from Flutter widgets at Android 360x800 and iPhone 390x844, with a clickable gallery at [preview/index.html](preview/index.html) | This is a screenshot simulation, not a native iOS build or device acceptance test |
 | Hadith | Bundled and verified: 3,213 authentic ("صحيح") records from HadeethEnc Arabic v1.7.0 with provenance XLSX, compact JSON asset, offline lazy list/search/detail, attribution and source links | Qualified human religious review |
 | Dhikr/duas | Bundled and verified: 267 supplication items in 132 chapters from Hisn al-Muslim (IslamHouse / Dr. Saeed al-Qahtani) with 300 footnotes, provenance DOCX, compact JSON asset | Qualified human religious review |
-| Adhan | No licensed recordings supplied | Three voices including Fajr and permitted clips; playback/device verification |
+| Adhan | Bundled source corpus verified (+77 validator pass, 3 licensed adhan recordings: Adam-synagda CC0 1.0, Atcovi CC BY-SA 4.0, Islamic Center Malmö CC BY 3.0 Fajr; 27s PCM WAV alert clips); offline playback runtime, persisted voice selection, and UI implemented, unverified pending Codex verification gates and independent Sol review | Scheduled background/notification playback milestone, real physical-device audio test, and qualified human religious listening signoff |
+| Quran recitation (audio) | Implemented foreground full-surah streaming (all 114 surahs, Mishary Alafasy, Hafs 'an 'Asim via MP3Quran HTTPS CDN, single shared audio ownership with adhan preview, bounded network timeouts/retries, pause/resume/stop, route/lifecycle stop, source/privacy disclosures); test suite added | Fresh Codex gates, real physical-device audible listening verification, and qualified human religious signoff pending |
 | Prayer notifications | Foundation activation disabled pending implementation | Native Android exact/fallback scheduling and iOS rolling horizon |
-| Persistence | Foundation real SQLite tests cover transactions, failures, reset and reopen | Later schema migrations and feature/device acceptance |
+| Persistence | Foundation real SQLite tests cover schema v1 to v2 migration, transactions, concurrent preference updates, reset and reopen | Feature and real device acceptance |
 | Store delivery | Development platform templates only | Final owner identity, signing/accounts/support URLs/device tests/submission |
 
 ## Verified foundation
@@ -37,4 +50,4 @@ Debug and profile APK LOAD alignment and zipalign checks passed. Stricter GNU_RE
 
 ## External prerequisites
 
-Owner confirmed no licensed adhan recordings, developer-store accounts, or Mac. The Quran Foundation developer account prerequisite was superseded by the KFQC digital artwork substitution. Independent local implementation continues; adhan licensing, qualified human religious review, signed iOS builds, and store publication cannot finish without those resources. See [EXTERNAL-REQUIREMENTS.md](EXTERNAL-REQUIREMENTS.md). Rights-request drafts are prepared for owner use, not sent.
+Owner confirmed developer-store accounts or Mac are pending. The Quran Foundation developer account prerequisite was superseded by the KFQC digital artwork substitution; the missing adhan recordings prerequisite was resolved with the three bundled free-licensed recordings. Independent local implementation continues; scheduled notification mechanics, qualified human religious review, signed iOS builds, and store publication cannot finish without those resources. See [EXTERNAL-REQUIREMENTS.md](EXTERNAL-REQUIREMENTS.md). Rights-request drafts are prepared for owner use, not sent.

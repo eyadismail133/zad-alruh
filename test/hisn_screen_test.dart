@@ -2,15 +2,19 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:zad_alruh/src/core/database/app_database.dart';
+import 'package:zad_alruh/src/core/theme/app_theme.dart';
 import 'package:zad_alruh/src/core/widgets/retryable_error_view.dart';
 import 'package:zad_alruh/src/features/dhikr/presentation/dhikr_screen.dart';
 import 'package:zad_alruh/src/features/hisn/data/hisn_repository_impl.dart';
 import 'package:zad_alruh/src/features/hisn/domain/repositories/hisn_repository.dart';
 import 'package:zad_alruh/src/features/hisn/presentation/controllers/hisn_provider.dart';
+import 'package:zad_alruh/src/features/hisn/presentation/daily/daily_hisn_checklist_screen.dart';
+import 'package:zad_alruh/src/features/hisn/presentation/daily/post_prayer_daily_screen.dart';
 import 'package:zad_alruh/src/features/hisn/presentation/hisn_chapter_screen.dart';
 import 'package:zad_alruh/src/features/hisn/presentation/hisn_detail_screen.dart';
 import 'package:zad_alruh/src/features/more/presentation/duas_screen.dart';
@@ -33,6 +37,43 @@ void main() {
   late ProgressRepository testProgressRepo;
 
   setUpAll(() async {
+    // Assert font files exist and load Amiri Quran + all 4 weights of IBM Plex Sans Arabic
+    final amiriFile = File('assets/fonts/Amiri-Quran-Regular.ttf');
+    expect(await amiriFile.exists(), isTrue, reason: 'Amiri Quran font asset must exist');
+    final amiriBytes = await amiriFile.readAsBytes();
+    final fontLoaderAmiri = FontLoader('Amiri Quran');
+    fontLoaderAmiri.addFont(Future.value(ByteData.sublistView(amiriBytes)));
+    await fontLoaderAmiri.load();
+
+    final fontLoaderPlex = FontLoader('IBM Plex Sans Arabic');
+    for (final fontPath in [
+      'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
+      'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
+      'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
+      'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
+    ]) {
+      final f = File(fontPath);
+      expect(await f.exists(), isTrue, reason: '$fontPath font asset must exist');
+      final bytes = await f.readAsBytes();
+      fontLoaderPlex.addFont(Future.value(ByteData.sublistView(bytes)));
+    }
+    await fontLoaderPlex.load();
+
+    final flutterRoot = Platform.environment['FLUTTER_ROOT'] ?? 'D:/tools/flutter';
+    final iconFile = File('$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
+    ByteData iconData;
+    if (iconFile.existsSync()) {
+      final bytes = await iconFile.readAsBytes();
+      expect(bytes.isNotEmpty, isTrue, reason: 'MaterialIcons font file must not be empty');
+      iconData = ByteData.sublistView(bytes);
+    } else {
+      iconData = await rootBundle.load('fonts/MaterialIcons-Regular.otf');
+      expect(iconData.lengthInBytes, greaterThan(0), reason: 'MaterialIcons rootBundle font data must not be empty');
+    }
+    final fontLoaderIcons = FontLoader('MaterialIcons')
+      ..addFont(Future.value(iconData));
+    await fontLoaderIcons.load();
+
     final file = File('assets/content/hisn/hisn-muslim.json');
     expect(await file.exists(), isTrue, reason: 'Hisn JSON asset must exist');
     realJsonBytes = await file.readAsBytes();
@@ -51,17 +92,43 @@ void main() {
     await testDb.close();
   });
 
+  Widget buildTestApp({
+    required Widget child,
+    List<Override> overrides = const [],
+    MediaQueryData? mediaQuery,
+  }) {
+    Widget content = MaterialApp(
+      theme: AppTheme.lightTheme,
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      home: child,
+    );
+    if (mediaQuery != null) {
+      content = MediaQuery(
+        data: mediaQuery,
+        child: content,
+      );
+    }
+    return ProviderScope(
+      overrides: [
+        hisnRepositoryProvider.overrideWith((ref) => realRepository),
+        progressRepositoryProvider.overrideWithValue(testProgressRepo),
+        ...overrides,
+      ],
+      child: content,
+    );
+  }
+
   group('DuasScreen Widget Tests', () {
     testWidgets('renders chapters list with 132 chapters by default', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DuasScreen(),
-          ),
+        buildTestApp(
+          child: const DuasScreen(),
         ),
       );
       await tester.pumpAndSettle();
@@ -75,15 +142,13 @@ void main() {
     });
 
     testWidgets('switches to all items list tab and displays items', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DuasScreen(),
-          ),
+        buildTestApp(
+          child: const DuasScreen(),
         ),
       );
       await tester.pumpAndSettle();
@@ -98,15 +163,13 @@ void main() {
     });
 
     testWidgets('search filters items and shows results count', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DuasScreen(),
-          ),
+        buildTestApp(
+          child: const DuasScreen(),
         ),
       );
       await tester.pumpAndSettle();
@@ -132,15 +195,13 @@ void main() {
     });
 
     testWidgets('tapping chapter opens HisnChapterScreen', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DuasScreen(),
-          ),
+        buildTestApp(
+          child: const DuasScreen(),
         ),
       );
       await tester.pumpAndSettle();
@@ -156,15 +217,13 @@ void main() {
     });
 
     testWidgets('tapping item in all items opens HisnDetailScreen with footnotes and attribution', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DuasScreen(),
-          ),
+        buildTestApp(
+          child: const DuasScreen(),
         ),
       );
       await tester.pumpAndSettle();
@@ -187,6 +246,10 @@ void main() {
     });
 
     testWidgets('HisnChapterScreen copy button copies text with author, source, and IslamHouse URL', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       final log = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
@@ -195,11 +258,11 @@ void main() {
       });
 
       final chapter = realRepository.getChapter(1)!;
+      final firstItem = realRepository.getItemsByChapter(1).first;
 
       await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('ar'),
-          home: Scaffold(
+        buildTestApp(
+          child: Scaffold(
             body: HisnChapterScreen(
               chapter: chapter,
               repository: realRepository,
@@ -219,13 +282,24 @@ void main() {
       final setClipboardCall = log.firstWhere((call) => call.method == 'Clipboard.setData');
       final text = (setClipboardCall.arguments as Map)['text'] as String;
 
-      expect(text, contains('د. سعيد بن علي بن وهف القحطاني'));
+      // Strengthened: directly verifies full original item.text + EACH original footnote + author + IslamHouse URL
+      expect(text, contains(firstItem.text.trim()));
+      for (final p in firstItem.paragraphs) {
+        expect(text, contains(p.trim()));
+      }
+      for (final fn in firstItem.footnotes) {
+        expect(text, contains(fn.text.trim()));
+      }
+      expect(text, contains(realRepository.metadata.author));
       expect(text, contains('دار إسلام هاوس'));
       expect(text, contains('https://islamhouse.com/ar/books/2522'));
-      expect(text, contains('الْحَمْدُ للَّهِ الَّذِي أَحْيَانَا'));
     });
 
     testWidgets('HisnDetailScreen copy button copies text with author, source, and IslamHouse URL', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       final log = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
@@ -233,12 +307,12 @@ void main() {
         return null;
       });
 
-      final item = realRepository.getById(72)!;
+      // Use Item 75 (evening preface + 2 paragraphs + footnote 101)
+      final item75 = realRepository.getById(75)!;
 
       await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('ar'),
-          home: HisnDetailScreen(item: item),
+        buildTestApp(
+          child: HisnDetailScreen(item: item75),
         ),
       );
       await tester.pumpAndSettle();
@@ -252,64 +326,142 @@ void main() {
       final setClipboardCall = log.firstWhere((call) => call.method == 'Clipboard.setData');
       final text = (setClipboardCall.arguments as Map)['text'] as String;
 
-      expect(text, contains('د. سعيد بن علي بن وهف القحطاني'));
+      // Strengthened: directly verifies full original item.text + EACH original footnote + author + IslamHouse URL
+      expect(text, contains(item75.text.trim()));
+      for (final p in item75.paragraphs) {
+        expect(text, contains(p.trim()));
+      }
+      for (final fn in item75.footnotes) {
+        expect(text, contains(fn.text.trim()));
+      }
+      expect(text, contains(realRepository.metadata.author));
       expect(text, contains('دار إسلام هاوس'));
       expect(text, contains('https://islamhouse.com/ar/books/2522'));
-      expect(text, contains('عدد التكرار: 10 مرات'));
     });
 
-    testWidgets('HisnDetailScreen renders without overflow at 320px width with 2.0x text scale', (tester) async {
-      tester.view.physicalSize = const Size(320, 640);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
+    for (final size in const [Size(320, 480), Size(480, 320)]) {
+      testWidgets('HisnDetailScreen renders without overflow at ${size.width.toInt()}x${size.height.toInt()} textScale 2.0 with full source item 75', (tester) async {
+        addTearDown(() async {
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+        });
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      final item = realRepository.getById(72)!; // item 72 has repeatTarget: 10
+        final clipboardLog = <MethodCall>[];
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+          clipboardLog.add(methodCall);
+          return null;
+        });
 
-      await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('ar'),
-          home: MediaQuery(
-            data: const MediaQueryData(
-              size: Size(320, 640),
-              textScaler: TextScaler.linear(2.0),
+        final item75 = realRepository.getById(75)!;
+
+        await tester.pumpWidget(
+          buildTestApp(
+            mediaQuery: MediaQueryData(
+              size: size,
+              textScaler: const TextScaler.linear(2.0),
             ),
-            child: HisnDetailScreen(item: item),
+            child: HisnDetailScreen(item: item75),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.byType(HisnDetailScreen), findsOneWidget);
-      expect(find.textContaining('التكرار الوارد في النص:'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
+        expect(tester.takeException(), isNull, reason: 'Initial load at ${size.width.toInt()}x${size.height.toInt()} textScale 2.0 must not overflow');
+        expect(find.byType(HisnDetailScreen), findsOneWidget);
+        expect(
+          MediaQuery.textScalerOf(tester.element(find.byType(HisnDetailScreen))).scale(10),
+          20,
+        );
+
+        // Verify copy button in AppBar is hit-testable and copies full text
+        final copyBtn = find.byTooltip('نسخ نص الذكر والمراجع');
+        expect(copyBtn.hitTestable(), findsOneWidget);
+        await tester.tap(copyBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('تم نسخ نص الذكر والمراجع بنجاح'), findsOneWidget);
+        final copyCall = clipboardLog.firstWhere((call) => call.method == 'Clipboard.setData');
+        final copiedText = (copyCall.arguments as Map)['text'] as String;
+        expect(copiedText, contains(item75.text.trim()));
+        for (final fn in item75.footnotes) {
+          expect(copiedText, contains(fn.text.trim()));
+        }
+        expect(copiedText, contains(realRepository.metadata.author));
+        expect(copiedText, contains('https://islamhouse.com/ar/books/2522'));
+
+        // Bounded margin drag helper using measured ListView rect (no ensureVisible/no jumpTo)
+        final listRect = tester.getRect(find.byType(ListView).first);
+        Future<void> scrollUntilVisible(Finder targetFinder, {int maxDrags = 40, double delta = -120.0}) async {
+          for (int i = 0; i < maxDrags; i++) {
+            if (targetFinder.hitTestable().evaluate().isNotEmpty) return;
+            if (targetFinder.evaluate().isNotEmpty) {
+              final center = tester.getCenter(targetFinder.first);
+              if (center.dy >= listRect.top + 10 && center.dy <= listRect.bottom - 10) return;
+            }
+            await tester.dragFrom(Offset(listRect.left + 4, listRect.center.dy), Offset(0, delta));
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull, reason: 'No RenderFlex overflow during bounded drag towards $targetFinder (step $i)');
+          }
+          expect(targetFinder.hitTestable(), findsWidgets, reason: 'Target $targetFinder must be hit-testable within bounded margin drags');
+        }
+
+        // Scroll to footnotes card and verify all footnotes are visible and non-overflowing
+        final fnHeader = find.textContaining('التخريج وهوامش المصدر');
+        await scrollUntilVisible(fnHeader);
+        expect(fnHeader, findsOneWidget);
+        for (final fn in item75.footnotes) {
+          final fnFinder = find.textContaining(fn.text.trim());
+          await scrollUntilVisible(fnFinder);
+          expect(fnFinder, findsWidgets);
+        }
+
+        // Scroll to provenance footer card and verify IslamHouse buttons are accessible
+        final sourceButton = find.text('صفحة الكتاب في إسلام هاوس');
+        await scrollUntilVisible(sourceButton);
+        expect(sourceButton, findsOneWidget);
+        expect(sourceButton.hitTestable(), findsOneWidget);
+
+        final copyLinkButton = find.text('نسخ الرابط');
+        await scrollUntilVisible(copyLinkButton);
+        expect(copyLinkButton, findsOneWidget);
+        expect(copyLinkButton.hitTestable(), findsOneWidget);
+        await tester.tap(copyLinkButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text('تم نسخ رابط الكتاب بنجاح'), findsOneWidget);
+        final lastCopyCall = clipboardLog.lastWhere((call) => call.method == 'Clipboard.setData');
+        expect((lastCopyCall.arguments as Map)['text'], 'https://islamhouse.com/ar/books/2522');
+      });
+    }
   });
 
   group('DhikrScreen Sourced Adhkar Integration', () {
     testWidgets('displays morning/evening and post-prayer quick shortcuts and sourced section', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-            progressRepositoryProvider.overrideWithValue(testProgressRepo),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DhikrScreen(),
-          ),
+        buildTestApp(
+          child: const DhikrScreen(),
         ),
       );
       await tester.pumpAndSettle();
 
       // Shortcuts at the top
-      expect(find.text('أذكار الصباح والمساء'), findsWidgets);
+      expect(find.text('أذكار الصباح (٢٢)'), findsOneWidget);
+      expect(find.text('أذكار المساء (٢٠)'), findsOneWidget);
       expect(find.text('أذكار بعد الصلاة'), findsOneWidget);
 
       // Sourced section card
       expect(find.text('أذكار مأثورة موثقة (حصن المسلم)'), findsOneWidget);
+      expect(find.text('أذكار الصباح والمساء'), findsOneWidget);
       expect(find.text('فهرس حصن المسلم كاملاً'), findsOneWidget);
 
       // Personal tasbeeh buttons remain fully present
@@ -317,42 +469,56 @@ void main() {
       expect(find.byTooltip('تغيير الهدف'), findsOneWidget);
     });
 
-    testWidgets('tapping morning/evening shortcut navigates to Chapter 27 (أذكار الصباح والمساء)', (tester) async {
+    testWidgets('tapping morning shortcut navigates to DailyHisnChecklistScreen (morning)', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-            progressRepositoryProvider.overrideWithValue(testProgressRepo),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DhikrScreen(),
-          ),
+        buildTestApp(
+          child: const DhikrScreen(),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Tap the top shortcut for morning/evening
-      await tester.tap(find.widgetWithText(OutlinedButton, 'أذكار الصباح والمساء'));
+      // Tap the top shortcut for morning
+      await tester.tap(find.widgetWithText(OutlinedButton, 'أذكار الصباح (٢٢)'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(HisnChapterScreen), findsOneWidget);
-      expect(find.text('أَذْكَارُ الصَّـــبَاحِ وَالْمَسَــــاءِ'), findsWidgets);
-      expect(find.textContaining('الباب'), findsWidgets);
-      expect(find.textContaining('أذكار'), findsWidgets);
+      expect(find.byType(DailyHisnChecklistScreen), findsOneWidget);
+      expect(find.text('أذكار الصباح (٢٢ ذكراً)'), findsOneWidget);
+      expect(find.textContaining('ذكر #75'), findsOneWidget);
     });
 
-    testWidgets('tapping post-prayer shortcut navigates to Chapter 25 (الأذكار بعد السلام من الصلاة)', (tester) async {
+    testWidgets('tapping evening shortcut navigates to DailyHisnChecklistScreen (evening)', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => realRepository),
-            progressRepositoryProvider.overrideWithValue(testProgressRepo),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DhikrScreen(),
-          ),
+        buildTestApp(
+          child: const DhikrScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap the top shortcut for evening
+      await tester.tap(find.widgetWithText(OutlinedButton, 'أذكار المساء (٢٠)'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DailyHisnChecklistScreen), findsOneWidget);
+      expect(find.text('أذكار المساء (٢٠ ذكراً)'), findsOneWidget);
+      expect(find.textContaining('ذكر #75'), findsOneWidget);
+    });
+
+    testWidgets('tapping post-prayer shortcut navigates to PostPrayerDailyScreen', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
+      await tester.pumpWidget(
+        buildTestApp(
+          child: const DhikrScreen(),
         ),
       );
       await tester.pumpAndSettle();
@@ -361,31 +527,50 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, 'أذكار بعد الصلاة'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(HisnChapterScreen), findsOneWidget);
-      expect(find.text('الأَذْكَارُ بَعْــدَ السَّــلاَمِ مِنَ الصَّــلاَةِ'), findsWidgets);
-      expect(find.textContaining('الباب'), findsWidgets);
-      expect(find.textContaining('أذكار'), findsWidgets);
+      expect(find.byType(PostPrayerDailyScreen), findsOneWidget);
+      expect(find.text('أذكار بعد الصلاة (الباب ٢٥)'), findsOneWidget);
+      expect(find.textContaining('ذكر #66'), findsOneWidget);
     });
 
-    testWidgets('cold-start shortcut tap while provider is loading transitions to requested chapter once loaded', (tester) async {
-      final completer = Completer<HisnRepository>();
-
+    testWidgets('tapping Chapter 27 in sourced section navigates to HisnChapterScreen', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            hisnRepositoryProvider.overrideWith((ref) => completer.future),
-            progressRepositoryProvider.overrideWithValue(testProgressRepo),
-          ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DhikrScreen(),
-          ),
+        buildTestApp(
+          child: const DhikrScreen(),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Tap morning/evening shortcut while provider is still loading
-      await tester.tap(find.widgetWithText(OutlinedButton, 'أذكار الصباح والمساء'));
+      // Tap chapter 27 link in the sourced section
+      await tester.tap(find.text('أذكار الصباح والمساء'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HisnChapterScreen), findsOneWidget);
+      expect(find.text('أَذْكَارُ الصَّـــبَاحِ وَالْمَسَــــاءِ'), findsWidgets);
+    });
+
+    testWidgets('cold-start shortcut tap while provider is loading transitions to requested chapter once loaded', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
+      final completer = Completer<HisnRepository>();
+
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: [
+            hisnRepositoryProvider.overrideWith((ref) => completer.future),
+          ],
+          child: const DhikrScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap morning/evening chapter link while provider is still loading
+      await tester.tap(find.text('أذكار الصباح والمساء'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -405,10 +590,14 @@ void main() {
     });
 
     testWidgets('cold-start shortcut tap when error occurs displays retry and navigates on recovery', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       var shouldFail = true;
 
       await tester.pumpWidget(
-        ProviderScope(
+        buildTestApp(
           overrides: [
             hisnRepositoryProvider.overrideWith((ref) async {
               if (shouldFail) {
@@ -416,18 +605,14 @@ void main() {
               }
               return realRepository;
             }),
-            progressRepositoryProvider.overrideWithValue(testProgressRepo),
           ],
-          child: const MaterialApp(
-            locale: Locale('ar'),
-            home: DhikrScreen(),
-          ),
+          child: const DhikrScreen(),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Tap shortcut
-      await tester.tap(find.widgetWithText(OutlinedButton, 'أذكار بعد الصلاة'));
+      // Tap chapter 25 link in the sourced section
+      await tester.tap(find.text('الأذكار بعد السلام من الصلاة'));
       await tester.pumpAndSettle();
 
       // Shows retryable error view
@@ -449,10 +634,13 @@ void main() {
 
   group('SourcesScreen Hisn al-Muslim Provenance', () {
     testWidgets('displays Hisn al-Muslim verified status and IslamHouse license attribution', (tester) async {
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
       await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('ar'),
-          home: SourcesScreen(bundle: _TestAssetBundle()),
+        buildTestApp(
+          child: SourcesScreen(bundle: _TestAssetBundle()),
         ),
       );
       await tester.pump();

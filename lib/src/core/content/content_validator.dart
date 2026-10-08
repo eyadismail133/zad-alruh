@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import '../../features/quran/data/parsers/quran_parser.dart';
 import '../../features/quran/data/sources/kfqc_mushaf_catalog.dart';
 import '../../features/quran/data/sources/quran_source_verifier.dart';
+import 'human_review_validator.dart';
 
 /// Result of running content validation.
 class ValidationResult {
@@ -185,11 +187,128 @@ class ContentValidator {
   static const String kExpectedPage604Sha256 =
       'f30b4aad9b322ce7c3d61c5d2bdedaa948eca8e76494eb21c4473dee68365689';
 
+  /// Canonical set of unique voice IDs for bundled adhan recordings
+  static const Set<String> kExpectedAdhanVoiceIds = {
+    'adam',
+    'atcovi',
+    'malmo_fajr',
+  };
+
+  /// Expected count of bundled adhan voices
+  static const int kExpectedAdhanVoicesCount = 3;
+
+  /// Pinned SHA-256 hashes for full MP3 recordings
+  static const Map<String, String> kExpectedAdhanAudioSha256 = {
+    'adam': 'c3fa9ae67d8cf65474dec44194d8b6a76c2f04ef188c916cf9c4dd6f8eb28dc7',
+    'atcovi': '0faa59e2028bbb2f60a670b53ec89ffcf628f3c195b43fb41d9bdbc99000c1b3',
+    'malmo_fajr': '7027122a58eaded2e4fd2c721188e3a25a1d5371e4cd6a6b5b39e7a200e4f68c',
+  };
+
+  /// Pinned byte sizes for full MP3 recordings
+  static const Map<String, int> kExpectedAdhanAudioBytes = {
+    'adam': 1848886,
+    'atcovi': 1448294,
+    'malmo_fajr': 2971340,
+  };
+
+  /// Pinned canonical duration in seconds for full MP3 recordings
+  static const Map<String, int> kExpectedAdhanAudioDurations = {
+    'adam': 154,
+    'atcovi': 87,
+    'malmo_fajr': 248,
+  };
+
+  /// Pinned SHA-256 hashes for 27-second notification alert clips (PCM WAV)
+  static const Map<String, String> kExpectedAdhanAlertSha256 = {
+    'adam': 'de9c50bbf6dbaa6b6d4d6306bdafe2fcfa1139372701859e7b1359f802559c01',
+    'atcovi':
+        'd2e743b31815184e6a9ac2f7dc4fabc775f12742405ae9ea9e2f88df014784df',
+    'malmo_fajr':
+        'ac164747ac415c424905575ffc8c33fb8edc5cf99a67903b16b32b9e87666e4a',
+  };
+
+  /// Pinned byte size for 27-second notification alert clips
+  static const int kExpectedAdhanAlertBytes = 1190778;
+
+  /// Exact canonical duration in seconds for notification alert clips
+  static const double kExpectedAdhanAlertDurationSeconds = 27.0;
+
+  /// Maximum alert clip duration allowed by Apple UNNotificationSound (< 30 seconds)
+  static const double kMaxAlertDurationSeconds = 30.0;
+
+  /// Canonical byte offset for PCM sample data in bundled FFmpeg 7.1 WAV alert clips (after 34-byte LIST chunk)
+  static const int kExpectedWavDataOffset = 78;
+
+  /// Pinned lower bound for first-second RMS digital signal amplitude in 27s alert clips.
+  ///
+  /// Genuine measured first-second RMS on parsed 22050Hz mono PCM:
+  /// - adam: ~0.0480
+  /// - atcovi: ~0.0678
+  /// - malmo_fajr: ~0.00365
+  ///
+  /// Threshold of 0.002 verifies non-zero digital signal level within numeric bounds.
+  /// Note: These automated digital metrics verify non-zero signal presence within numeric bounds only;
+  /// they do NOT establish human audible aesthetic quality or religious correctness.
+  static const double kExpectedAdhanAlertOnsetRmsLowerBound = 0.002;
+
+  /// Pinned canonical source URLs
+  static const Map<String, String> kExpectedAdhanSourceUrls = {
+    'adam': 'https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg',
+    'atcovi':
+        'https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3',
+    'malmo_fajr':
+        'https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm',
+  };
+
+  /// Pinned canonical licenses
+  static const Map<String, String> kExpectedAdhanLicenses = {
+    'adam': 'Creative Commons CC0 1.0 Universal',
+    'atcovi':
+        'Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)',
+    'malmo_fajr': 'Creative Commons Attribution 3.0 Unported (CC BY 3.0)',
+  };
+
+  /// Pinned canonical license URLs
+  static const Map<String, String> kExpectedAdhanLicenseUrls = {
+    'adam': 'https://creativecommons.org/publicdomain/zero/1.0/',
+    'atcovi': 'https://creativecommons.org/licenses/by-sa/4.0/',
+    'malmo_fajr': 'https://creativecommons.org/licenses/by/3.0/',
+  };
+
+  /// Pinned relative audio asset paths
+  static const Map<String, String> kExpectedAdhanAudioPaths = {
+    'adam': 'assets/audio/adhan/adam-converted.mp3',
+    'atcovi': 'assets/audio/adhan/atcovi-original.mp3',
+    'malmo_fajr': 'assets/audio/adhan/malmo-fajr-extracted.mp3',
+  };
+
+  /// Pinned relative alert clip asset paths
+  static const Map<String, String> kExpectedAdhanAlertPaths = {
+    'adam': 'assets/audio/adhan/adam-alert.wav',
+    'atcovi': 'assets/audio/adhan/atcovi-alert.wav',
+    'malmo_fajr': 'assets/audio/adhan/malmo-fajr-alert.wav',
+  };
+
+  /// Pinned relative iOS Runner alert clip paths
+  static const Map<String, String> kExpectedAdhanIosAlertPaths = {
+    'adam': 'ios/Runner/adam-alert.wav',
+    'atcovi': 'ios/Runner/atcovi-alert.wav',
+    'malmo_fajr': 'ios/Runner/malmo-fajr-alert.wav',
+  };
+
+  /// Pinned relative Android res/raw alert clip paths
+  static const Map<String, String> kExpectedAdhanAndroidAlertPaths = {
+    'adam': 'android/app/src/main/res/raw/adam_alert.wav',
+    'atcovi': 'android/app/src/main/res/raw/atcovi_alert.wav',
+    'malmo_fajr': 'android/app/src/main/res/raw/malmo_fajr_alert.wav',
+  };
+
   /// Validates content integrity and release readiness against a workspace root.
   static Future<ValidationResult> validate({
     required String workspaceRoot,
     bool isDevelopmentMode = false,
     bool strictImageHashes = false,
+    String? manifestRelativePath,
   }) async {
     final errors = <String>[];
     final pendingBlockers = <String>[];
@@ -223,7 +342,8 @@ class ContentValidator {
     }
 
     // 1. Filesystem Containment & Traversal Safety for manifest
-    final manifestRelPath = p.join('assets', 'content', 'manifest.json');
+    final manifestRelPath = manifestRelativePath ??
+        p.join('assets', 'content', 'manifest.json');
     if (!_isPathSafe(
       relativePath: manifestRelPath,
       normalizedRoot: normalizedRoot,
@@ -1042,6 +1162,10 @@ class ContentValidator {
 
     // 2. Adhan Audio Registry
     final audioRaw = pending['adhan_audio'];
+    bool audioValid = false;
+    const audioBlocker =
+        'Missing 3 licensed adhan recordings (3 distinct voices including Fajr and <30s notification clips).';
+
     if (audioRaw is! Map) {
       errors.add(
         'Missing or malformed "adhan_audio" section in pending_registries',
@@ -1051,41 +1175,49 @@ class ContentValidator {
       final status = audio['status'];
       if (status is! String) {
         errors.add('Adhan audio registry status must be a string');
-      } else if (status != 'missing' && status != 'pending') {
-        errors.add('Contradictory or invalid adhan audio status: "$status"');
-      }
-
-      final expectedVoices = audio['expected_voices_count'];
-      if (expectedVoices != null &&
-          (expectedVoices is! int || expectedVoices < 0)) {
-        errors.add(
-          'Adhan audio expected_voices_count must be a non-negative integer',
+      } else if (status == 'bundled') {
+        audioValid = await _validateBundledAdhanAudio(
+          audio: audio,
+          normalizedRoot: normalizedRoot,
+          canonicalRoot: canonicalRoot,
+          errors: errors,
+          verified: verified,
         );
-      }
-
-      final voices = audio['voices'];
-      if (voices is! List) {
-        errors.add('Adhan audio "voices" field must be a list');
-      }
-
-      final clips = audio['notification_clips'];
-      if (clips is! List) {
-        errors.add('Adhan audio "notification_clips" field must be a list');
-      }
-
-      final hasDeclaredEntries =
-          (voices is List && voices.isNotEmpty) ||
-          (clips is List && clips.isNotEmpty);
-
-      if (hasDeclaredEntries) {
-        if (status == 'missing') {
+      } else if (status == 'missing' || status == 'pending') {
+        final expectedVoices = audio['expected_voices_count'];
+        if (expectedVoices != null &&
+            (expectedVoices is! int || expectedVoices < 0)) {
           errors.add(
-            'Adhan audio registry declares status="missing" but contains declared voice or clip entries',
+            'Adhan audio expected_voices_count must be a non-negative integer',
           );
         }
-        errors.add(
-          'Adhan audio recordings are unsupported at this milestone; dedicated validator pending',
-        );
+
+        final voices = audio['voices'];
+        if (voices is! List) {
+          errors.add('Adhan audio "voices" field must be a list');
+        }
+
+        final clips = audio['notification_clips'];
+        if (clips is! List) {
+          errors.add('Adhan audio "notification_clips" field must be a list');
+        }
+
+        final hasDeclaredEntries =
+            (voices is List && voices.isNotEmpty) ||
+            (clips is List && clips.isNotEmpty);
+
+        if (hasDeclaredEntries) {
+          if (status == 'missing') {
+            errors.add(
+              'Adhan audio registry declares status="missing" but contains declared voice or clip entries',
+            );
+          }
+          errors.add(
+            'Adhan audio recordings are declared but registry status is "$status" instead of "bundled"',
+          );
+        }
+      } else {
+        errors.add('Contradictory or invalid adhan audio status: "$status"');
       }
     }
 
@@ -1206,57 +1338,46 @@ class ContentValidator {
 
     // 5. Human Review Registry
     final humanRaw = pending['human_review'];
+    bool humanReviewValid = false;
+    bool humanReviewApproved = false;
+    const humanBlocker =
+        'Qualified human reviewer religious review tied to exact corpus hashes is pending.';
+
     if (humanRaw is! Map) {
       errors.add(
         'Missing or malformed "human_review" section in pending_registries',
       );
     } else {
       final human = humanRaw.cast<String, dynamic>();
-      final status = human['status'];
-      if (status is! String) {
-        errors.add('Human review status must be a string');
-      }
+      final humanResult = await HumanReviewValidator.validate(
+        humanReviewRegistry: human,
+        normalizedRoot: normalizedRoot,
+        canonicalRoot: canonicalRoot,
+        underlyingIntegritySuccess: imagesValid &&
+            audioValid &&
+            dhikrValid &&
+            hadithValid &&
+            errors.isEmpty,
+      );
 
-      final approved = human['approved'];
-      if (approved is! bool) {
-        errors.add('Human review "approved" field must be a boolean');
-      } else if (approved == true) {
-        errors.add(
-          'Human review approval is unsupported at this milestone; dedicated review verification pending',
-        );
+      if (humanResult.errors.isNotEmpty) {
+        errors.addAll(humanResult.errors);
       }
-
-      if (human['evidence_path'] != null) {
-        errors.add(
-          'Human review evidence is unsupported at this milestone; dedicated review verification pending',
-        );
+      if (humanResult.verifiedItems.isNotEmpty) {
+        verified.addAll(humanResult.verifiedItems);
       }
-      if (human['evidence_sha256'] != null) {
-        errors.add(
-          'Human review evidence SHA is unsupported at this milestone; dedicated review verification pending',
-        );
-      }
-      final reviewedHashes = human['reviewed_hashes'];
-      if (reviewedHashes != null &&
-          (reviewedHashes is! Map || reviewedHashes.isNotEmpty)) {
-        errors.add(
-          'Human review hash claims are unsupported at this milestone; dedicated review verification pending',
-        );
-      }
-      if (human['reviewer_name'] != null) {
-        errors.add(
-          'Human reviewer declarations are unsupported at this milestone; dedicated review verification pending',
-        );
-      }
+      humanReviewValid = humanResult.isValid;
+      humanReviewApproved = humanResult.isApproved;
     }
 
     // Drop ONLY Quran images blocker when valid
     if (!imagesValid) {
       pendingBlockers.add(imagesBlocker);
     }
-    pendingBlockers.add(
-      'Missing 3 licensed adhan recordings (3 distinct voices including Fajr and <30s notification clips).',
-    );
+    // Drop ONLY adhan audio release blocker when valid
+    if (!audioValid) {
+      pendingBlockers.add(audioBlocker);
+    }
 
     // Drop ONLY Hisn al-Muslim release blocker when valid
     if (!dhikrValid) {
@@ -1268,9 +1389,16 @@ class ContentValidator {
       pendingBlockers.add(hadithBlocker);
     }
 
-    pendingBlockers.add(
-      'Qualified human reviewer religious review tied to exact corpus hashes is pending.',
-    );
+    // Drop ONLY qualified human review blocker on full valid evidence AND underlying asset integrity success
+    if (!(humanReviewValid &&
+        humanReviewApproved &&
+        imagesValid &&
+        audioValid &&
+        dhikrValid &&
+        hadithValid &&
+        errors.isEmpty)) {
+      pendingBlockers.add(humanBlocker);
+    }
   }
 
   /// Strictly validates file-backed 604-page KFQC Medina Mushaf images bundle
@@ -2274,6 +2402,833 @@ class ContentValidator {
     return valid;
   }
 
+  /// Validates adhan audio manifest registry metadata fields and evidence document.
+  static bool _validateAdhanManifestRegistry({
+    required Map<String, dynamic> audio,
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required List<String> errors,
+    required List<String> verified,
+  }) {
+    bool valid = true;
+
+    // 1. rights_status
+    final rightsStatus = audio['rights_status'];
+    if (rightsStatus is! String || rightsStatus != 'licensed_free_content') {
+      errors.add(
+        'Adhan audio rights_status must be "licensed_free_content" (got: "$rightsStatus")',
+      );
+      valid = false;
+    }
+
+    // 2. evidence_doc
+    final evidenceDocRel = audio['evidence_doc'];
+    if (evidenceDocRel is! String || evidenceDocRel.isEmpty) {
+      errors.add('Missing or malformed "evidence_doc" in adhan_audio registry');
+      valid = false;
+    } else if (!_isPathSafe(
+      relativePath: evidenceDocRel,
+      normalizedRoot: normalizedRoot,
+      canonicalRoot: canonicalRoot,
+    )) {
+      errors.add('Unsafe adhan audio evidence_doc path: "$evidenceDocRel"');
+      valid = false;
+    } else if (evidenceDocRel != 'docs/sources/ADHAN_AUDIO.md') {
+      errors.add(
+        'Adhan audio evidence_doc must be "docs/sources/ADHAN_AUDIO.md" (got: "$evidenceDocRel")',
+      );
+      valid = false;
+    } else {
+      final docFile = File(p.join(normalizedRoot, evidenceDocRel));
+      if (!docFile.existsSync()) {
+        errors.add('Missing adhan audio evidence document: "$evidenceDocRel"');
+        valid = false;
+      } else if (docFile.lengthSync() == 0) {
+        errors.add('Empty adhan audio evidence document: "$evidenceDocRel"');
+        valid = false;
+      } else {
+        verified.add('Adhan audio evidence doc verified ($evidenceDocRel)');
+      }
+    }
+
+    // 3. expected_voices_count
+    final declaredExpectedVoices = audio['expected_voices_count'];
+    if (declaredExpectedVoices is! int ||
+        declaredExpectedVoices != kExpectedAdhanVoicesCount) {
+      errors.add(
+        'Adhan audio expected_voices_count mismatch: manifest declared $declaredExpectedVoices, expected $kExpectedAdhanVoicesCount',
+      );
+      valid = false;
+    }
+
+    // 4. total_full_audio_bytes and total_alert_clip_bytes
+    final expectedTotalFullBytes =
+        kExpectedAdhanAudioBytes.values.reduce((a, b) => a + b);
+    const expectedTotalAlertBytes =
+        kExpectedAdhanAlertBytes * kExpectedAdhanVoicesCount;
+
+    final declaredFullBytes = audio['total_full_audio_bytes'];
+    if (declaredFullBytes is! int || declaredFullBytes != expectedTotalFullBytes) {
+      errors.add(
+        'Adhan audio total_full_audio_bytes mismatch: declared $declaredFullBytes, expected $expectedTotalFullBytes',
+      );
+      valid = false;
+    }
+
+    final declaredAlertBytes = audio['total_alert_clip_bytes'];
+    if (declaredAlertBytes is! int ||
+        declaredAlertBytes != expectedTotalAlertBytes) {
+      errors.add(
+        'Adhan audio total_alert_clip_bytes mismatch: declared $declaredAlertBytes, expected $expectedTotalAlertBytes',
+      );
+      valid = false;
+    }
+
+    return valid;
+  }
+
+  /// Validates individual adhan voice metadata and factual attribution fields.
+  static bool _validateAdhanVoiceMetadata({
+    required Map<String, dynamic> voice,
+    required int index,
+    required Set<String> seenVoiceIds,
+    required Set<String> fajrVoiceIds,
+    required List<String> errors,
+  }) {
+    bool valid = true;
+    final voiceId = voice['id'];
+
+    if (voiceId is! String || !kExpectedAdhanVoiceIds.contains(voiceId)) {
+      errors.add('Invalid or unauthorized voice ID: "$voiceId" at index $index');
+      return false;
+    }
+
+    if (seenVoiceIds.contains(voiceId)) {
+      errors.add('Duplicate voice ID: "$voiceId"');
+      valid = false;
+    }
+    seenVoiceIds.add(voiceId);
+
+    final isFajr = voice['is_fajr'];
+    if (isFajr is! bool) {
+      errors.add('Voice "$voiceId" is_fajr must be a boolean');
+      valid = false;
+    } else {
+      final expectedIsFajr = (voiceId == 'malmo_fajr');
+      if (isFajr != expectedIsFajr) {
+        errors.add(
+          'Voice "$voiceId" is_fajr mismatch: declared $isFajr, expected $expectedIsFajr',
+        );
+        valid = false;
+      }
+      if (isFajr) {
+        fajrVoiceIds.add(voiceId);
+      }
+    }
+
+    final nameAr = voice['name_ar'];
+    if (nameAr is! String || nameAr.trim().isEmpty) {
+      errors.add('Voice "$voiceId" missing name_ar');
+      valid = false;
+    }
+
+    final title = voice['title'];
+    if (title is! String || title.trim().isEmpty) {
+      errors.add('Voice "$voiceId" missing title');
+      valid = false;
+    }
+
+    final performerOrSource = voice['performer_or_source'];
+    if (performerOrSource is! String || performerOrSource.trim().isEmpty) {
+      errors.add('Voice "$voiceId" missing performer_or_source');
+      valid = false;
+    }
+
+    final license = voice['license'];
+    final expectedLicense = kExpectedAdhanLicenses[voiceId];
+    if (license is! String || license != expectedLicense) {
+      errors.add(
+        'Voice "$voiceId" license mismatch: declared "$license", expected "$expectedLicense"',
+      );
+      valid = false;
+    }
+
+    final licenseUrl = voice['license_url'];
+    final expectedLicenseUrl = kExpectedAdhanLicenseUrls[voiceId];
+    if (licenseUrl is! String || licenseUrl != expectedLicenseUrl) {
+      errors.add(
+        'Voice "$voiceId" license_url mismatch: declared "$licenseUrl", expected "$expectedLicenseUrl"',
+      );
+      valid = false;
+    }
+
+    final sourceUrl = voice['source_url'];
+    final expectedSourceUrl = kExpectedAdhanSourceUrls[voiceId];
+    if (sourceUrl is! String || sourceUrl != expectedSourceUrl) {
+      errors.add(
+        'Voice "$voiceId" source_url mismatch: declared "$sourceUrl", expected "$expectedSourceUrl"',
+      );
+      valid = false;
+    }
+
+    return valid;
+  }
+
+  /// Validates full MP3 audio recordings against pinned paths, formats, sizes, and SHA-256.
+  static bool _validateAdhanAudioFiles({
+    required String voiceId,
+    required dynamic audioFileRaw,
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required List<String> errors,
+    required List<String> verified,
+  }) {
+    if (audioFileRaw is! Map) {
+      errors.add('Voice "$voiceId" missing audio_file object');
+      return false;
+    }
+
+    bool valid = true;
+    final audioMap = audioFileRaw.cast<String, dynamic>();
+    final audioRelPath = audioMap['path'];
+    final audioFormat = audioMap['format'];
+    final audioBytes = audioMap['bytes'];
+    final audioSha256 = audioMap['sha256'];
+    final durationSec = audioMap['duration_seconds'];
+
+    final expectedAudioRelPath = kExpectedAdhanAudioPaths[voiceId];
+    final expectedBytes = kExpectedAdhanAudioBytes[voiceId];
+    final expectedSha = kExpectedAdhanAudioSha256[voiceId];
+
+    if (audioRelPath != expectedAudioRelPath) {
+      errors.add(
+        'Voice "$voiceId" audio_file path mismatch: "$audioRelPath" != "$expectedAudioRelPath"',
+      );
+      valid = false;
+    }
+    if (audioFormat != 'mp3') {
+      errors.add('Voice "$voiceId" audio_file format must be "mp3" (got: "$audioFormat")');
+      valid = false;
+    }
+    if (audioBytes != expectedBytes) {
+      errors.add(
+        'Voice "$voiceId" audio_file bytes mismatch ($audioBytes != $expectedBytes)',
+      );
+      valid = false;
+    }
+    if (audioSha256 != expectedSha) {
+      errors.add(
+        'Voice "$voiceId" audio_file SHA-256 mismatch ($audioSha256 != $expectedSha)',
+      );
+      valid = false;
+    }
+    final expectedDuration = kExpectedAdhanAudioDurations[voiceId];
+    if (durationSec == null ||
+        durationSec is! int ||
+        durationSec != expectedDuration) {
+      errors.add(
+        'Voice "$voiceId" audio_file duration_seconds mismatch: declared $durationSec, expected $expectedDuration',
+      );
+      valid = false;
+    }
+
+    if (audioRelPath is String &&
+        !_isPathSafe(
+          relativePath: audioRelPath,
+          normalizedRoot: normalizedRoot,
+          canonicalRoot: canonicalRoot,
+        )) {
+      errors.add('Voice "$voiceId" audio_file path traversal or unsafe');
+      valid = false;
+    } else if (audioRelPath is String) {
+      final f = File(p.join(normalizedRoot, audioRelPath));
+      if (!f.existsSync()) {
+        errors.add('Voice "$voiceId" audio file missing: "$audioRelPath"');
+        valid = false;
+      } else {
+        final actualLen = f.lengthSync();
+        if (actualLen != expectedBytes) {
+          errors.add(
+            'Voice "$voiceId" audio file size on disk mismatch ($actualLen != $expectedBytes)',
+          );
+          valid = false;
+        }
+        final actualSha = sha256
+            .convert(f.readAsBytesSync())
+            .toString()
+            .toLowerCase();
+        if (actualSha != expectedSha) {
+          errors.add(
+            'Voice "$voiceId" audio file SHA on disk mismatch: $actualSha',
+          );
+          valid = false;
+        }
+      }
+    }
+
+    if (valid) {
+      verified.add(
+        'Bundled adhan voice "$voiceId" full recording verified ($expectedBytes bytes, SHA-256: ${expectedSha!.substring(0, 8)}...)',
+      );
+    }
+
+    return valid;
+  }
+
+  /// Validates notification alert clips (PCM WAV), RIFF header, duration, and waveform energy.
+  static bool _validateAdhanAlertClips({
+    required String voiceId,
+    required dynamic alertClipRaw,
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required List<String> errors,
+    required List<String> verified,
+  }) {
+    if (alertClipRaw is! Map) {
+      errors.add('Voice "$voiceId" missing alert_clip object');
+      return false;
+    }
+
+    bool valid = true;
+    final alertMap = alertClipRaw.cast<String, dynamic>();
+    final alertRelPath = alertMap['path'];
+    final alertFormat = alertMap['format'];
+    final alertCodec = alertMap['codec'];
+    final alertSampleRate = alertMap['sample_rate'];
+    final alertChannels = alertMap['channels'];
+    final alertDuration = alertMap['duration_seconds'];
+    final alertBytes = alertMap['bytes'];
+    final alertSha256 = alertMap['sha256'];
+
+    final expectedAlertRelPath = kExpectedAdhanAlertPaths[voiceId];
+    final expectedSha = kExpectedAdhanAlertSha256[voiceId];
+
+    if (alertRelPath != expectedAlertRelPath) {
+      errors.add(
+        'Voice "$voiceId" alert_clip path mismatch: "$alertRelPath" != "$expectedAlertRelPath"',
+      );
+      valid = false;
+    }
+    if (alertFormat != 'wav') {
+      errors.add('Voice "$voiceId" alert_clip format must be "wav"');
+      valid = false;
+    }
+    if (alertCodec != 'pcm_s16le') {
+      errors.add('Voice "$voiceId" alert_clip codec must be "pcm_s16le"');
+      valid = false;
+    }
+    if (alertSampleRate != 22050) {
+      errors.add('Voice "$voiceId" alert_clip sample_rate must be 22050');
+      valid = false;
+    }
+    if (alertChannels != 1) {
+      errors.add('Voice "$voiceId" alert_clip channels must be 1 (mono)');
+      valid = false;
+    }
+    if (alertDuration == null ||
+        alertDuration is! num ||
+        alertDuration <= 0 ||
+        (alertDuration.toDouble() - kExpectedAdhanAlertDurationSeconds).abs() > 0.05) {
+      errors.add(
+        'Voice "$voiceId" alert_clip duration must be exactly $kExpectedAdhanAlertDurationSeconds (got: $alertDuration)',
+      );
+      valid = false;
+    }
+    if (alertBytes != kExpectedAdhanAlertBytes) {
+      errors.add(
+        'Voice "$voiceId" alert_clip bytes mismatch ($alertBytes != $kExpectedAdhanAlertBytes)',
+      );
+      valid = false;
+    }
+    if (alertSha256 != expectedSha) {
+      errors.add(
+        'Voice "$voiceId" alert_clip SHA-256 mismatch ($alertSha256 != $expectedSha)',
+      );
+      valid = false;
+    }
+
+    if (alertRelPath is String &&
+        !_isPathSafe(
+          relativePath: alertRelPath,
+          normalizedRoot: normalizedRoot,
+          canonicalRoot: canonicalRoot,
+        )) {
+      errors.add('Voice "$voiceId" alert_clip path traversal or unsafe');
+      valid = false;
+    } else if (alertRelPath is String) {
+      final f = File(p.join(normalizedRoot, alertRelPath));
+      if (!f.existsSync()) {
+        errors.add('Voice "$voiceId" alert file missing: "$alertRelPath"');
+        valid = false;
+      } else {
+        final actualLen = f.lengthSync();
+        if (actualLen != kExpectedAdhanAlertBytes) {
+          errors.add(
+            'Voice "$voiceId" alert file size on disk mismatch ($actualLen != $kExpectedAdhanAlertBytes)',
+          );
+          valid = false;
+        }
+        final rawBytes = f.readAsBytesSync();
+        final actualSha = sha256
+            .convert(rawBytes)
+            .toString()
+            .toLowerCase();
+        if (actualSha != expectedSha) {
+          errors.add(
+            'Voice "$voiceId" alert file SHA on disk mismatch: $actualSha',
+          );
+          valid = false;
+        }
+
+        // Rigorous WAV header inspection
+        final wavResult = inspectWavHeader(rawBytes);
+        if (!wavResult.isValid) {
+          errors.add(
+            'Voice "$voiceId" alert WAV header invalid: ${wavResult.errorMessage}',
+          );
+          valid = false;
+        } else {
+          if (wavResult.channels != 1) {
+            errors.add('Voice "$voiceId" WAV channels must be 1');
+            valid = false;
+          }
+          if (wavResult.sampleRate != 22050) {
+            errors.add('Voice "$voiceId" WAV sample rate must be 22050');
+            valid = false;
+          }
+          if (wavResult.bitDepth != 16) {
+            errors.add('Voice "$voiceId" WAV bit depth must be 16');
+            valid = false;
+          }
+          if ((wavResult.durationSeconds! - kExpectedAdhanAlertDurationSeconds).abs() > 0.05) {
+            errors.add(
+              'Voice "$voiceId" WAV duration mismatch (${wavResult.durationSeconds} != $kExpectedAdhanAlertDurationSeconds)',
+            );
+            valid = false;
+          }
+          if (wavResult.dataOffset != kExpectedWavDataOffset) {
+            errors.add(
+              'Voice "$voiceId" WAV dataOffset mismatch (${wavResult.dataOffset} != $kExpectedWavDataOffset)',
+            );
+            valid = false;
+          }
+          if (alertDuration is num &&
+              (alertDuration.toDouble() - wavResult.durationSeconds!).abs() > 0.05) {
+            errors.add(
+              'Voice "$voiceId" declared duration ($alertDuration) does not match inspected WAV duration (${wavResult.durationSeconds})',
+            );
+            valid = false;
+          }
+
+          // Waveform energy & non-silent validation
+          final metrics = analyzeWavWaveform(
+            bytes: rawBytes,
+            dataOffset: wavResult.dataOffset!,
+            dataSize: wavResult.dataSize!,
+            sampleRate: wavResult.sampleRate!,
+          );
+          if (!metrics.hasNonZeroSignal) {
+            errors.add('Voice "$voiceId" alert WAV is completely silent');
+            valid = false;
+          } else if (metrics.peakAmplitude < 0.05) {
+            errors.add(
+              'Voice "$voiceId" alert WAV peak too low (${metrics.peakAmplitude} < 0.05)',
+            );
+            valid = false;
+          } else if (metrics.rmsAmplitude < 0.005) {
+            errors.add(
+              'Voice "$voiceId" alert WAV RMS energy too low (${metrics.rmsAmplitude} < 0.005)',
+            );
+            valid = false;
+          } else if (metrics.onsetRmsAmplitude < kExpectedAdhanAlertOnsetRmsLowerBound) {
+            // First-second RMS bounds: adam ~0.0480, atcovi ~0.0678, malmo_fajr ~0.00365
+            errors.add(
+              'Voice "$voiceId" alert WAV onset RMS energy too low (${metrics.onsetRmsAmplitude} < $kExpectedAdhanAlertOnsetRmsLowerBound)',
+            );
+            valid = false;
+          }
+        }
+      }
+    }
+
+    if (valid) {
+      verified.add(
+        'Bundled adhan voice "$voiceId" alert clip verified (PCM 16-bit, 22050Hz mono, 27s, non-zero digital signal within numeric bounds; human listening/religious review pending)',
+      );
+    }
+
+    return valid;
+  }
+
+  /// Validates notification_clips list in adhan_audio manifest section.
+  static bool _validateAdhanNotificationClipsManifest({
+    required dynamic clipsRaw,
+    required List<String> errors,
+  }) {
+    if (clipsRaw is! List) {
+      errors.add('Adhan audio "notification_clips" field must be a list');
+      return false;
+    }
+    if (clipsRaw.length != kExpectedAdhanVoicesCount) {
+      errors.add(
+        'Adhan audio notification_clips count mismatch: manifest has ${clipsRaw.length}, expected $kExpectedAdhanVoicesCount',
+      );
+      return false;
+    }
+
+    bool valid = true;
+    final seenClipVoiceIds = <String>{};
+
+    for (int i = 0; i < clipsRaw.length; i++) {
+      final clipEntry = clipsRaw[i];
+      if (clipEntry is! Map) {
+        errors.add('Notification clip entry #$i is not an object');
+        valid = false;
+        continue;
+      }
+      final clipMap = clipEntry.cast<String, dynamic>();
+      final clipVoiceId = clipMap['voice_id'];
+      final clipPath = clipMap['path'];
+      final clipSha = clipMap['sha256'];
+      final clipBytes = clipMap['bytes'];
+      final clipDuration = clipMap['duration_seconds'];
+
+      if (clipVoiceId is! String ||
+          !kExpectedAdhanVoiceIds.contains(clipVoiceId)) {
+        errors.add('Invalid voice_id in notification_clips: "$clipVoiceId"');
+        valid = false;
+        continue;
+      }
+      seenClipVoiceIds.add(clipVoiceId);
+
+      final expectedClipPath = kExpectedAdhanAlertPaths[clipVoiceId];
+      if (clipPath != expectedClipPath) {
+        errors.add(
+          'Notification clip path mismatch for "$clipVoiceId": "$clipPath" != "$expectedClipPath"',
+        );
+        valid = false;
+      }
+      final clipFormat = clipMap['format'];
+      if (clipFormat != 'wav') {
+        errors.add(
+          'Notification clip format mismatch for "$clipVoiceId": "$clipFormat" != "wav"',
+        );
+        valid = false;
+      }
+      if (clipSha != kExpectedAdhanAlertSha256[clipVoiceId]) {
+        errors.add(
+          'Notification clip SHA-256 mismatch for "$clipVoiceId"',
+        );
+        valid = false;
+      }
+      if (clipBytes != kExpectedAdhanAlertBytes) {
+        errors.add(
+          'Notification clip bytes mismatch for "$clipVoiceId"',
+        );
+        valid = false;
+      }
+      if (clipDuration == null ||
+          clipDuration is! num ||
+          clipDuration <= 0 ||
+          (clipDuration.toDouble() - kExpectedAdhanAlertDurationSeconds).abs() > 0.05) {
+        errors.add(
+          'Notification clip duration mismatch for "$clipVoiceId": declared $clipDuration, expected $kExpectedAdhanAlertDurationSeconds',
+        );
+        valid = false;
+      }
+    }
+
+    if (!seenClipVoiceIds.containsAll(kExpectedAdhanVoiceIds)) {
+      errors.add(
+        'Missing notification clips for voice IDs: ${kExpectedAdhanVoiceIds.difference(seenClipVoiceIds)}',
+      );
+      valid = false;
+    }
+
+    return valid;
+  }
+
+  /// Validates native platform alert copies (iOS Runner and Android res/raw) and prohibits OGG/FLAC.
+  static bool _validateAdhanNativeCopies({
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required List<String> errors,
+    required List<String> verified,
+  }) {
+    bool valid = true;
+
+    // 1. Verify iOS Runner directory and alert copies
+    final iosRunnerDir = Directory(p.join(normalizedRoot, 'ios', 'Runner'));
+    if (!iosRunnerDir.existsSync()) {
+      errors.add('Missing required iOS Runner directory: ios/Runner');
+      valid = false;
+    }
+
+    for (final voiceId in kExpectedAdhanVoiceIds) {
+      final relPath = kExpectedAdhanIosAlertPaths[voiceId]!;
+      if (!_isPathSafe(
+        relativePath: relPath,
+        normalizedRoot: normalizedRoot,
+        canonicalRoot: canonicalRoot,
+      )) {
+        errors.add('Unsafe iOS Runner alert clip path: $relPath');
+        valid = false;
+        continue;
+      }
+
+      final iosFile = File(p.join(normalizedRoot, relPath));
+      if (!iosFile.existsSync()) {
+        errors.add('Missing iOS Runner alert clip: $relPath');
+        valid = false;
+      } else {
+        final actualLen = iosFile.lengthSync();
+        if (actualLen != kExpectedAdhanAlertBytes) {
+          errors.add(
+            'iOS Runner alert clip size mismatch for "$voiceId" ($actualLen != $kExpectedAdhanAlertBytes)',
+          );
+          valid = false;
+        }
+        final actualBytes = iosFile.readAsBytesSync();
+        final actualSha = sha256
+            .convert(actualBytes)
+            .toString()
+            .toLowerCase();
+        if (actualSha != kExpectedAdhanAlertSha256[voiceId]) {
+          errors.add(
+            'iOS Runner alert clip SHA mismatch for "$voiceId"',
+          );
+          valid = false;
+        } else {
+          final wavResult = inspectWavHeader(actualBytes);
+          if (!wavResult.isValid ||
+              wavResult.dataOffset != kExpectedWavDataOffset ||
+              (wavResult.durationSeconds! - kExpectedAdhanAlertDurationSeconds).abs() > 0.05) {
+            errors.add(
+              'iOS Runner alert clip WAV format mismatch for "$voiceId"',
+            );
+            valid = false;
+          } else {
+            verified.add('iOS Runner alert clip verified: $relPath');
+          }
+        }
+      }
+    }
+
+    // Check for forbidden OGG/FLAC in ios/Runner
+    if (iosRunnerDir.existsSync()) {
+      for (final entity in iosRunnerDir.listSync(recursive: false)) {
+        if (entity is File) {
+          final ext = p.extension(entity.path).toLowerCase();
+          if (ext == '.ogg' || ext == '.flac') {
+            errors.add('Prohibited audio format on iOS found in ios/Runner: ${entity.path}');
+            valid = false;
+          }
+        }
+      }
+    }
+
+    // 2. Verify Android res/raw directory and alert copies
+    final androidRawDir = Directory(
+      p.join(normalizedRoot, 'android', 'app', 'src', 'main', 'res', 'raw'),
+    );
+    if (!androidRawDir.existsSync()) {
+      errors.add('Missing required Android res/raw directory: android/app/src/main/res/raw');
+      valid = false;
+    }
+
+    for (final voiceId in kExpectedAdhanVoiceIds) {
+      final relPath = kExpectedAdhanAndroidAlertPaths[voiceId]!;
+      if (!_isPathSafe(
+        relativePath: relPath,
+        normalizedRoot: normalizedRoot,
+        canonicalRoot: canonicalRoot,
+      )) {
+        errors.add('Unsafe Android res/raw alert clip path: $relPath');
+        valid = false;
+        continue;
+      }
+
+      final rawFile = File(p.join(normalizedRoot, relPath));
+      if (!rawFile.existsSync()) {
+        errors.add('Missing Android res/raw alert clip: $relPath');
+        valid = false;
+      } else {
+        final actualLen = rawFile.lengthSync();
+        if (actualLen != kExpectedAdhanAlertBytes) {
+          errors.add(
+            'Android res/raw alert clip size mismatch for "$voiceId" ($actualLen != $kExpectedAdhanAlertBytes)',
+          );
+          valid = false;
+        }
+        final actualBytes = rawFile.readAsBytesSync();
+        final actualSha = sha256
+            .convert(actualBytes)
+            .toString()
+            .toLowerCase();
+        if (actualSha != kExpectedAdhanAlertSha256[voiceId]) {
+          errors.add(
+            'Android res/raw alert clip SHA mismatch for "$voiceId"',
+          );
+          valid = false;
+        } else {
+          final wavResult = inspectWavHeader(actualBytes);
+          if (!wavResult.isValid ||
+              wavResult.dataOffset != kExpectedWavDataOffset ||
+              (wavResult.durationSeconds! - kExpectedAdhanAlertDurationSeconds).abs() > 0.05) {
+            errors.add(
+              'Android res/raw alert clip WAV format mismatch for "$voiceId"',
+            );
+            valid = false;
+          } else {
+            verified.add('Android res/raw alert clip verified: $relPath');
+          }
+        }
+      }
+    }
+
+    // 3. Verify no FLAC or OGG in assets/audio/adhan
+    final adhanAssetsDir = Directory(
+      p.join(normalizedRoot, 'assets', 'audio', 'adhan'),
+    );
+    if (!adhanAssetsDir.existsSync()) {
+      errors.add('Missing required adhan assets directory: assets/audio/adhan');
+      valid = false;
+    } else {
+      for (final entity in adhanAssetsDir.listSync(recursive: false)) {
+        if (entity is File) {
+          final ext = p.extension(entity.path).toLowerCase();
+          if (ext == '.ogg' || ext == '.flac') {
+            errors.add(
+              'Prohibited audio format in adhan assets: ${entity.path} (iOS requires MP3/WAV)',
+            );
+            valid = false;
+          }
+        }
+      }
+    }
+
+    return valid;
+  }
+
+  /// Strictly validates file-backed bundled adhan recordings and alert clips
+  /// against pinned hashes, byte sizes, metadata, RIFF PCM headers, and waveform energy.
+  static Future<bool> _validateBundledAdhanAudio({
+    required Map<String, dynamic> audio,
+    required String normalizedRoot,
+    required String canonicalRoot,
+    required List<String> errors,
+    required List<String> verified,
+  }) async {
+    bool allValid = true;
+
+    // 1. Manifest registry metadata
+    final manifestOk = _validateAdhanManifestRegistry(
+      audio: audio,
+      normalizedRoot: normalizedRoot,
+      canonicalRoot: canonicalRoot,
+      errors: errors,
+      verified: verified,
+    );
+    if (!manifestOk) allValid = false;
+
+    // 2. Voices list
+    final voicesRaw = audio['voices'];
+    if (voicesRaw is! List) {
+      errors.add('Adhan audio "voices" field must be a list');
+      allValid = false;
+    } else if (voicesRaw.length != kExpectedAdhanVoicesCount) {
+      errors.add(
+        'Adhan audio voices count mismatch: manifest has ${voicesRaw.length}, expected $kExpectedAdhanVoicesCount',
+      );
+      allValid = false;
+    } else {
+      final seenVoiceIds = <String>{};
+      final fajrVoiceIds = <String>{};
+
+      for (int i = 0; i < voicesRaw.length; i++) {
+        final voiceEntry = voicesRaw[i];
+        if (voiceEntry is! Map) {
+          errors.add('Adhan voice entry #$i is not an object');
+          allValid = false;
+          continue;
+        }
+
+        final voice = voiceEntry.cast<String, dynamic>();
+        final voiceId = voice['id'];
+
+        final metaOk = _validateAdhanVoiceMetadata(
+          voice: voice,
+          index: i,
+          seenVoiceIds: seenVoiceIds,
+          fajrVoiceIds: fajrVoiceIds,
+          errors: errors,
+        );
+        if (!metaOk) allValid = false;
+
+        if (voiceId is String && kExpectedAdhanVoiceIds.contains(voiceId)) {
+          final audioFileOk = _validateAdhanAudioFiles(
+            voiceId: voiceId,
+            audioFileRaw: voice['audio_file'],
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+            errors: errors,
+            verified: verified,
+          );
+          if (!audioFileOk) allValid = false;
+
+          final alertClipOk = _validateAdhanAlertClips(
+            voiceId: voiceId,
+            alertClipRaw: voice['alert_clip'],
+            normalizedRoot: normalizedRoot,
+            canonicalRoot: canonicalRoot,
+            errors: errors,
+            verified: verified,
+          );
+          if (!alertClipOk) allValid = false;
+        }
+      }
+
+      // Check Fajr voice rules: exactly one Fajr voice
+      if (fajrVoiceIds.length != 1) {
+        errors.add(
+          'Exactly one Fajr voice must be designated (found ${fajrVoiceIds.length}: $fajrVoiceIds)',
+        );
+        allValid = false;
+      } else if (!fajrVoiceIds.contains('malmo_fajr')) {
+        errors.add(
+          'Designated Fajr voice must be "malmo_fajr" (found: ${fajrVoiceIds.first})',
+        );
+        allValid = false;
+      }
+
+      // Check all expected voice IDs present
+      if (!seenVoiceIds.containsAll(kExpectedAdhanVoiceIds)) {
+        errors.add(
+          'Missing expected adhan voice IDs: ${kExpectedAdhanVoiceIds.difference(seenVoiceIds)}',
+        );
+        allValid = false;
+      }
+    }
+
+    // 3. Notification clips manifest
+    final clipsOk = _validateAdhanNotificationClipsManifest(
+      clipsRaw: audio['notification_clips'],
+      errors: errors,
+    );
+    if (!clipsOk) allValid = false;
+
+    // 4. External native copies (iOS Runner and Android res/raw)
+    final nativeOk = _validateAdhanNativeCopies(
+      normalizedRoot: normalizedRoot,
+      canonicalRoot: canonicalRoot,
+      errors: errors,
+      verified: verified,
+    );
+    if (!nativeOk) allValid = false;
+
+    return allValid;
+  }
+
   /// Rigorously inspects a PCM WAV byte array (preserved for future audio milestone).
   static WavInspectionResult inspectWavHeader(Uint8List bytes) {
     if (bytes.length < 44) {
@@ -2403,7 +3358,64 @@ class ContentValidator {
       sampleRate: sampleRate,
       bitDepth: bitDepth,
       dataSize: dataSize,
+      dataOffset: dataOffset,
       durationSeconds: durationSeconds,
+    );
+  }
+
+  /// Analyzes PCM 16-bit mono/stereo WAV waveform to compute peak amplitude, RMS energy,
+  /// and onset energy.
+  ///
+  /// Verifies presence of a non-zero digital signal within reasonable bounds.
+  /// Note: This automated check verifies digital signal presence and level only,
+  /// and does NOT establish human audible aesthetic quality or religious correctness.
+  static AudioWaveformMetrics analyzeWavWaveform({
+    required Uint8List bytes,
+    required int dataOffset,
+    required int dataSize,
+    int sampleRate = 22050,
+  }) {
+    final bd = ByteData.sublistView(bytes);
+    final sampleCount = dataSize ~/ 2;
+    if (sampleCount <= 0) {
+      return const AudioWaveformMetrics(
+        peakAmplitude: 0.0,
+        rmsAmplitude: 0.0,
+        onsetRmsAmplitude: 0.0,
+        hasNonZeroSignal: false,
+      );
+    }
+
+    double sumSquared = 0.0;
+    double onsetSumSquared = 0.0;
+    final onsetSamples = math.min(sampleCount, sampleRate); // first 1 second
+    double maxPeak = 0.0;
+    bool nonZero = false;
+
+    for (int i = 0; i < sampleCount; i++) {
+      final sampleOffset = dataOffset + i * 2;
+      if (sampleOffset + 2 > bytes.length) break;
+      final raw = bd.getInt16(sampleOffset, Endian.little);
+      if (raw != 0) nonZero = true;
+      final normalized = raw / 32768.0;
+      final abs = normalized.abs();
+      if (abs > maxPeak) maxPeak = abs;
+      final sq = normalized * normalized;
+      sumSquared += sq;
+      if (i < onsetSamples) {
+        onsetSumSquared += sq;
+      }
+    }
+
+    final rms = math.sqrt(sumSquared / sampleCount);
+    final onsetRms =
+        onsetSamples > 0 ? math.sqrt(onsetSumSquared / onsetSamples) : 0.0;
+
+    return AudioWaveformMetrics(
+      peakAmplitude: maxPeak,
+      rmsAmplitude: rms,
+      onsetRmsAmplitude: onsetRms,
+      hasNonZeroSignal: nonZero,
     );
   }
 }
@@ -2416,6 +3428,7 @@ class WavInspectionResult {
   final int? sampleRate;
   final int? bitDepth;
   final int? dataSize;
+  final int? dataOffset;
   final double? durationSeconds;
 
   const WavInspectionResult.valid({
@@ -2423,6 +3436,7 @@ class WavInspectionResult {
     required this.sampleRate,
     required this.bitDepth,
     required this.dataSize,
+    required this.dataOffset,
     required this.durationSeconds,
   }) : isValid = true,
        errorMessage = null;
@@ -2433,5 +3447,21 @@ class WavInspectionResult {
       sampleRate = null,
       bitDepth = null,
       dataSize = null,
+      dataOffset = null,
       durationSeconds = null;
+}
+
+/// Audio waveform metrics extracted from PCM WAV data for non-zero signal verification.
+class AudioWaveformMetrics {
+  final double peakAmplitude;
+  final double rmsAmplitude;
+  final double onsetRmsAmplitude;
+  final bool hasNonZeroSignal;
+
+  const AudioWaveformMetrics({
+    required this.peakAmplitude,
+    required this.rmsAmplitude,
+    required this.onsetRmsAmplitude,
+    required this.hasNonZeroSignal,
+  });
 }

@@ -334,67 +334,71 @@ void main() {
         ))!;
         addTearDown(() => ctx.dispose(tester));
 
-        // Seed page 5 to verify initial navigation changes lastPage to 2
-        await tester.runAsync(() => ctx.prehydrate(5));
+        try {
+          // Seed page 5 to verify initial navigation changes lastPage to 2
+          await tester.runAsync(() => ctx.prehydrate(5));
 
-        final captureKey = GlobalKey();
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: RepaintBoundary(
-                key: captureKey,
-                child: const QuranScreen(),
+          final captureKey = GlobalKey();
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: RepaintBoundary(
+                  key: captureKey,
+                  child: const QuranScreen(),
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.text('القرآن الكريم'), findsOneWidget);
-        expect(find.text('آخر موضع قراءة'), findsOneWidget);
-        expect(find.text('متابعة ←'), findsOneWidget);
-        expect(find.text('الفاتحة'), findsOneWidget);
-        expect(find.text('البقرة'), findsOneWidget);
+          expect(find.text('القرآن الكريم'), findsOneWidget);
+          expect(find.text('آخر موضع قراءة'), findsOneWidget);
+          expect(find.text('متابعة ←'), findsOneWidget);
+          expect(find.text('الفاتحة'), findsOneWidget);
+          expect(find.text('البقرة'), findsOneWidget);
 
-        // Switch to Juzs tab
-        final juzTab = find.text('الأجزاء (٣٠)');
-        await tester.ensureVisible(juzTab);
-        await tester.tap(juzTab);
-        await tester.pumpAndSettle();
-        expect(find.text('الجزء ١'), findsOneWidget);
-        expect(find.text('الجزء ٢'), findsWidgets);
+          // Switch to Juzs tab
+          final juzTab = find.text('الأجزاء (٣٠)');
+          await tester.ensureVisible(juzTab);
+          await tester.tap(juzTab);
+          await tester.pumpAndSettle();
+          expect(find.text('الجزء ١'), findsOneWidget);
+          expect(find.text('الجزء ٢'), findsWidgets);
 
-        // Switch back to Surahs tab and tap Al-Baqarah (starts at page 2)
-        final surahsTab = find.text('السور (١١٤)');
-        await tester.ensureVisible(surahsTab);
-        await tester.tap(surahsTab);
-        await tester.pumpAndSettle();
+          // Switch back to Surahs tab and tap Al-Baqarah (starts at page 2)
+          final surahsTab = find.text('السور (١١٤)');
+          await tester.ensureVisible(surahsTab);
+          await tester.tap(surahsTab);
+          await tester.pumpAndSettle();
 
-        final chapter = find.text('البقرة');
-        await tester.ensureVisible(chapter);
-        await tester.tap(chapter);
-        await tester.pumpAndSettle();
+          final chapter = find.text('البقرة');
+          await tester.ensureVisible(chapter);
+          await tester.tap(chapter);
+          await tester.pumpAndSettle();
 
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
 
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        final saved = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(saved.lastPage, 2);
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          final saved = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(saved.lastPage, 2);
 
-        await tester.tap(find.byIcon(Icons.arrow_back));
-        await tester.pumpAndSettle();
-        expect(find.text('القرآن الكريم'), findsOneWidget);
-        expect(find.textContaining('صفحة ٢'), findsWidgets);
-        await tester.runAsync(
-          () => _maybeCapture(captureKey, 'quran-index-view'),
-        );
+          await tester.tap(find.byIcon(Icons.arrow_back));
+          await tester.pumpAndSettle();
+          expect(find.text('القرآن الكريم'), findsOneWidget);
+          expect(find.textContaining('صفحة ٢'), findsWidgets);
+          await tester.runAsync(
+            () => _maybeCapture(captureKey, 'quran-index-view'),
+          );
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -406,53 +410,57 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        final captureKey = GlobalKey();
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: RepaintBoundary(
-                key: captureKey,
-                child: const QuranScreen(),
+          final captureKey = GlobalKey();
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: RepaintBoundary(
+                  key: captureKey,
+                  child: const QuranScreen(),
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // Search for verbatim term
-        await tester.enterText(find.byType(TextField), 'نستعين');
-        await tester.pumpAndSettle();
+          // Search for verbatim term
+          await tester.enterText(find.byType(TextField), 'نستعين');
+          await tester.pumpAndSettle();
 
-        expect(find.textContaining('نتائج البحث'), findsOneWidget);
-        expect(
-          find.textContaining('إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ'),
-          findsOneWidget,
-        );
+          expect(find.textContaining('نتائج البحث'), findsOneWidget);
+          expect(
+            find.textContaining('إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ'),
+            findsOneWidget,
+          );
 
-        await tester.runAsync(
-          () => _maybeCapture(captureKey, 'quran-search-view'),
-        );
+          await tester.runAsync(
+            () => _maybeCapture(captureKey, 'quran-search-view'),
+          );
 
-        // Tapping search result opens mapped page (Page 1)
-        await tester.tap(
-          find.textContaining('إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ'),
-        );
-        await tester.pumpAndSettle();
+          // Tapping search result opens mapped page (Page 1)
+          await tester.tap(
+            find.textContaining('إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ'),
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
 
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        final progress = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(progress.lastPage, 1);
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          final progress = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(progress.lastPage, 1);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -464,76 +472,80 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(container: ctx.container, child: const QuranScreen()),
-          ),
-        );
-        await tester.pumpAndSettle();
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(container: ctx.container, child: const QuranScreen()),
+            ),
+          );
+          await tester.pumpAndSettle();
 
-        // Open jump dialog
-        await tester.tap(find.byIcon(Icons.pin_outlined));
-        await tester.pumpAndSettle();
+          // Open jump dialog
+          await tester.tap(find.byIcon(Icons.pin_outlined));
+          await tester.pumpAndSettle();
 
-        final jumpTextField = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        );
+          final jumpTextField = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          );
 
-        // 1. Invalid out-of-range input (999)
-        await tester.enterText(jumpTextField, '999');
-        await tester.tap(find.text('انتقال'));
-        await tester.pumpAndSettle();
-        expect(
-          find.text('يرجى إدخال رقم صفحة صحيح بين ١ و ٦٠٤'),
-          findsOneWidget,
-        );
+          // 1. Invalid out-of-range input (999)
+          await tester.enterText(jumpTextField, '999');
+          await tester.tap(find.text('انتقال'));
+          await tester.pumpAndSettle();
+          expect(
+            find.text('يرجى إدخال رقم صفحة صحيح بين ١ و ٦٠٤'),
+            findsOneWidget,
+          );
 
-        // 2. Arabic-Indic digits '١٨٧' (187)
-        await tester.enterText(jumpTextField, '١٨٧');
-        await tester.tap(find.text('انتقال'));
-        await tester.pumpAndSettle();
+          // 2. Arabic-Indic digits '١٨٧' (187)
+          await tester.enterText(jumpTextField, '١٨٧');
+          await tester.tap(find.text('انتقال'));
+          await tester.pumpAndSettle();
 
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-        expect(find.text('صفحة ١٨٧ / ٦٠٤'), findsOneWidget);
+          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('صفحة ١٨٧ / ٦٠٤'), findsOneWidget);
 
-        final surah9 = quranRepo.getSurah(9);
-        expect(find.textContaining(surah9.name), findsWidgets);
+          final surah9 = quranRepo.getSurah(9);
+          expect(find.textContaining(surah9.name), findsWidgets);
 
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        final progress187 = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(progress187.lastPage, 187);
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          final progress187 = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(progress187.lastPage, 187);
 
-        // 3. ASCII digits jump '604'
-        await tester.tap(find.byIcon(Icons.pin_outlined));
-        await tester.pumpAndSettle();
-        final jumpTextField2 = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        );
-        await tester.enterText(jumpTextField2, '604');
-        await tester.tap(find.text('انتقال'));
-        await tester.pumpAndSettle();
+          // 3. ASCII digits jump '604'
+          await tester.tap(find.byIcon(Icons.pin_outlined));
+          await tester.pumpAndSettle();
+          final jumpTextField2 = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          );
+          await tester.enterText(jumpTextField2, '604');
+          await tester.tap(find.text('انتقال'));
+          await tester.pumpAndSettle();
 
-        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
-        final surah114 = quranRepo.getSurah(114);
-        expect(find.textContaining(surah114.name), findsWidgets);
+          expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+          final surah114 = quranRepo.getSurah(114);
+          expect(find.textContaining(surah114.name), findsWidgets);
 
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        final progress604 = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(progress604.lastPage, 604);
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          final progress604 = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(progress604.lastPage, 604);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -546,7 +558,6 @@ void main() {
         ))!;
         final dbPath = p.join(tempDir.path, 'exact.db');
 
-        // Session 1: Open Reader at page 2 (Al-Baqarah 2:1..5)
         final db1 = AppDatabase(
           databaseFactory: databaseFactoryFfiNoIsolate,
           databasePath: dbPath,
@@ -564,131 +575,148 @@ void main() {
           ],
         );
 
-        await tester.runAsync(() async {
-          await repo1.saveReadingProgress(const ReadingProgress(lastPage: 2));
-          await container1.read(readingProgressControllerProvider.future);
-        });
+        AppDatabase? db2;
+        ProgressRepository? repo2;
+        ProviderContainer? container2;
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: container1,
-              child: const QuranReaderScreen(
-                initialPage: 2,
-                initialMode: ReaderMode.text,
+        try {
+          // Session 1: Open Reader at page 2 (Al-Baqarah 2:1..5)
+          await tester.runAsync(() async {
+            await repo1.saveReadingProgress(const ReadingProgress(lastPage: 2));
+            await container1.read(readingProgressControllerProvider.future);
+          });
+
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: container1,
+                child: const QuranReaderScreen(
+                  initialPage: 2,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // 1. Tap actual displayed Tanzil verse (verse 2:2)
-        final verse2Finder = find.textContaining(
-          quranRepo.getVerse(2, 2).text,
-          findRichText: true,
-        );
-        await tester.ensureVisible(verse2Finder);
-        await tester.pumpAndSettle();
-        expect(verse2Finder, findsOneWidget);
-        await tapVerseSpan(tester, quranRepo.getVerse(2, 2).text);
-        await tester.pumpAndSettle();
+          // 1. Tap actual displayed Tanzil verse (verse 2:2)
+          final verse2Finder = find.textContaining(
+            quranRepo.getVerse(2, 2).text,
+            findRichText: true,
+          );
+          await tester.ensureVisible(verse2Finder);
+          await tester.pumpAndSettle();
+          expect(verse2Finder, findsOneWidget);
+          await tapVerseSpan(tester, quranRepo.getVerse(2, 2).text);
+          await tester.pumpAndSettle();
 
-        // BottomSheet options appear
-        final setStopOption = find.text('تحديد كموضع توقف عند هذه الآية');
-        expect(setStopOption, findsOneWidget);
-        await tester.tap(setStopOption);
-        await tester.pumpAndSettle();
+          // BottomSheet options appear
+          final setStopOption = find.text('تحديد كموضع توقف عند هذه الآية');
+          expect(setStopOption, findsOneWidget);
+          await tester.tap(setStopOption);
+          await tester.pumpAndSettle();
 
-        // Await public reading queue completion
-        await drainQueue(
-          tester,
-          container1.read(readingProgressControllerProvider.notifier),
-        );
+          // Await public reading queue completion
+          await drainQueue(
+            tester,
+            container1.read(readingProgressControllerProvider.notifier),
+          );
 
-        // Verify real SQLite was updated to Surah 2, Verse 2
-        final savedProgress = (await tester.runAsync(
-          () => repo1.getReadingProgress(),
-        ))!;
-        expect(savedProgress.lastPage, 2);
-        expect(savedProgress.selectedSurah, 2);
-        expect(savedProgress.selectedVerse, 2);
+          // Verify real SQLite was updated to Surah 2, Verse 2
+          final savedProgress = (await tester.runAsync(
+            () => repo1.getReadingProgress(),
+          ))!;
+          expect(savedProgress.lastPage, 2);
+          expect(savedProgress.selectedSurah, 2);
+          expect(savedProgress.selectedVerse, 2);
 
-        // Reader displays the exact stop badge
-        expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
+          // Reader displays the exact stop badge
+          expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
 
-        // Close Session 1
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pump();
-        container1.dispose();
-        await tester.runAsync(() => repo1.close());
+          // Close Session 1
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+          container1.dispose();
+          await tester.runAsync(() => repo1.close());
 
-        // Session 2: Reopen with same SQLite file
-        final db2 = AppDatabase(
-          databaseFactory: databaseFactoryFfiNoIsolate,
-          databasePath: dbPath,
-        );
-        final repo2 = ProgressRepository(
-          db2,
-          versePageValidator: quranRepo.isValidVerseOnPage,
-        );
-        final container2 = ProviderContainer(
-          overrides: [
-            quranRepositoryProvider.overrideWith(
-              (ref) => Future.value(quranRepo),
+          // Session 2: Reopen with same SQLite file
+          db2 = AppDatabase(
+            databaseFactory: databaseFactoryFfiNoIsolate,
+            databasePath: dbPath,
+          );
+          repo2 = ProgressRepository(
+            db2,
+            versePageValidator: quranRepo.isValidVerseOnPage,
+          );
+          container2 = ProviderContainer(
+            overrides: [
+              quranRepositoryProvider.overrideWith(
+                (ref) => Future.value(quranRepo),
+              ),
+              progressRepositoryProvider.overrideWithValue(repo2),
+            ],
+          );
+
+          await tester.runAsync(
+            () => container2!.read(readingProgressControllerProvider.future),
+          );
+
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(container: container2!, child: const QuranScreen()),
             ),
-            progressRepositoryProvider.overrideWithValue(repo2),
-          ],
-        );
+          );
+          await tester.pumpAndSettle();
 
-        await tester.runAsync(
-          () => container2.read(readingProgressControllerProvider.future),
-        );
+          // Resume banner reflects restored page 2 with exact verse 2
+          expect(find.textContaining('صفحة ٢'), findsWidgets);
+          expect(find.textContaining('الآية ٢'), findsWidgets);
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(container: container2, child: const QuranScreen()),
-          ),
-        );
-        await tester.pumpAndSettle();
+          // Open reader via resume button
+          await tester.tap(find.text('متابعة ←'));
+          await drainQueue(
+            tester,
+            container2.read(readingProgressControllerProvider.notifier),
+          );
+          await tester.pumpAndSettle();
 
-        // Resume banner reflects restored page 2 with exact verse 2
-        expect(find.textContaining('صفحة ٢'), findsWidgets);
-        expect(find.textContaining('الآية ٢'), findsWidgets);
+          expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+          // Switch to text mode to verify stop badge on text view
+          await tester.tap(find.text('نص القرآن'));
+          await tester.pumpAndSettle();
+          expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
 
-        // Open reader via resume button
-        await tester.tap(find.text('متابعة ←'));
-        await tester.pumpAndSettle();
+          // Turn to page 3 via 'التالي' - clears stop verse
+          await tester.tap(find.text('التالي'));
+          await drainQueue(
+            tester,
+            container2.read(readingProgressControllerProvider.notifier),
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
-        // Switch to text mode to verify stop badge on text view
-        await tester.tap(find.text('نص القرآن'));
-        await tester.pumpAndSettle();
-        expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
+          expect(find.text('صفحة ٣ / ٦٠٤'), findsOneWidget);
 
-        // Turn to page 3 via 'التالي' - clears stop verse
-        await tester.tap(find.text('التالي'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('صفحة ٣ / ٦٠٤'), findsOneWidget);
-
-        await drainQueue(
-          tester,
-          container2.read(readingProgressControllerProvider.notifier),
-        );
-        final readingP3 = (await tester.runAsync(
-          () => repo2.getReadingProgress(),
-        ))!;
-        expect(readingP3.lastPage, 3);
-        expect(readingP3.selectedSurah, isNull);
-        expect(readingP3.selectedVerse, isNull);
-
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pump();
-        container2.dispose();
-        await tester.runAsync(() async {
-          await repo2.close();
-          if (await tempDir.exists()) await tempDir.delete(recursive: true);
-        });
+          final readingP3 = (await tester.runAsync(
+            () => repo2!.getReadingProgress(),
+          ))!;
+          expect(readingP3.lastPage, 3);
+          expect(readingP3.selectedSurah, isNull);
+          expect(readingP3.selectedVerse, isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+          container1.dispose();
+          container2?.dispose();
+          await tester.runAsync(() async {
+            try {
+              await repo1.close();
+            } catch (_) {}
+            try {
+              await repo2?.close();
+            } catch (_) {}
+            if (await tempDir.exists()) await tempDir.delete(recursive: true);
+          });
+        }
       },
     );
 
@@ -700,68 +728,72 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(2));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(2));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 2),
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 2),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
-        // Drain initial page autosave before putting database into read-only mode
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
+          );
+          await tester.pumpAndSettle();
+          // Drain initial page autosave before putting database into read-only mode
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
 
-        // 1. Put SQLite into read-only mode to induce write failure
-        final rawDb = await ctx.db.database;
-        await tester.runAsync(() => rawDb.execute('PRAGMA query_only = ON;'));
+          // 1. Put SQLite into read-only mode to induce write failure
+          final rawDb = await ctx.db.database;
+          await tester.runAsync(() => rawDb.execute('PRAGMA query_only = ON;'));
 
-        // 2. Navigate to Page 3 (write fails)
-        await tester.tap(find.text('التالي'));
-        await pumpUntil(
-          tester,
-          () =>
-              find.text('تعذر حفظ موضع القراءة الحالي.').evaluate().isNotEmpty,
-          reason: 'Arabic error SnackBar must appear after write failure',
-        );
+          // 2. Navigate to Page 3 (write fails)
+          await tester.tap(find.text('التالي'));
+          await pumpUntil(
+            tester,
+            () =>
+                find.text('تعذر حفظ موضع القراءة الحالي.').evaluate().isNotEmpty,
+            reason: 'Arabic error SnackBar must appear after write failure',
+          );
 
-        // UI surfaces honest Arabic SnackBar without raw SQL or technical details
-        expect(find.text('تعذر حفظ موضع القراءة الحالي.'), findsOneWidget);
-        final retryButton = find.descendant(
-          of: find.byType(SnackBar),
-          matching: find.text('إعادة المحاولة'),
-        );
-        expect(retryButton, findsOneWidget);
-        expect(find.textContaining('query_only'), findsNothing);
-        expect(find.textContaining('DatabaseException'), findsNothing);
+          // UI surfaces honest Arabic SnackBar without raw SQL or technical details
+          expect(find.text('تعذر حفظ موضع القراءة الحالي.'), findsOneWidget);
+          final retryButton = find.descendant(
+            of: find.byType(SnackBar),
+            matching: find.text('إعادة المحاولة'),
+          );
+          expect(retryButton, findsOneWidget);
+          expect(find.textContaining('query_only'), findsNothing);
+          expect(find.textContaining('DatabaseException'), findsNothing);
 
-        // Database still has prior page (page 2)
-        final progressBefore = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(progressBefore.lastPage, 2);
+          // Database still has prior page (page 2)
+          final progressBefore = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(progressBefore.lastPage, 2);
 
-        // 3. Restore database writes
-        await tester.runAsync(() => rawDb.execute('PRAGMA query_only = OFF;'));
+          // 3. Restore database writes
+          await tester.runAsync(() => rawDb.execute('PRAGMA query_only = OFF;'));
 
-        // 4. Tap SnackBar retry action
-        await tester.tap(retryButton);
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        await tester.pumpAndSettle();
+          // 4. Tap SnackBar retry action
+          await tester.tap(retryButton);
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          await tester.pumpAndSettle();
 
-        // Database is now safely updated to intended destination (page 3)
-        final progressAfter = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(progressAfter.lastPage, 3);
+          // Database is now safely updated to intended destination (page 3)
+          final progressAfter = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(progressAfter.lastPage, 3);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -773,73 +805,77 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(10));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(10));
 
-        // Mount reader at page 10
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 10),
+          // Mount reader at page 10
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 10),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // Open add bookmark dialog
-        await tester.tap(find.byIcon(Icons.bookmark_add_outlined));
-        await tester.pumpAndSettle();
+          // Open add bookmark dialog
+          await tester.tap(find.byIcon(Icons.bookmark_add_outlined));
+          await tester.pumpAndSettle();
 
-        expect(find.text('إضافة علامة مرجعية'), findsOneWidget);
-        final nameField = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        );
-        await tester.enterText(nameField, 'ورد الصباح صفحة ١٠');
-        await tester.tap(find.text('حفظ العلامة'));
-        await pumpUntil(
-          tester,
-          () => find.byType(AlertDialog).evaluate().isEmpty,
-        );
+          expect(find.text('إضافة علامة مرجعية'), findsOneWidget);
+          final nameField = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          );
+          await tester.enterText(nameField, 'ورد الصباح صفحة ١٠');
+          await tester.tap(find.text('حفظ العلامة'));
+          await pumpUntil(
+            tester,
+            () => find.byType(AlertDialog).evaluate().isEmpty,
+          );
 
-        final bookmarks = (await tester.runAsync(
-          () => ctx.repo.getBookmarks(),
-        ))!;
-        expect(bookmarks.length, 1);
-        expect(bookmarks.first.name, 'ورد الصباح صفحة ١٠');
-        expect(bookmarks.first.pageNumber, 10);
+          final bookmarks = (await tester.runAsync(
+            () => ctx.repo.getBookmarks(),
+          ))!;
+          expect(bookmarks.length, 1);
+          expect(bookmarks.first.name, 'ورد الصباح صفحة ١٠');
+          expect(bookmarks.first.pageNumber, 10);
 
-        // Mount FavoritesScreen using same container
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const FavoritesScreen(),
+          // Mount FavoritesScreen using same container
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const FavoritesScreen(),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.text('ورد الصباح صفحة ١٠'), findsOneWidget);
+          expect(find.text('ورد الصباح صفحة ١٠'), findsOneWidget);
 
-        // Tap bookmark opens reader at page 10
-        await tester.tap(find.text('ورد الصباح صفحة ١٠'));
-        await tester.pumpAndSettle();
+          // Tap bookmark opens reader at page 10
+          await tester.tap(find.text('ورد الصباح صفحة ١٠'));
+          await tester.pumpAndSettle();
 
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-        expect(find.text('صفحة ١٠ / ٦٠٤'), findsOneWidget);
+          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('صفحة ١٠ / ٦٠٤'), findsOneWidget);
 
-        // Return to favorites and delete
-        await tester.tap(find.byIcon(Icons.arrow_back));
-        await tester.pumpAndSettle();
+          // Return to favorites and delete
+          await tester.tap(find.byIcon(Icons.arrow_back));
+          await tester.pumpAndSettle();
 
-        await tester.tap(find.byIcon(Icons.delete_outline));
-        await tester.pumpAndSettle();
+          await tester.tap(find.byIcon(Icons.delete_outline));
+          await tester.pumpAndSettle();
 
-        final remaining = (await tester.runAsync(
-          () => ctx.repo.getBookmarks(),
-        ))!;
-        expect(remaining.isEmpty, isTrue);
+          final remaining = (await tester.runAsync(
+            () => ctx.repo.getBookmarks(),
+          ))!;
+          expect(remaining.isEmpty, isTrue);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -851,41 +887,42 @@ void main() {
         () => _TestContext.create(quranRepo: quranRepo),
       ))!;
       addTearDown(() => ctx.dispose(tester));
-      await tester.runAsync(() => ctx.prehydrate(50));
+      try {
+        await tester.runAsync(() => ctx.prehydrate(50));
 
-      int? navigatedTab;
-      await tester.runAsync(
-        () => tester.pumpWidget(
-          createTestApp(
-            container: ctx.container,
-            child: HomeScreen(onNavigateTab: (tab) => navigatedTab = tab),
-          ),
-        ),
-      );
-      final deadline = DateTime.now().add(const Duration(seconds: 5));
-      while (find.text('آخر صفحة مسجلة: صفحة 50 من ٦٠٤').evaluate().isEmpty &&
-          DateTime.now().isBefore(deadline)) {
-        await tester.pump(const Duration(milliseconds: 50));
+        int? navigatedTab;
         await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: HomeScreen(onNavigateTab: (tab) => navigatedTab = tab),
+            ),
+          ),
         );
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (find.text('آخر صفحة مسجلة: صفحة 50 من ٦٠٤').evaluate().isEmpty &&
+            DateTime.now().isBefore(deadline)) {
+          await tester.pump(const Duration(milliseconds: 50));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+        }
+        await tester.pump();
+
+        expect(find.text('آخر صفحة مسجلة: صفحة 50 من ٦٠٤'), findsOneWidget);
+
+        await tester.tap(find.text('كمّل وِردك  ←'));
+        for (int i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+
+        expect(navigatedTab, 1);
+        final navState = ctx.container.read(quranNavigationProvider);
+        expect(navState.isReaderOpen, isTrue);
+        expect(navState.currentPage, 50);
+      } finally {
+        await ctx.dispose(tester);
       }
-      await tester.pump();
-
-      expect(find.text('آخر صفحة مسجلة: صفحة 50 من ٦٠٤'), findsOneWidget);
-
-      await tester.tap(find.text('كمّل وِردك  ←'));
-      for (int i = 0; i < 8; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-      }
-
-      expect(navigatedTab, 1);
-      final navState = ctx.container.read(quranNavigationProvider);
-      expect(navState.isReaderOpen, isTrue);
-      expect(navState.currentPage, 50);
-
-      // Explicitly cleanup ctx before Home test returns to cancel active provider timers
-      await ctx.dispose(tester);
     });
 
     testWidgets(
@@ -896,51 +933,55 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 1),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // 1. Defaults to Mushaf image mode with InteractiveViewer
-        expect(find.byType(InteractiveViewer), findsOneWidget);
-        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
-        expect(find.text('مصحف المدينة (حفص)'), findsOneWidget);
+          // 1. Defaults to Mushaf image mode with InteractiveViewer
+          expect(find.byType(InteractiveViewer), findsOneWidget);
+          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+          expect(find.text('مصحف المدينة (حفص)'), findsOneWidget);
 
-        // 2. Tapping narration badge opens KFQC attribution dialog
-        await tester.tap(find.text('مصحف المدينة (حفص)'));
-        await tester.pumpAndSettle();
-        expect(
-          find.text('مصحف المدينة النبوية'),
-          findsOneWidget,
-        );
-        expect(find.textContaining('الدليل الفني لمجمع الملك فهد'), findsOneWidget);
-        expect(find.textContaining('quran-ws/quran-svg'), findsOneWidget);
-        await tester.tap(find.text('إغلاق'));
-        await tester.pumpAndSettle();
+          // 2. Tapping narration badge opens KFQC attribution dialog
+          await tester.tap(find.text('مصحف المدينة (حفص)'));
+          await tester.pumpAndSettle();
+          expect(
+            find.text('مصحف المدينة النبوية'),
+            findsOneWidget,
+          );
+          expect(find.textContaining('الدليل الفني لمجمع الملك فهد'), findsOneWidget);
+          expect(find.textContaining('quran-ws/quran-svg'), findsOneWidget);
+          await tester.tap(find.text('إغلاق'));
+          await tester.pumpAndSettle();
 
-        // 3. Switch to text mode
-        await tester.tap(find.text('نص القرآن'));
-        await tester.pumpAndSettle();
+          // 3. Switch to text mode
+          await tester.tap(find.text('نص القرآن'));
+          await tester.pumpAndSettle();
 
-        expect(
-          find.textContaining(
-            quranRepo.getVerse(1, 1).text,
-            findRichText: true,
-          ),
-          findsWidgets,
-        );
+          expect(
+            find.textContaining(
+              quranRepo.getVerse(1, 1).text,
+              findRichText: true,
+            ),
+            findsWidgets,
+          );
 
-        // 4. Switch back to Mushaf image mode
-        await tester.tap(find.text('المصحف'));
-        await tester.pumpAndSettle();
-        expect(find.byType(InteractiveViewer), findsOneWidget);
+          // 4. Switch back to Mushaf image mode
+          await tester.tap(find.text('المصحف'));
+          await tester.pumpAndSettle();
+          expect(find.byType(InteractiveViewer), findsOneWidget);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -986,179 +1027,185 @@ void main() {
           container.dispose();
         });
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: container,
-              child: SourcesScreen(bundle: failingBundle),
+        try {
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: container,
+                child: SourcesScreen(bundle: failingBundle),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // Scroll to error card before assert/retry (offscreen in lazy ListView)
-        final errorText = find.text(
-          'تعذر قراءة نصوص التراخيص الأصلية من ملفات الحزمة.',
-        );
-        await tester.scrollUntilVisible(
-          errorText,
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
+          // Scroll to error card before assert/retry (offscreen in lazy ListView)
+          final errorText = find.text(
+            'تعذر قراءة نصوص التراخيص الأصلية من ملفات الحزمة.',
+          );
+          await tester.scrollUntilVisible(
+            errorText,
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await tester.pumpAndSettle();
 
-        // Verify failure view and retry button
-        expect(errorText, findsOneWidget);
-        final retryBtn = find.text('إعادة المحاولة');
-        expect(retryBtn, findsOneWidget);
+          // Verify failure view and retry button
+          expect(errorText, findsOneWidget);
+          final retryBtn = find.text('إعادة المحاولة');
+          expect(retryBtn, findsOneWidget);
 
-        // Recover bundle and retry
-        failingBundle.shouldFail = false;
-        await tester.tap(retryBtn);
+          // Recover bundle and retry
+          failingBundle.shouldFail = false;
+          await tester.tap(retryBtn);
 
-        // Await all three actual assets loaded via real I/O
-        await pumpUntil(
-          tester,
-          () =>
-              failingBundle.loadedKeys.contains(
-                'assets/content/quran/quran-uthmani.txt',
-              ) &&
-              failingBundle.loadedKeys.contains(
-                'assets/fonts/IBM-Plex-LICENSE.txt',
-              ) &&
-              failingBundle.loadedKeys.contains('assets/fonts/Amiri-OFL.txt'),
-          reason:
-              'All three license assets must load successfully via real I/O',
-        );
-        await tester.pumpAndSettle();
+          // Await all three actual assets loaded via real I/O
+          await pumpUntil(
+            tester,
+            () =>
+                failingBundle.loadedKeys.contains(
+                  'assets/content/quran/quran-uthmani.txt',
+                ) &&
+                failingBundle.loadedKeys.contains(
+                  'assets/fonts/IBM-Plex-LICENSE.txt',
+                ) &&
+                failingBundle.loadedKeys.contains('assets/fonts/Amiri-OFL.txt'),
+            reason:
+                'All three license assets must load successfully via real I/O',
+          );
+          await tester.pumpAndSettle();
 
-        // Reset scroll position to top before forward scroll to lazy Tanzil card
-        tester
-            .state<ScrollableState>(find.byType(Scrollable).first)
-            .position
-            .jumpTo(0.0);
-        await tester.pumpAndSettle();
+          // Reset scroll position to top before forward scroll to lazy Tanzil card
+          tester
+              .state<ScrollableState>(find.byType(Scrollable).first)
+              .position
+              .jumpTo(0.0);
+          await tester.pumpAndSettle();
 
-        // Scroll to Tanzil card then condition driver await actual verbatim copyright notice
-        final tanzilHeader = find.text(
-          'نسب المصدر ورخصة نص تنزيل (Tanzil License)',
-        );
-        await tester.scrollUntilVisible(
-          tanzilHeader,
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await pumpUntil(
-          tester,
-          () => find
-              .textContaining(
-                '# PLEASE DO NOT REMOVE OR CHANGE THIS COPYRIGHT BLOCK',
-              )
-              .evaluate()
-              .isNotEmpty,
-          reason: 'Verbatim Tanzil copyright notice must load via real I/O',
-        );
+          // Scroll to Tanzil card then condition driver await actual verbatim copyright notice
+          final tanzilHeader = find.text(
+            'نسب المصدر ورخصة نص تنزيل (Tanzil License)',
+          );
+          await tester.scrollUntilVisible(
+            tanzilHeader,
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await pumpUntil(
+            tester,
+            () => find
+                .textContaining(
+                  '# PLEASE DO NOT REMOVE OR CHANGE THIS COPYRIGHT BLOCK',
+                )
+                .evaluate()
+                .isNotEmpty,
+            reason: 'Verbatim Tanzil copyright notice must load via real I/O',
+          );
 
-        expect(
-          find.textContaining('مشروع تنزيل (Tanzil Project)'),
-          findsOneWidget,
-        );
-        expect(
-          find.textContaining(
-            '# PLEASE DO NOT REMOVE OR CHANGE THIS COPYRIGHT BLOCK',
-          ),
-          findsOneWidget,
-        );
-        expect(
-          find.textContaining('Tanzil Quran Text (Uthmani, Version 1.1)'),
-          findsOneWidget,
-        );
+          expect(
+            find.textContaining('مشروع تنزيل (Tanzil Project)'),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining(
+              '# PLEASE DO NOT REMOVE OR CHANGE THIS COPYRIGHT BLOCK',
+            ),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining('Tanzil Quran Text (Uthmani, Version 1.1)'),
+            findsOneWidget,
+          );
 
-        // Scroll to and verify KFQC Mushaf artwork card
-        final kfqcHeader = find.text(
-          'نسب المصدر ورخصة صفحات مصحف المدينة النبوية (KFQC)',
-        );
-        await tester.scrollUntilVisible(
-          kfqcHeader,
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
-        expect(kfqcHeader, findsOneWidget);
-        expect(find.textContaining('quran-ws/quran-svg'), findsWidgets);
+          // Scroll to and verify KFQC Mushaf artwork card
+          final kfqcHeader = find.text(
+            'نسب المصدر ورخصة صفحات مصحف المدينة النبوية (KFQC)',
+          );
+          await tester.scrollUntilVisible(
+            kfqcHeader,
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await tester.pumpAndSettle();
+          expect(kfqcHeader, findsOneWidget);
+          expect(find.textContaining('quran-ws/quran-svg'), findsWidgets);
 
-        // Scroll to Font card
-        final fontHeader = find.text('تراخيص الخطوط وبيانات المصحف الوصفية');
-        await tester.scrollUntilVisible(
-          fontHeader,
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
+          // Scroll to Font card
+          final fontHeader = find.text('تراخيص الخطوط وبيانات المصحف الوصفية');
+          await tester.scrollUntilVisible(
+            fontHeader,
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.textContaining('IBM Plex Sans Arabic'), findsOneWidget);
-        expect(find.textContaining('Amiri Quran'), findsOneWidget);
-        expect(
-          find.textContaining('SIL Open Font License, Version 1.1'),
-          findsWidgets,
-        );
+          expect(find.textContaining('IBM Plex Sans Arabic'), findsOneWidget);
+          expect(find.textContaining('Amiri Quran'), findsOneWidget);
+          expect(
+            find.textContaining('SIL Open Font License, Version 1.1'),
+            findsWidgets,
+          );
 
-        // Scroll BACK to Tanzil visit button before ensureVisible/tap (lazy ListView recycled it)
-        tester
-            .state<ScrollableState>(find.byType(Scrollable).first)
-            .position
-            .jumpTo(0);
-        await tester.pumpAndSettle();
-        final launchButton = find.text('زيارة موقع تنزيل');
-        await tester.scrollUntilVisible(
-          launchButton,
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
+          // Scroll BACK to Tanzil visit button before ensureVisible/tap (lazy ListView recycled it)
+          tester
+              .state<ScrollableState>(find.byType(Scrollable).first)
+              .position
+              .jumpTo(0);
+          await tester.pumpAndSettle();
+          final launchButton = find.text('زيارة موقع تنزيل');
+          await tester.scrollUntilVisible(
+            launchButton,
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await tester.pumpAndSettle();
 
-        // 1. External URL launch fallback (canLaunch true, launchUrl false)
-        await tester.ensureVisible(launchButton);
-        await tester.tap(launchButton);
-        await tester.pumpAndSettle();
+          // 1. External URL launch fallback (canLaunch true, launchUrl false)
+          await tester.ensureVisible(launchButton);
+          await tester.tap(launchButton);
+          await tester.pumpAndSettle();
 
-        expect(testPlatform.lastUrl, 'https://tanzil.net');
-        expect(
-          testPlatform.lastOptions?.mode,
-          PreferredLaunchMode.externalApplication,
-        );
-        expect(
-          find.textContaining('تعذر فتح رابط مشروع تنزيل في المتصفح الخارجي'),
-          findsOneWidget,
-        );
+          expect(testPlatform.lastUrl, 'https://tanzil.net');
+          expect(
+            testPlatform.lastOptions?.mode,
+            PreferredLaunchMode.externalApplication,
+          );
+          expect(
+            find.textContaining('تعذر فتح رابط مشروع تنزيل في المتصفح الخارجي'),
+            findsOneWidget,
+          );
 
-        // Tap copy link action and verify clipboard contents
-        final copyButton = find.text('نسخ الرابط');
-        expect(copyButton, findsOneWidget);
-        await tester.tap(copyButton);
-        await tester.pumpAndSettle();
+          // Tap copy link action and verify clipboard contents
+          final copyButton = find.text('نسخ الرابط');
+          expect(copyButton, findsOneWidget);
+          await tester.tap(copyButton);
+          await tester.pumpAndSettle();
 
-        expect(
-          find.textContaining('تم نسخ رابط مشروع تنزيل بنجاح'),
-          findsOneWidget,
-        );
-        final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
-        expect(clipboard?.text, 'https://tanzil.net');
+          expect(
+            find.textContaining('تم نسخ رابط مشروع تنزيل بنجاح'),
+            findsOneWidget,
+          );
+          final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
+          expect(clipboard?.text, 'https://tanzil.net');
 
-        // 2. PlatformException handling
-        testPlatform.lastUrl = null;
-        testPlatform.errorToThrow = PlatformException(
-          code: 'ACTIVITY_NOT_FOUND',
-          message: 'No activity',
-        );
-        await tester.ensureVisible(launchButton);
-        await tester.tap(launchButton);
-        await tester.pumpAndSettle();
+          // 2. PlatformException handling
+          testPlatform.lastUrl = null;
+          testPlatform.errorToThrow = PlatformException(
+            code: 'ACTIVITY_NOT_FOUND',
+            message: 'No activity',
+          );
+          await tester.ensureVisible(launchButton);
+          await tester.tap(launchButton);
+          await tester.pumpAndSettle();
 
-        expect(
-          find.textContaining('تعذر فتح رابط مشروع تنزيل في المتصفح الخارجي'),
-          findsOneWidget,
-        );
+          expect(
+            find.textContaining('تعذر فتح رابط مشروع تنزيل في المتصفح الخارجي'),
+            findsOneWidget,
+          );
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+          container.dispose();
+        }
       },
     );
 
@@ -1175,106 +1222,110 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: const TextScaler.linear(1.8)),
-                child: child!,
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: const TextScaler.linear(1.8)),
+                  child: child!,
+                ),
+                child: const QuranScreen(),
               ),
-              child: const QuranScreen(),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        expect(tester.takeException(), isNull);
-        expect(find.text('القرآن الكريم'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          expect(find.text('القرآن الكريم'), findsOneWidget);
 
-        // Verify all 3 scrollable tabs are visible and tappable at 1.8 font scale
-        final juzTab = find.text('الأجزاء (٣٠)');
-        await tester.ensureVisible(juzTab);
-        await tester.tap(juzTab);
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('الجزء ١'), findsOneWidget);
+          // Verify all 3 scrollable tabs are visible and tappable at 1.8 font scale
+          final juzTab = find.text('الأجزاء (٣٠)');
+          await tester.ensureVisible(juzTab);
+          await tester.tap(juzTab);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('الجزء ١'), findsOneWidget);
 
-        final bookmarksTab = find.text('العلامات المحفوظة');
-        await tester.ensureVisible(bookmarksTab);
-        await tester.tap(bookmarksTab);
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(
-          find.text('لا توجد علامات مرجعية محفوظة حالياً'),
-          findsOneWidget,
-        );
+          final bookmarksTab = find.text('العلامات المحفوظة');
+          await tester.ensureVisible(bookmarksTab);
+          await tester.tap(bookmarksTab);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(
+            find.text('لا توجد علامات مرجعية محفوظة حالياً'),
+            findsOneWidget,
+          );
 
-        final surahsTab = find.text('السور (١١٤)');
-        await tester.ensureVisible(surahsTab);
-        await tester.tap(surahsTab);
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('الفاتحة'), findsOneWidget);
-        expect(find.text('البقرة'), findsOneWidget);
+          final surahsTab = find.text('السور (١١٤)');
+          await tester.ensureVisible(surahsTab);
+          await tester.tap(surahsTab);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('الفاتحة'), findsOneWidget);
+          expect(find.text('البقرة'), findsOneWidget);
 
-        tester
-            .state<ScrollableState>(find.byType(Scrollable).first)
-            .position
-            .jumpTo(0);
-        await tester.pumpAndSettle();
+          tester
+              .state<ScrollableState>(find.byType(Scrollable).first)
+              .position
+              .jumpTo(0);
+          await tester.pumpAndSettle();
 
-        // Search at 1.8
-        final searchField = find.byType(TextField);
-        await tester.enterText(searchField, 'نستعين');
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.textContaining('نتائج البحث'), findsOneWidget);
+          // Search at 1.8
+          final searchField = find.byType(TextField);
+          await tester.enterText(searchField, 'نستعين');
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.textContaining('نتائج البحث'), findsOneWidget);
 
-        await tester.enterText(searchField, '');
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
+          await tester.enterText(searchField, '');
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
 
-        // Open reader
-        final surahTile = find.text('البقرة');
-        await tester.ensureVisible(surahTile);
-        await tester.tap(surahTile);
-        await tester.pumpAndSettle();
+          // Open reader
+          final surahTile = find.text('البقرة');
+          await tester.ensureVisible(surahTile);
+          await tester.tap(surahTile);
+          await tester.pumpAndSettle();
 
-        expect(tester.takeException(), isNull);
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
 
-        // Bookmark dialog at 1.8
-        await tester.tap(find.byIcon(Icons.bookmark_add_outlined));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('إضافة علامة مرجعية'), findsOneWidget);
+          // Bookmark dialog at 1.8
+          await tester.tap(find.byIcon(Icons.bookmark_add_outlined));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('إضافة علامة مرجعية'), findsOneWidget);
 
-        final bookmarkNameField = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        );
-        await tester.enterText(bookmarkNameField, 'علامة 1.8');
-        await tester.tap(find.text('حفظ العلامة'));
-        await pumpUntil(
-          tester,
-          () => find.byType(AlertDialog).evaluate().isEmpty,
-        );
-        expect(tester.takeException(), isNull);
+          final bookmarkNameField = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          );
+          await tester.enterText(bookmarkNameField, 'علامة 1.8');
+          await tester.tap(find.text('حفظ العلامة'));
+          await pumpUntil(
+            tester,
+            () => find.byType(AlertDialog).evaluate().isEmpty,
+          );
+          expect(tester.takeException(), isNull);
 
-        // Page jump dialog at 1.8
-        await tester.tap(find.byIcon(Icons.pin_outlined));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('الانتقال إلى صفحة'), findsOneWidget);
+          // Page jump dialog at 1.8
+          await tester.tap(find.byIcon(Icons.pin_outlined));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('الانتقال إلى صفحة'), findsOneWidget);
 
-        await tester.tap(find.text('إلغاء'));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
+          await tester.tap(find.text('إلغاء'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -1307,65 +1358,83 @@ void main() {
           await ctx.dispose(tester);
         });
 
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(container: ctx.container, child: const QuranScreen()),
-          ),
-        );
-        await tester.pumpAndSettle();
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(container: ctx.container, child: const QuranScreen()),
+            ),
+          );
+          await tester.pumpAndSettle();
 
-        // Open reader at page 1
-        ctx.container.read(quranNavigationProvider.notifier).openReader(1);
-        await tester.pumpAndSettle();
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
+          // Open reader at page 1
+          ctx.container.read(quranNavigationProvider.notifier).openReader(1);
+          await tester.pumpAndSettle();
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
 
-        // Block the SQLite writer thread
-        await tester.runAsync(() async {
-          final rawDb = await ctx.db.database;
-          txnFuture = rawDb.transaction((txn) async {
-            enteredCompleter.complete();
-            await releaseCompleter.future;
+          // Block the SQLite writer thread
+          await tester.runAsync(() async {
+            final rawDb = await ctx.db.database;
+            txnFuture = rawDb.transaction((txn) async {
+              enteredCompleter.complete();
+              await releaseCompleter.future;
+            });
           });
-        });
-        await pumpUntil(tester, () => enteredCompleter.isCompleted);
+          await pumpUntil(tester, () => enteredCompleter.isCompleted);
 
-        // Rapidly navigate: Page 2 -> 3 -> 4
-        await tester.tap(find.text('التالي'));
-        await tester.pump();
-        await tester.tap(find.text('التالي'));
-        await tester.pump();
-        await tester.tap(find.text('التالي'));
-        await tester.pump();
+          // Rapidly navigate: Page 2 -> 3 -> 4
+          await tester.tap(find.text('التالي'));
+          await tester.pump();
+          await tester.tap(find.text('التالي'));
+          await tester.pump();
+          await tester.tap(find.text('التالي'));
+          await tester.pump();
 
-        expect(find.text('صفحة ٤ / ٦٠٤'), findsOneWidget);
+          expect(find.text('صفحة ٤ / ٦٠٤'), findsOneWidget);
 
-        // Pop reader back to index while write is still blocked
-        ctx.container.read(quranNavigationProvider.notifier).closeReader();
-        await tester.pump();
+          // Pop reader back to index while write is still blocked
+          ctx.container.read(quranNavigationProvider.notifier).closeReader();
+          await tester.pump();
 
-        // Release SQLite writer lock and drain queue
-        if (!releaseCompleter.isCompleted) {
-          releaseCompleter.complete();
+          // Release SQLite writer lock and drain queue
+          if (!releaseCompleter.isCompleted) {
+            releaseCompleter.complete();
+          }
+          if (txnFuture != null) {
+            await tester.runAsync(() => txnFuture!);
+          }
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          await tester.pumpAndSettle();
+
+          // Latest navigated page (page 4) was persisted
+          final finalProgress = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(finalProgress.lastPage, 4);
+        } finally {
+          if (!releaseCompleter.isCompleted) {
+            releaseCompleter.complete();
+          }
+          if (txnFuture != null) {
+            try {
+              await tester.runAsync(() => txnFuture!);
+            } catch (_) {}
+          }
+          try {
+            await drainQueue(
+              tester,
+              ctx.container.read(readingProgressControllerProvider.notifier),
+            );
+          } catch (_) {}
+          await ctx.dispose(tester);
         }
-        if (txnFuture != null) {
-          await tester.runAsync(() => txnFuture!);
-        }
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        await tester.pumpAndSettle();
-
-        // Latest navigated page (page 4) was persisted
-        final finalProgress = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(finalProgress.lastPage, 4);
       },
     );
 
@@ -1387,65 +1456,68 @@ void main() {
           ),
         ))!;
         addTearDown(() => ctx.dispose(tester));
+        try {
+          // Seed actual saved page 155 into SQLite
+          await tester.runAsync(
+            () => gatedRepo!.saveReadingProgress(
+              const ReadingProgress(lastPage: 155),
+            ),
+          );
 
-        // Seed actual saved page 155 into SQLite
-        await tester.runAsync(
-          () => gatedRepo!.saveReadingProgress(
-            const ReadingProgress(lastPage: 155),
-          ),
-        );
+          // Gate the bootstrap read
+          gatedRepo!.gate = Completer<void>();
 
-        // Gate the bootstrap read
-        gatedRepo!.gate = Completer<void>();
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(container: ctx.container, child: const QuranScreen()),
+            ),
+          );
+          await tester.pump();
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(container: ctx.container, child: const QuranScreen()),
-          ),
-        );
-        await tester.pump();
+          // 1. Loading state: banner indicates loading, Resume button is NOT enabled/rendered
+          expect(find.text('جاري استرجاع موضع القراءة...'), findsOneWidget);
+          expect(find.text('متابعة ←'), findsNothing);
 
-        // 1. Loading state: banner indicates loading, Resume button is NOT enabled/rendered
-        expect(find.text('جاري استرجاع موضع القراءة...'), findsOneWidget);
-        expect(find.text('متابعة ←'), findsNothing);
+          // Intentional chapter list remains usable while reading progress is loading
+          expect(find.text('الفاتحة'), findsOneWidget);
+          expect(find.text('البقرة'), findsOneWidget);
 
-        // Intentional chapter list remains usable while reading progress is loading
-        expect(find.text('الفاتحة'), findsOneWidget);
-        expect(find.text('البقرة'), findsOneWidget);
+          // 2. Trigger error state
+          gatedRepo!.shouldFail = true;
+          gatedRepo!.gate!.complete();
+          await tester.pumpAndSettle();
 
-        // 2. Trigger error state
-        gatedRepo!.shouldFail = true;
-        gatedRepo!.gate!.complete();
-        await tester.pumpAndSettle();
+          expect(find.text('تعذر تحميل آخر موضع قراءة.'), findsOneWidget);
+          expect(find.text('إعادة المحاولة'), findsOneWidget);
+          expect(find.text('متابعة ←'), findsNothing);
 
-        expect(find.text('تعذر تحميل آخر موضع قراءة.'), findsOneWidget);
-        expect(find.text('إعادة المحاولة'), findsOneWidget);
-        expect(find.text('متابعة ←'), findsNothing);
+          // 3. Recover and tap retry
+          gatedRepo!.shouldFail = false;
+          gatedRepo!.gate = null;
+          await tester.tap(find.text('إعادة المحاولة'));
+          await pumpUntil(
+            tester,
+            () => find.text('متابعة ←').evaluate().isNotEmpty,
+          );
 
-        // 3. Recover and tap retry
-        gatedRepo!.shouldFail = false;
-        gatedRepo!.gate = null;
-        await tester.tap(find.text('إعادة المحاولة'));
-        await pumpUntil(
-          tester,
-          () => find.text('متابعة ←').evaluate().isNotEmpty,
-        );
+          // 4. Actual saved page 155 is displayed and safely resumed
+          expect(find.textContaining('صفحة ١٥٥'), findsWidgets);
+          expect(find.text('متابعة ←'), findsOneWidget);
 
-        // 4. Actual saved page 155 is displayed and safely resumed
-        expect(find.textContaining('صفحة ١٥٥'), findsWidgets);
-        expect(find.text('متابعة ←'), findsOneWidget);
+          await tester.tap(find.text('متابعة ←'));
+          await tester.pumpAndSettle();
 
-        await tester.tap(find.text('متابعة ←'));
-        await tester.pumpAndSettle();
+          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('صفحة ١٥٥ / ٦٠٤'), findsOneWidget);
 
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-        expect(find.text('صفحة ١٥٥ / ٦٠٤'), findsOneWidget);
-
-        // Position was safely preserved as 155 and not corrupted to 1
-        final progress = (await tester.runAsync(
-          () => gatedRepo!.getReadingProgress(),
-        ))!;
-        expect(progress.lastPage, 155);
+          // Position was safely preserved as 155 and not corrupted to 1
+          final progress = (await tester.runAsync(
+            () => gatedRepo!.getReadingProgress(),
+          ))!;
+          expect(progress.lastPage, 155);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -1457,90 +1529,94 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(
-                initialPage: 1,
-                initialMode: ReaderMode.text,
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(
+                  initialPage: 1,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // Page 1: Al-Fatiha all 7 verses rendered on the sheet
-        final page1Verses = quranRepo.getVersesForPage(1);
-        expect(page1Verses.length, 7);
-        for (final verse in page1Verses) {
-          expect(
-            find.textContaining(verse.text, findRichText: true),
-            findsOneWidget,
-            reason: 'Verse 1:${verse.verseNumber} must be rendered on page 1',
+          // Page 1: Al-Fatiha all 7 verses rendered on the sheet
+          final page1Verses = quranRepo.getVersesForPage(1);
+          expect(page1Verses.length, 7);
+          for (final verse in page1Verses) {
+            expect(
+              find.textContaining(verse.text, findRichText: true),
+              findsOneWidget,
+              reason: 'Verse 1:${verse.verseNumber} must be rendered on page 1',
+            );
+            expect(
+              find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
+              findsOneWidget,
+              reason: 'Marker 1:${verse.verseNumber} must be rendered on page 1',
+            );
+          }
+          expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
+          expect(find.text('سورة الفاتحة'), findsWidgets);
+
+          // Turn to Page 2: Al-Baqarah 2:1..5
+          await tester.tap(find.text('التالي'));
+          await tester.pumpAndSettle();
+
+          final page2Verses = quranRepo.getVersesForPage(2);
+          expect(page2Verses.length, 5);
+          for (final verse in page2Verses) {
+            expect(
+              find.textContaining(verse.text, findRichText: true),
+              findsOneWidget,
+              reason: 'Verse 2:${verse.verseNumber} must be rendered on page 2',
+            );
+            expect(
+              find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
+              findsOneWidget,
+              reason: 'Marker 2:${verse.verseNumber} must be rendered on page 2',
+            );
+          }
+          expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
+
+          // Jump to Page 604: All 15 verses across 3 surahs
+          await tester.tap(find.byIcon(Icons.pin_outlined));
+          await tester.pumpAndSettle();
+          final jumpField = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
           );
-          expect(
-            find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
-            findsOneWidget,
-            reason: 'Marker 1:${verse.verseNumber} must be rendered on page 1',
-          );
+          await tester.enterText(jumpField, '604');
+          await tester.tap(find.text('انتقال'));
+          await tester.pumpAndSettle();
+
+          final page604Verses = quranRepo.getVersesForPage(604);
+          expect(page604Verses.length, 15);
+          for (final verse in page604Verses) {
+            expect(
+              find.textContaining(verse.text, findRichText: true),
+              findsOneWidget,
+              reason:
+                  'Verse ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
+            );
+            expect(
+              find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
+              findsWidgets,
+              reason:
+                  'Marker ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
+            );
+          }
+          expect(find.text('۞ سُورَةُ الإخلاص ۞'), findsOneWidget);
+          expect(find.text('۞ سُورَةُ الفلق ۞'), findsOneWidget);
+          expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
+          expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+        } finally {
+          await ctx.dispose(tester);
         }
-        expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
-        expect(find.text('سورة الفاتحة'), findsWidgets);
-
-        // Turn to Page 2: Al-Baqarah 2:1..5
-        await tester.tap(find.text('التالي'));
-        await tester.pumpAndSettle();
-
-        final page2Verses = quranRepo.getVersesForPage(2);
-        expect(page2Verses.length, 5);
-        for (final verse in page2Verses) {
-          expect(
-            find.textContaining(verse.text, findRichText: true),
-            findsOneWidget,
-            reason: 'Verse 2:${verse.verseNumber} must be rendered on page 2',
-          );
-          expect(
-            find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
-            findsOneWidget,
-            reason: 'Marker 2:${verse.verseNumber} must be rendered on page 2',
-          );
-        }
-        expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
-
-        // Jump to Page 604: All 15 verses across 3 surahs
-        await tester.tap(find.byIcon(Icons.pin_outlined));
-        await tester.pumpAndSettle();
-        final jumpField = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        );
-        await tester.enterText(jumpField, '604');
-        await tester.tap(find.text('انتقال'));
-        await tester.pumpAndSettle();
-
-        final page604Verses = quranRepo.getVersesForPage(604);
-        expect(page604Verses.length, 15);
-        for (final verse in page604Verses) {
-          expect(
-            find.textContaining(verse.text, findRichText: true),
-            findsOneWidget,
-            reason:
-                'Verse ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
-          );
-          expect(
-            find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
-            findsWidgets,
-            reason:
-                'Marker ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
-          );
-        }
-        expect(find.text('۞ سُورَةُ الإخلاص ۞'), findsOneWidget);
-        expect(find.text('۞ سُورَةُ الفلق ۞'), findsOneWidget);
-        expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
-        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
       },
     );
 
@@ -1552,70 +1628,74 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(
-                initialPage: 1,
-                initialMode: ReaderMode.text,
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(
+                  initialPage: 1,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // On Page 1, 'السابق' is disabled
-        final prevButtonFinder = find.widgetWithText(OutlinedButton, 'السابق');
-        final prevButton = tester.widget<OutlinedButton>(prevButtonFinder);
-        expect(prevButton.onPressed, isNull);
+          // On Page 1, 'السابق' is disabled
+          final prevButtonFinder = find.widgetWithText(OutlinedButton, 'السابق');
+          final prevButton = tester.widget<OutlinedButton>(prevButtonFinder);
+          expect(prevButton.onPressed, isNull);
 
-        // Tap 'التالي' moves to Page 2
-        await tester.tap(find.text('التالي'));
-        await tester.pumpAndSettle();
-        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
-        expect(
-          find.textContaining(
-            quranRepo.getVerse(2, 1).text,
-            findRichText: true,
-          ),
-          findsOneWidget,
-        );
-        // Fatiha verses are no longer present
-        expect(
-          find.textContaining(
-            quranRepo.getVerse(1, 7).text,
-            findRichText: true,
-          ),
-          findsNothing,
-        );
+          // Tap 'التالي' moves to Page 2
+          await tester.tap(find.text('التالي'));
+          await tester.pumpAndSettle();
+          expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+          expect(
+            find.textContaining(
+              quranRepo.getVerse(2, 1).text,
+              findRichText: true,
+            ),
+            findsOneWidget,
+          );
+          // Fatiha verses are no longer present
+          expect(
+            find.textContaining(
+              quranRepo.getVerse(1, 7).text,
+              findRichText: true,
+            ),
+            findsNothing,
+          );
 
-        // Jump to Page 603
-        await tester.tap(find.byIcon(Icons.pin_outlined));
-        await tester.pumpAndSettle();
-        final jumpField = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        );
-        await tester.enterText(jumpField, '603');
-        await tester.tap(find.text('انتقال'));
-        await tester.pumpAndSettle();
+          // Jump to Page 603
+          await tester.tap(find.byIcon(Icons.pin_outlined));
+          await tester.pumpAndSettle();
+          final jumpField = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          );
+          await tester.enterText(jumpField, '603');
+          await tester.tap(find.text('انتقال'));
+          await tester.pumpAndSettle();
 
-        expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
-        // Page 603 contains Surahs 109, 110, 111
-        expect(find.text('۞ سُورَةُ الكافرون ۞'), findsOneWidget);
+          expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
+          // Page 603 contains Surahs 109, 110, 111
+          expect(find.text('۞ سُورَةُ الكافرون ۞'), findsOneWidget);
 
-        // Tap 'التالي' moves to Page 604
-        await tester.tap(find.text('التالي'));
-        await tester.pumpAndSettle();
+          // Tap 'التالي' moves to Page 604
+          await tester.tap(find.text('التالي'));
+          await tester.pumpAndSettle();
 
-        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
-        // On Page 604, 'التالي' is disabled
-        final nextButtonFinder = find.widgetWithText(ElevatedButton, 'التالي');
-        final nextButton = tester.widget<ElevatedButton>(nextButtonFinder);
-        expect(nextButton.onPressed, isNull);
+          expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+          // On Page 604, 'التالي' is disabled
+          final nextButtonFinder = find.widgetWithText(ElevatedButton, 'التالي');
+          final nextButton = tester.widget<ElevatedButton>(nextButtonFinder);
+          expect(nextButton.onPressed, isNull);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -1627,49 +1707,53 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(
-                initialPage: 1,
-                initialMode: ReaderMode.text,
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(
+                  initialPage: 1,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // Tap verse 1:2: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ"
-        final verse2 = quranRepo.getVerse(1, 2);
-        final verse2Finder = find.textContaining(
-          verse2.text,
-          findRichText: true,
-        );
-        expect(verse2Finder, findsOneWidget);
-        await tapVerseSpan(tester, verse2.text);
-        await tester.pumpAndSettle();
+          // Tap verse 1:2: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ"
+          final verse2 = quranRepo.getVerse(1, 2);
+          final verse2Finder = find.textContaining(
+            verse2.text,
+            findRichText: true,
+          );
+          expect(verse2Finder, findsOneWidget);
+          await tapVerseSpan(tester, verse2.text);
+          await tester.pumpAndSettle();
 
-        // Options bottomsheet appears
-        expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
-        await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        await tester.pumpAndSettle();
+          // Options bottomsheet appears
+          expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
+          await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          await tester.pumpAndSettle();
 
-        // Stop badge appears on compact sheet
-        expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
+          // Stop badge appears on compact sheet
+          expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
 
-        final saved = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(saved.lastPage, 1);
-        expect(saved.selectedSurah, 1);
-        expect(saved.selectedVerse, 2);
+          final saved = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(saved.lastPage, 1);
+          expect(saved.selectedSurah, 1);
+          expect(saved.selectedVerse, 2);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -1686,37 +1770,73 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(604));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(604));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: const TextScaler.linear(2.0),
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: const TextScaler.linear(2.0),
+                  ),
+                  child: child!,
                 ),
-                child: child!,
-              ),
-              child: const QuranReaderScreen(
-                initialPage: 604,
-                initialMode: ReaderMode.text,
+                child: const QuranReaderScreen(
+                  initialPage: 604,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        expect(tester.takeException(), isNull);
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
-        expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+          expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
 
-        // Turn to Page 603 at 2.0 font scale on 320x480
-        await tester.tap(find.text('السابق'));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
+          // Turn to Page 603 at 2.0 font scale on 320x480
+          final prevFinder = find.text('السابق');
+          final footerScrollable = find.descendant(
+            of: find.byKey(const ValueKey('quran_reader_bottom_controls')),
+            matching: find.byType(Scrollable),
+          );
+          expect(
+            footerScrollable,
+            findsOneWidget,
+            reason: 'Keyed footer scrollable must exist',
+          );
+          int footerDrags = 0;
+          while (prevFinder.hitTestable().evaluate().isEmpty && footerDrags < 15) {
+            footerDrags++;
+            final targetBox = tester.renderObject<RenderBox>(prevFinder.first);
+            final targetCenter = targetBox.localToGlobal(
+              targetBox.size.center(Offset.zero),
+            );
+            final scrollBox = tester.renderObject<RenderBox>(footerScrollable);
+            final scrollBounds =
+                scrollBox.localToGlobal(Offset.zero) & scrollBox.size;
+            final dragDelta = targetCenter.dx < scrollBounds.left
+                ? const Offset(80.0, 0.0)
+                : const Offset(-80.0, 0.0);
+            await tester.drag(footerScrollable, dragDelta);
+            await tester.pumpAndSettle();
+          }
+          expect(
+            prevFinder.hitTestable(),
+            findsOneWidget,
+            reason:
+                'Previous button must be hitTestable via real drag within keyed footer',
+          );
+          await tester.tap(prevFinder.hitTestable());
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -1733,93 +1853,97 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(604));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(604));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(
-                initialPage: 604,
-                initialMode: ReaderMode.text,
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(
+                  initialPage: 604,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // On Page 604, Surah Al-Ikhlas (112) verses 1 and 2 are short:
-        // 112:1: "قُلْ هُوَ ٱللَّهُ أَحَدٌ ۝١ "
-        // 112:2: "ٱللَّهُ ٱلصَّمَدُ ۝٢ "
-        final v1 = quranRepo.getVerse(112, 1);
-        final v2 = quranRepo.getVerse(112, 2);
+          // On Page 604, Surah Al-Ikhlas (112) verses 1 and 2 are short:
+          // 112:1: "قُلْ هُوَ ٱللَّهُ أَحَدٌ ۝١ "
+          // 112:2: "ٱللَّهُ ٱلصَّمَدُ ۝٢ "
+          final v1 = quranRepo.getVerse(112, 1);
+          final v2 = quranRepo.getVerse(112, 2);
 
-        final richTextFinder = find.byType(RichText);
-        RenderParagraph? ikhlasParagraph;
-        for (final element in richTextFinder.evaluate()) {
-          final renderObj = element.renderObject as RenderParagraph?;
-          if (renderObj != null &&
-              renderObj.text.toPlainText().contains(v1.text) &&
-              renderObj.text.toPlainText().contains(v2.text)) {
-            ikhlasParagraph = renderObj;
-            break;
+          final richTextFinder = find.byType(RichText);
+          RenderParagraph? ikhlasParagraph;
+          for (final element in richTextFinder.evaluate()) {
+            final renderObj = element.renderObject as RenderParagraph?;
+            if (renderObj != null &&
+                renderObj.text.toPlainText().contains(v1.text) &&
+                renderObj.text.toPlainText().contains(v2.text)) {
+              ikhlasParagraph = renderObj;
+              break;
+            }
           }
+          expect(
+            ikhlasParagraph,
+            isNotNull,
+            reason: 'Flowing paragraph for Surah 112 must exist',
+          );
+
+          final fullText = ikhlasParagraph!.text.toPlainText(
+            includeSemanticsLabels: false,
+          );
+          final start1 = fullText.indexOf(v1.text);
+          final boxes1 = ikhlasParagraph.getBoxesForSelection(
+            TextSelection(
+              baseOffset: start1,
+              extentOffset: start1 + v1.text.length,
+            ),
+          );
+          final start2 = fullText.indexOf(v2.text);
+          final boxes2 = ikhlasParagraph.getBoxesForSelection(
+            TextSelection(
+              baseOffset: start2,
+              extentOffset: start2 + v2.text.length,
+            ),
+          );
+
+          expect(boxes1.isNotEmpty, isTrue);
+          expect(boxes2.isNotEmpty, isTrue);
+
+          // PROOF OF CONTINUOUS FLOW: In an 800px viewport, adjacent short verses 112:1 and 112:2
+          // share the same line (same vertical top coordinate within font tolerance),
+          // rather than being stacked on separate lines as isolated block containers.
+          expect(
+            (boxes1.first.top - boxes2.first.top).abs(),
+            lessThanOrEqualTo(2.0),
+            reason:
+                'Adjacent short verses in flowing paragraph must share the same line in a wide viewport',
+          );
+
+          // Prove working tap on specific verse span (112:2)
+          await tapVerseSpan(tester, v2.text);
+          await tester.pumpAndSettle();
+
+          expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
+          await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
+          await drainQueue(
+            tester,
+            ctx.container.read(readingProgressControllerProvider.notifier),
+          );
+          await tester.pumpAndSettle();
+
+          final saved = (await tester.runAsync(
+            () => ctx.repo.getReadingProgress(),
+          ))!;
+          expect(saved.lastPage, 604);
+          expect(saved.selectedSurah, 112);
+          expect(saved.selectedVerse, 2);
+        } finally {
+          await ctx.dispose(tester);
         }
-        expect(
-          ikhlasParagraph,
-          isNotNull,
-          reason: 'Flowing paragraph for Surah 112 must exist',
-        );
-
-        final fullText = ikhlasParagraph!.text.toPlainText(
-          includeSemanticsLabels: false,
-        );
-        final start1 = fullText.indexOf(v1.text);
-        final boxes1 = ikhlasParagraph.getBoxesForSelection(
-          TextSelection(
-            baseOffset: start1,
-            extentOffset: start1 + v1.text.length,
-          ),
-        );
-        final start2 = fullText.indexOf(v2.text);
-        final boxes2 = ikhlasParagraph.getBoxesForSelection(
-          TextSelection(
-            baseOffset: start2,
-            extentOffset: start2 + v2.text.length,
-          ),
-        );
-
-        expect(boxes1.isNotEmpty, isTrue);
-        expect(boxes2.isNotEmpty, isTrue);
-
-        // PROOF OF CONTINUOUS FLOW: In an 800px viewport, adjacent short verses 112:1 and 112:2
-        // share the same line (same vertical top coordinate within font tolerance),
-        // rather than being stacked on separate lines as isolated block containers.
-        expect(
-          (boxes1.first.top - boxes2.first.top).abs(),
-          lessThanOrEqualTo(2.0),
-          reason:
-              'Adjacent short verses in flowing paragraph must share the same line in a wide viewport',
-        );
-
-        // Prove working tap on specific verse span (112:2)
-        await tapVerseSpan(tester, v2.text);
-        await tester.pumpAndSettle();
-
-        expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
-        await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
-        await drainQueue(
-          tester,
-          ctx.container.read(readingProgressControllerProvider.notifier),
-        );
-        await tester.pumpAndSettle();
-
-        final saved = (await tester.runAsync(
-          () => ctx.repo.getReadingProgress(),
-        ))!;
-        expect(saved.lastPage, 604);
-        expect(saved.selectedSurah, 112);
-        expect(saved.selectedVerse, 2);
       },
     );
 
@@ -1828,17 +1952,18 @@ void main() {
       (tester) async {
         await _ensureTestFonts(tester);
         final semanticsHandle = tester.ensureSemantics();
+        _TestContext? ctx;
         try {
-          final ctx = (await tester.runAsync(
+          ctx = (await tester.runAsync(
             () => _TestContext.create(quranRepo: quranRepo),
           ))!;
-          addTearDown(() => ctx.dispose(tester));
-          await tester.runAsync(() => ctx.prehydrate(1));
+          addTearDown(() => ctx?.dispose(tester));
+          await tester.runAsync(() => ctx!.prehydrate(1));
 
           await tester.runAsync(
             () => tester.pumpWidget(
               createTestApp(
-                container: ctx.container,
+                container: ctx!.container,
                 child: const QuranReaderScreen(
                   initialPage: 1,
                   initialMode: ReaderMode.text,
@@ -1899,7 +2024,13 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
         } finally {
-          semanticsHandle.dispose();
+          try {
+            if (ctx != null) {
+              await ctx.dispose(tester);
+            }
+          } finally {
+            semanticsHandle.dispose();
+          }
         }
       },
     );
@@ -1912,55 +2043,59 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(
-                initialPage: 1,
-                initialMode: ReaderMode.text,
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(
+                  initialPage: 1,
+                  initialMode: ReaderMode.text,
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // Initially on Page 1 (Al-Fatiha 1:1..7)
-        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
-        expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
-        final p1v1 = quranRepo.getVerse(1, 1);
-        expect(find.textContaining(p1v1.text), findsOneWidget);
+          // Initially on Page 1 (Al-Fatiha 1:1..7)
+          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+          expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
+          final p1v1 = quranRepo.getVerse(1, 1);
+          expect(find.textContaining(p1v1.text), findsOneWidget);
 
-        // Perform horizontal swipe/drag across PageView.
-        // In an RTL PageView, dragging from left-to-right (positive X delta) advances forward
-        // to the next Medina page (Page 2), and right-to-left (negative X delta) navigates backward.
-        final pageViewFinder = find.byType(PageView);
-        expect(pageViewFinder, findsOneWidget);
+          // Perform horizontal swipe/drag across PageView.
+          // In an RTL PageView, dragging from left-to-right (positive X delta) advances forward
+          // to the next Medina page (Page 2), and right-to-left (negative X delta) navigates backward.
+          final pageViewFinder = find.byType(PageView);
+          expect(pageViewFinder, findsOneWidget);
 
-        // Fling forward to advance to Page 2
-        await tester.fling(pageViewFinder, const Offset(400, 0), 1000);
-        await tester.pumpAndSettle();
+          // Fling forward to advance to Page 2
+          await tester.fling(pageViewFinder, const Offset(400, 0), 1000);
+          await tester.pumpAndSettle();
 
-        // Assert reader has advanced to official Page 2 (Al-Baqarah 2:1..5)
-        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
-        expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
-        final p2v1 = quranRepo.getVerse(2, 1);
-        expect(find.textContaining(p2v1.text), findsOneWidget);
+          // Assert reader has advanced to official Page 2 (Al-Baqarah 2:1..5)
+          expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+          expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
+          final p2v1 = quranRepo.getVerse(2, 1);
+          expect(find.textContaining(p2v1.text), findsOneWidget);
 
-        // And verify verses from Page 1 (e.g. Al-Fatiha 1:7) are no longer on current page
-        final p1v7 = quranRepo.getVerse(1, 7);
-        expect(find.textContaining(p1v7.text), findsNothing);
+          // And verify verses from Page 1 (e.g. Al-Fatiha 1:7) are no longer on current page
+          final p1v7 = quranRepo.getVerse(1, 7);
+          expect(find.textContaining(p1v7.text), findsNothing);
 
-        // Swipe backward to return to Page 1
-        await tester.fling(pageViewFinder, const Offset(-400, 0), 1000);
-        await tester.pumpAndSettle();
+          // Swipe backward to return to Page 1
+          await tester.fling(pageViewFinder, const Offset(-400, 0), 1000);
+          await tester.pumpAndSettle();
 
-        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
-        expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
-        expect(find.textContaining(p1v1.text), findsOneWidget);
-        expect(find.textContaining(p2v1.text), findsNothing);
+          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+          expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
+          expect(find.textContaining(p1v1.text), findsOneWidget);
+          expect(find.textContaining(p2v1.text), findsNothing);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -1972,42 +2107,46 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 1),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        // Initially on Page 1 in default Mushaf image mode
-        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
-        expect(find.text('سورة الفاتحة'), findsWidgets);
-        expect(find.byType(InteractiveViewer), findsOneWidget);
+          // Initially on Page 1 in default Mushaf image mode
+          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+          expect(find.text('سورة الفاتحة'), findsWidgets);
+          expect(find.byType(InteractiveViewer), findsOneWidget);
 
-        final pageViewFinder = find.byType(PageView);
-        expect(pageViewFinder, findsOneWidget);
+          final pageViewFinder = find.byType(PageView);
+          expect(pageViewFinder, findsOneWidget);
 
-        // Fling forward (left to right in RTL)
-        await tester.fling(pageViewFinder, const Offset(400, 0), 1000);
-        await tester.pumpAndSettle();
+          // Fling forward (left to right in RTL)
+          await tester.fling(pageViewFinder, const Offset(400, 0), 1000);
+          await tester.pumpAndSettle();
 
-        // Advanced to Page 2
-        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
-        expect(find.text('سورة البقرة'), findsWidgets);
-        expect(find.byType(InteractiveViewer), findsOneWidget);
+          // Advanced to Page 2
+          expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+          expect(find.text('سورة البقرة'), findsWidgets);
+          expect(find.byType(InteractiveViewer), findsOneWidget);
 
-        // Fling backward (right to left in RTL)
-        await tester.fling(pageViewFinder, const Offset(-400, 0), 1000);
-        await tester.pumpAndSettle();
+          // Fling backward (right to left in RTL)
+          await tester.fling(pageViewFinder, const Offset(-400, 0), 1000);
+          await tester.pumpAndSettle();
 
-        // Returned to Page 1
-        expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
-        expect(find.text('سورة الفاتحة'), findsWidgets);
+          // Returned to Page 1
+          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
+          expect(find.text('سورة الفاتحة'), findsWidgets);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -2019,30 +2158,34 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 1),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.byType(InteractiveViewer), findsOneWidget);
-        final viewer = tester.widget<InteractiveViewer>(
-          find.byType(InteractiveViewer).first,
-        );
-        expect(viewer.minScale, 1.0);
-        expect(viewer.maxScale, 4.0);
+          expect(find.byType(InteractiveViewer), findsOneWidget);
+          final viewer = tester.widget<InteractiveViewer>(
+            find.byType(InteractiveViewer).first,
+          );
+          expect(viewer.minScale, 1.0);
+          expect(viewer.maxScale, 4.0);
 
-        // At scale 1.0, pan is disabled so horizontal swipe is preserved for PageView
-        expect(viewer.panEnabled, isFalse);
+          // At scale 1.0, pan is disabled so horizontal swipe is preserved for PageView
+          expect(viewer.panEnabled, isFalse);
 
-        // Zoom-out reset button is not shown at default scale
-        expect(find.byIcon(Icons.zoom_out_map), findsNothing);
+          // Zoom-out reset button is not shown at default scale
+          expect(find.byIcon(Icons.zoom_out_map), findsNothing);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
 
@@ -2212,98 +2355,102 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            createTestApp(
-              container: ctx.container,
-              child: const QuranReaderScreen(initialPage: 1),
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              createTestApp(
+                container: ctx.container,
+                child: const QuranReaderScreen(initialPage: 1),
+              ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        final nextButton = find.widgetWithText(ElevatedButton, 'التالي');
-        expect(nextButton, findsOneWidget);
-
-        // Turn pages 1 -> 2 -> 3 -> 4 -> 5
-        for (int p = 1; p < 5; p++) {
-          await tester.tap(nextButton);
+          );
           await tester.pumpAndSettle();
+
+          final nextButton = find.widgetWithText(ElevatedButton, 'التالي');
+          expect(nextButton, findsOneWidget);
+
+          // Turn pages 1 -> 2 -> 3 -> 4 -> 5
+          for (int p = 1; p < 5; p++) {
+            await tester.tap(nextButton);
+            await tester.pumpAndSettle();
+          }
+
+          expect(find.text('صفحة ٥ / ٦٠٤'), findsOneWidget);
+
+          final readerElement = tester.element(find.byType(QuranReaderScreen));
+          final imageConfig = createLocalImageConfiguration(readerElement);
+          final imageCache = PaintingBinding.instance.imageCache;
+
+          // Resolve exact cache keys using the reader's ambient configuration and bundle
+          final key1 = await AssetImage(
+            KfqcMushafCatalog.assetPathForPage(1),
+          ).obtainKey(imageConfig);
+          final key2 = await AssetImage(
+            KfqcMushafCatalog.assetPathForPage(2),
+          ).obtainKey(imageConfig);
+          final key5 = await AssetImage(
+            KfqcMushafCatalog.assetPathForPage(5),
+          ).obtainKey(imageConfig);
+
+          // Disposed earlier sheets (pages 1 and 2) must be absent/untracked from imageCache without test mutating the cache
+          expect(
+            imageCache.containsKey(key1),
+            isFalse,
+            reason:
+                'Disposed page 1 sheet must have been evicted from imageCache upon navigation',
+          );
+          expect(
+            imageCache.statusForKey(key1).tracked,
+            isFalse,
+            reason:
+                'Page 1 must be completely untracked (neither pending, live, nor keepAlive)',
+          );
+          expect(
+            imageCache.containsKey(key2),
+            isFalse,
+            reason:
+                'Disposed page 2 sheet must have been evicted from imageCache upon navigation',
+          );
+          expect(
+            imageCache.statusForKey(key2).tracked,
+            isFalse,
+            reason: 'Page 2 must be completely untracked',
+          );
+
+          // Currently active page sheet (page 5) must be present in imageCache
+          expect(
+            imageCache.containsKey(key5),
+            isTrue,
+            reason:
+                'Current visible sheet (page 5) must be present in imageCache',
+          );
+          final status5 = imageCache.statusForKey(key5);
+          expect(
+            status5.live || status5.keepAlive,
+            isTrue,
+            reason: 'Current visible sheet must be live or kept alive in cache',
+          );
+
+          // Overall cache metrics must remain strictly bounded rather than leaking all turned pages
+          expect(
+            imageCache.currentSize,
+            lessThanOrEqualTo(3),
+            reason: 'Image cache keepAlive size must remain bounded',
+          );
+          expect(
+            imageCache.liveImageCount,
+            lessThanOrEqualTo(2),
+            reason:
+                'Live images must remain bounded to current active viewport sheet',
+          );
+        } finally {
+          await ctx.dispose(tester);
         }
-
-        expect(find.text('صفحة ٥ / ٦٠٤'), findsOneWidget);
-
-        final readerElement = tester.element(find.byType(QuranReaderScreen));
-        final imageConfig = createLocalImageConfiguration(readerElement);
-        final imageCache = PaintingBinding.instance.imageCache;
-
-        // Resolve exact cache keys using the reader's ambient configuration and bundle
-        final key1 = await AssetImage(
-          KfqcMushafCatalog.assetPathForPage(1),
-        ).obtainKey(imageConfig);
-        final key2 = await AssetImage(
-          KfqcMushafCatalog.assetPathForPage(2),
-        ).obtainKey(imageConfig);
-        final key5 = await AssetImage(
-          KfqcMushafCatalog.assetPathForPage(5),
-        ).obtainKey(imageConfig);
-
-        // Disposed earlier sheets (pages 1 and 2) must be absent/untracked from imageCache without test mutating the cache
-        expect(
-          imageCache.containsKey(key1),
-          isFalse,
-          reason:
-              'Disposed page 1 sheet must have been evicted from imageCache upon navigation',
-        );
-        expect(
-          imageCache.statusForKey(key1).tracked,
-          isFalse,
-          reason:
-              'Page 1 must be completely untracked (neither pending, live, nor keepAlive)',
-        );
-        expect(
-          imageCache.containsKey(key2),
-          isFalse,
-          reason:
-              'Disposed page 2 sheet must have been evicted from imageCache upon navigation',
-        );
-        expect(
-          imageCache.statusForKey(key2).tracked,
-          isFalse,
-          reason: 'Page 2 must be completely untracked',
-        );
-
-        // Currently active page sheet (page 5) must be present in imageCache
-        expect(
-          imageCache.containsKey(key5),
-          isTrue,
-          reason:
-              'Current visible sheet (page 5) must be present in imageCache',
-        );
-        final status5 = imageCache.statusForKey(key5);
-        expect(
-          status5.live || status5.keepAlive,
-          isTrue,
-          reason: 'Current visible sheet must be live or kept alive in cache',
-        );
-
-        // Overall cache metrics must remain strictly bounded rather than leaking all turned pages
-        expect(
-          imageCache.currentSize,
-          lessThanOrEqualTo(3),
-          reason: 'Image cache keepAlive size must remain bounded',
-        );
-        expect(
-          imageCache.liveImageCount,
-          lessThanOrEqualTo(2),
-          reason:
-              'Live images must remain bounded to current active viewport sheet',
-        );
       },
     );
 
@@ -2315,34 +2462,38 @@ void main() {
           () => _TestContext.create(quranRepo: quranRepo),
         ))!;
         addTearDown(() => ctx.dispose(tester));
-        await tester.runAsync(() => ctx.prehydrate(1));
+        try {
+          await tester.runAsync(() => ctx.prehydrate(1));
 
-        final failingBundle = _FailingWebpAssetBundle();
+          final failingBundle = _FailingWebpAssetBundle();
 
-        await tester.runAsync(
-          () => tester.pumpWidget(
-            DefaultAssetBundle(
-              bundle: failingBundle,
-              child: createTestApp(
-                container: ctx.container,
-                child: const QuranReaderScreen(initialPage: 1),
+          await tester.runAsync(
+            () => tester.pumpWidget(
+              DefaultAssetBundle(
+                bundle: failingBundle,
+                child: createTestApp(
+                  container: ctx.container,
+                  child: const QuranReaderScreen(initialPage: 1),
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.text('تعذر تحميل صورة الصفحة ١'), findsOneWidget);
-        expect(
-          find.text('يرجى إعادة المحاولة أو الانتقال إلى وضع القراءة النصية.'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(ElevatedButton, 'إعادة المحاولة'),
-          findsOneWidget,
-        );
-        expect(find.textContaining('assets/content/quran'), findsNothing);
-        expect(find.textContaining('المسار:'), findsNothing);
+          expect(find.text('تعذر تحميل صورة الصفحة ١'), findsOneWidget);
+          expect(
+            find.text('يرجى إعادة المحاولة أو الانتقال إلى وضع القراءة النصية.'),
+            findsOneWidget,
+          );
+          expect(
+            find.widgetWithText(ElevatedButton, 'إعادة المحاولة'),
+            findsOneWidget,
+          );
+          expect(find.textContaining('assets/content/quran'), findsNothing);
+          expect(find.textContaining('المسار:'), findsNothing);
+        } finally {
+          await ctx.dispose(tester);
+        }
       },
     );
   });

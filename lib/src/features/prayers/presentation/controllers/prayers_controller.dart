@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../../../prayer/data/sources/city_asset_adapter.dart';
 import '../../../prayer/domain/models/prayer_day.dart';
 import '../../../prayer/domain/models/prayer_event.dart';
+import '../../../prayer/domain/models/prayer_settings.dart';
 import '../../../prayer/domain/models/selected_city.dart';
 import '../../../prayer/domain/services/prayer_calculator.dart';
 import '../../../progress/presentation/controllers/progress_controller.dart';
@@ -23,6 +24,78 @@ const Map<String, int> legacySupportedCitiesMap = {
   'إسطنبول|Europe/Istanbul': 745044,
   'لندن|Europe/London': 2643743,
 };
+
+/// Exception thrown when the stored city ID cannot be found in the cities dataset.
+class CityNotFoundException implements Exception {
+  final String message;
+  const CityNotFoundException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// Exception thrown when stored city preferences cannot be resolved to a valid city.
+class UnresolvedCityException implements Exception {
+  final String message;
+  const UnresolvedCityException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// Exception thrown when stored prayer calculation settings are corrupted and require explicit repair.
+class PrayerSettingsCorruptedException implements Exception {
+  final String message;
+  const PrayerSettingsCorruptedException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// Exception thrown when the stored canonical city and stored timezone are incoherent.
+class IncoherentCityTimezoneException implements Exception {
+  final String message;
+  const IncoherentCityTimezoneException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// Immutable snapshot containing the resolved city and effective prayer settings.
+@immutable
+class EffectivePrayerSettings {
+  final SelectedCity city;
+  final PrayerSettings settings;
+
+  const EffectivePrayerSettings({
+    required this.city,
+    required this.settings,
+  });
+
+  int get cityId => city.id;
+  String get timezone => city.timezone;
+
+  /// Stable fingerprint covering every calculation input for coordinator change detection.
+  String get fingerprint =>
+      '${city.id}|${city.timezone}|${city.latitude}|${city.longitude}|'
+      '${settings.calculationMethod.name}|${settings.asrMadhab.name}|'
+      '${settings.highLatitudeRule.name}|${settings.polarResolution.name}|'
+      '${settings.ummAlQuraRamadanPolicy.name}|${settings.hijriDayAdjustment}|'
+      '${settings.fajrOffsetMinutes}|${settings.sunriseOffsetMinutes}|'
+      '${settings.dhuhrOffsetMinutes}|${settings.asrOffsetMinutes}|'
+      '${settings.maghribOffsetMinutes}|${settings.ishaOffsetMinutes}';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is EffectivePrayerSettings &&
+        other.city == city &&
+        other.settings == settings;
+  }
+
+  @override
+  int get hashCode => Object.hash(city, settings);
+
+  @override
+  String toString() =>
+      'EffectivePrayerSettings(city: ${city.name}, method: ${settings.calculationMethod.name})';
+}
 
 /// Returns standard Arabic name for a calculation method.
 String getCalculationMethodArabicName(CalculationMethod method) {
@@ -94,6 +167,110 @@ String formatCountdownHuman(Duration duration) {
   return '$hours س و $minutes د';
 }
 
+/// Provider delivering the effective calculation snapshot containing city and resolved PrayerSettings.
+/// Derived synchronously from the SAME preference snapshot and city repository.
+/// Calculation method is resolved as city default if override is null, while explicit overrides survive city transitions.
+final effectivePrayerSettingsProvider =
+    Provider<AsyncValue<EffectivePrayerSettings>>((ref) {
+  final prefsAsync = ref.watch(preferencesControllerProvider);
+  final cityRepoAsync = ref.watch(cityRepositoryProvider);
+
+  if (prefsAsync.isLoading || cityRepoAsync.isLoading) {
+    return const AsyncValue.loading();
+  }
+
+  if (prefsAsync.hasError) {
+    return AsyncValue.error(prefsAsync.error!, prefsAsync.stackTrace!);
+  }
+  if (cityRepoAsync.hasError) {
+    return AsyncValue.error(cityRepoAsync.error!, cityRepoAsync.stackTrace!);
+  }
+
+  final prefs = prefsAsync.requireValue;
+  final cityRepo = cityRepoAsync.requireValue;
+
+  if (prefs.prayerSettingsRecoveryNotice) {
+    return AsyncValue.error(
+      const PrayerSettingsCorruptedException(
+        'إعدادات حساب الصلاة المحفوظة تحتوي على قيم غير صالحة وتتطلب الإصلاح.',
+      ),
+      StackTrace.current,
+    );
+  }
+
+  SelectedCity? city;
+  if (prefs.selectedCityId != null) {
+    city = cityRepo.getCityById(prefs.selectedCityId!);
+    if (city == null) {
+      return AsyncValue.error(
+        CityNotFoundException(
+          'المدينة المحددة غير موجودة في قاعدة بيانات المدن (ID: ${prefs.selectedCityId})',
+        ),
+        StackTrace.current,
+      );
+    }
+    if (city.timezone != prefs.selectedTimezone) {
+      return AsyncValue.error(
+        IncoherentCityTimezoneException(
+          'المنطقة الزمنية المحفوظة (${prefs.selectedTimezone}) غير متطابقة مع المدينة (${city.timezone}) وتتطلب إعادة التحديد.',
+        ),
+        StackTrace.current,
+      );
+    }
+  } else {
+    final key = '${prefs.selectedCity}|${prefs.selectedTimezone}';
+    final legacyId = legacySupportedCitiesMap[key];
+    if (legacyId != null) {
+      city = cityRepo.getCityById(legacyId);
+    }
+    if (city == null) {
+      return AsyncValue.error(
+        UnresolvedCityException(
+          'لم يتم العثور على المدينة المحددة (${prefs.selectedCity})',
+        ),
+        StackTrace.current,
+      );
+    }
+    if (city.timezone != prefs.selectedTimezone) {
+      return AsyncValue.error(
+        IncoherentCityTimezoneException(
+          'المنطقة الزمنية المحفوظة (${prefs.selectedTimezone}) غير متطابقة مع المدينة (${city.timezone}) وتتطلب إعادة التحديد.',
+        ),
+        StackTrace.current,
+      );
+    }
+  }
+
+  final method = prefs.calculationMethodOverride ?? city.defaultCalculationMethod;
+  final settings = PrayerSettings(
+    calculationMethod: method,
+    asrMadhab: prefs.asrMadhab,
+    highLatitudeRule: prefs.highLatitudeRule,
+    polarResolution: prefs.polarResolution,
+    ummAlQuraRamadanPolicy: prefs.ramadanPolicy,
+    hijriDayAdjustment: prefs.hijriDayAdjustment,
+    fajrOffsetMinutes: prefs.fajrOffset,
+    sunriseOffsetMinutes: prefs.sunriseOffset,
+    dhuhrOffsetMinutes: prefs.dhuhrOffset,
+    asrOffsetMinutes: prefs.asrOffset,
+    maghribOffsetMinutes: prefs.maghribOffset,
+    ishaOffsetMinutes: prefs.ishaOffset,
+  );
+
+  return AsyncValue.data(
+    EffectivePrayerSettings(
+      city: city,
+      settings: settings,
+    ),
+  );
+});
+
+/// Provider exposing the selected prayer city, derived directly from the effective snapshot.
+final selectedPrayerCityProvider = Provider<AsyncValue<SelectedCity>>((ref) {
+  final snapshotAsync = ref.watch(effectivePrayerSettingsProvider);
+  return snapshotAsync.whenData((snapshot) => snapshot.city);
+});
+
 /// Immutable state representing calculated prayer times and countdown for display.
 @immutable
 class PrayerState {
@@ -106,6 +283,7 @@ class PrayerState {
   final bool isUnsupported;
   final String? unsupportedCity;
   final String? unsupportedTimezone;
+  final EffectivePrayerSettings? effectiveSettings;
 
   const PrayerState({
     this.city,
@@ -117,6 +295,7 @@ class PrayerState {
     this.isUnsupported = false,
     this.unsupportedCity,
     this.unsupportedTimezone,
+    this.effectiveSettings,
   });
 
   bool get isEstimated => prayerDay?.isEstimated ?? false;
@@ -153,7 +332,8 @@ class PrayerState {
         other.calculationMethod == calculationMethod &&
         other.isUnsupported == isUnsupported &&
         other.unsupportedCity == unsupportedCity &&
-        other.unsupportedTimezone == unsupportedTimezone;
+        other.unsupportedTimezone == unsupportedTimezone &&
+        other.effectiveSettings == effectiveSettings;
   }
 
   @override
@@ -167,6 +347,7 @@ class PrayerState {
         isUnsupported,
         unsupportedCity,
         unsupportedTimezone,
+        effectiveSettings,
       );
 }
 
@@ -180,6 +361,9 @@ final prayerTimesControllerProvider =
   PrayerTimesNotifier.new,
 );
 
+/// Backwards compatibility provider alias consumed by Home screen.
+final currentPrayerDisplayProvider = prayerTimesControllerProvider;
+
 class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
     with WidgetsBindingObserver {
   Timer? _timer;
@@ -192,8 +376,7 @@ class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
   AsyncValue<PrayerState> build() {
     ensureTimeZonesInitialized();
     final clock = ref.watch(clockProvider);
-    final prefsAsync = ref.watch(preferencesControllerProvider);
-    final cityRepoAsync = ref.watch(cityRepositoryProvider);
+    final effectiveAsync = ref.watch(effectivePrayerSettingsProvider);
 
     if (!_isObserverAdded) {
       try {
@@ -215,48 +398,29 @@ class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
       _timer = null;
     });
 
-    if (prefsAsync.isLoading || cityRepoAsync.isLoading) {
+    if (effectiveAsync.isLoading) {
       return const AsyncValue.loading();
     }
 
-    if (prefsAsync.hasError) {
-      return AsyncValue.error(prefsAsync.error!, prefsAsync.stackTrace!);
-    }
-    if (cityRepoAsync.hasError) {
-      return AsyncValue.error(cityRepoAsync.error!, cityRepoAsync.stackTrace!);
-    }
-
-    final prefs = prefsAsync.requireValue;
-    final cityRepo = cityRepoAsync.requireValue;
-
-    final key = '${prefs.selectedCity}|${prefs.selectedTimezone}';
-    final geonameId = legacySupportedCitiesMap[key];
-    if (geonameId == null) {
-      final nowUtc = clock().toUtc();
-      return AsyncValue.data(
-        PrayerState(
-          civilDate: DateTime.utc(nowUtc.year, nowUtc.month, nowUtc.day),
-          isUnsupported: true,
-          unsupportedCity: prefs.selectedCity,
-          unsupportedTimezone: prefs.selectedTimezone,
-        ),
-      );
-    }
-
-    final city = cityRepo.getCityById(geonameId);
-    if (city == null) {
+    if (effectiveAsync.hasError) {
       return AsyncValue.error(
-        StateError('المدينة المحددة غير موجودة في قاعدة بيانات المدن (ID: $geonameId)'),
-        StackTrace.current,
+        effectiveAsync.error!,
+        effectiveAsync.stackTrace!,
       );
     }
 
-    final stateData = _computeState(city, clock);
-    _scheduleNextTick(clock, city.timezone);
+    final snapshot = effectiveAsync.requireValue;
+    final stateData = _computeState(snapshot, clock);
+    _scheduleNextTick(clock, snapshot.city.timezone);
     return AsyncValue.data(stateData);
   }
 
-  PrayerState _computeState(SelectedCity city, DateTime Function() clock) {
+  PrayerState _computeState(
+    EffectivePrayerSettings snapshot,
+    DateTime Function() clock,
+  ) {
+    final city = snapshot.city;
+    final settings = snapshot.settings;
     final nowUtc = clock().toUtc();
     final cityLocation = tz.getLocation(city.timezone);
     final cityLocalNow = tz.TZDateTime.from(nowUtc, cityLocation);
@@ -270,6 +434,7 @@ class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
     final prayerDay = calculator.calculatePrayerDay(
       city: city,
       date: civilDateUtc,
+      settings: settings,
     );
 
     PrayerEvent? nextPrayer;
@@ -279,6 +444,7 @@ class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
         nextPrayer = calculator.nextPrayer(
           utcNow: nowUtc,
           city: city,
+          settings: settings,
           includeSunrise: false,
         );
         timeToNext = nextPrayer.utcDateTime.difference(nowUtc);
@@ -292,8 +458,9 @@ class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
             reason: 'تعذر تحديد الصلاة القادمة: $e',
           ),
           civilDate: civilDateUtc,
-          calculationMethod: city.defaultCalculationMethod,
+          calculationMethod: settings.calculationMethod,
           isUnsupported: false,
+          effectiveSettings: snapshot,
         );
       }
     }
@@ -304,8 +471,9 @@ class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
       nextPrayer: nextPrayer,
       timeToNextPrayer: timeToNext,
       civilDate: civilDateUtc,
-      calculationMethod: city.defaultCalculationMethod,
+      calculationMethod: settings.calculationMethod,
       isUnsupported: false,
+      effectiveSettings: snapshot,
     );
   }
 
@@ -323,21 +491,14 @@ class PrayerTimesNotifier extends Notifier<AsyncValue<PrayerState>>
   }
 
   void _tick() {
-    final prefs = ref.read(preferencesControllerProvider).valueOrNull;
-    final cityRepo = ref.read(cityRepositoryProvider).valueOrNull;
-    if (prefs == null || cityRepo == null) return;
-
-    final key = '${prefs.selectedCity}|${prefs.selectedTimezone}';
-    final geonameId = legacySupportedCitiesMap[key];
-    if (geonameId == null) return;
-
-    final city = cityRepo.getCityById(geonameId);
-    if (city == null) return;
+    final snapshotAsync = ref.read(effectivePrayerSettingsProvider);
+    if (!snapshotAsync.hasValue) return;
+    final snapshot = snapshotAsync.requireValue;
 
     final clock = ref.read(clockProvider);
-    final newState = _computeState(city, clock);
+    final newState = _computeState(snapshot, clock);
     state = AsyncValue.data(newState);
-    _scheduleNextTick(clock, city.timezone);
+    _scheduleNextTick(clock, snapshot.city.timezone);
   }
 
   @override

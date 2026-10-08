@@ -135,8 +135,8 @@ class HadithRepositoryImpl implements HadithRepository {
       return allHadiths;
     }
 
-    // Direct ID lookup if user typed numbers
-    final intQuery = int.tryParse(trimmed);
+    // Direct ID lookup if user typed numbers (ASCII, Arabic-Indic, or Persian digits)
+    final intQuery = ArabicNormalizer.parseArabicInt(trimmed) ?? int.tryParse(trimmed);
     if (intQuery != null && _byId.containsKey(intQuery)) {
       final direct = _byId[intQuery]!;
       final result = <HadithItem>[direct];

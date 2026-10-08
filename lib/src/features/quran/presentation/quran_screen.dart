@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
+import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
 import '../../progress/data/models/reading_progress.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
 import '../data/quran_repository.dart';
 import '../data/sources/quran_asset_loader.dart';
 import '../domain/models/juz.dart';
+import '../domain/models/quran_audio_source.dart';
 import '../domain/models/surah.dart';
 import '../domain/models/verse.dart';
 import 'controllers/quran_navigation_controller.dart';
@@ -80,6 +83,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
     final navState = ref.watch(quranNavigationProvider);
     final readingAsync = ref.watch(readingProgressControllerProvider);
     final quranAsync = ref.watch(quranRepositoryProvider);
+    final audioState = ref.watch(adhanAudioControllerProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // When the reader view is open, render QuranReaderScreen
@@ -120,29 +124,40 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
         ],
       ),
       body: SafeArea(
-        child: quranAsync.when(
-          data: (quranRepo) {
-            if (_searchQuery.isNotEmpty) {
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: _buildSearchTextField(context, isDark),
-                  ),
-                  Expanded(
-                    child: _buildSearchResults(
-                      context,
-                      quranRepo,
-                      _searchQuery,
-                      isDark,
-                    ),
-                  ),
-                ],
-              );
-            }
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (audioState.sourceType == AudioPlaybackSource.quran &&
+                (audioState.isPlaying ||
+                    audioState.isLoading ||
+                    audioState.isBuffering ||
+                    audioState.isPaused ||
+                    audioState.hasError))
+              _buildIndexAudioBar(context, audioState, isDark),
+            Expanded(
+              child: quranAsync.when(
+                data: (quranRepo) {
+                  if (_searchQuery.isNotEmpty) {
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: _buildSearchTextField(context, isDark),
+                        ),
+                        Expanded(
+                          child: _buildSearchResults(
+                            context,
+                            quranRepo,
+                            _searchQuery,
+                            isDark,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
 
             return NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -239,8 +254,11 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
           ),
         ),
       ),
-    );
-  }
+    ],
+  ),
+),
+);
+}
 
   Widget _buildSearchTextField(BuildContext context, bool isDark) {
     return TextField(
@@ -722,7 +740,22 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
               '${surah.type == "Meccan" ? "مكية" : "مدنية"} · ${QuranUiUtils.toArabicDigits(surah.versesCount)} آية · صفحة ${QuranUiUtils.toArabicDigits(startPage)}',
               style: const TextStyle(fontSize: 10),
             ),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 12),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  key: ValueKey('listen_surah_${surah.number}'),
+                  icon: const Icon(Icons.headphones_outlined, size: 18),
+                  tooltip: 'استماع للسورة كاملة',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: () => _showSurahAudioDialog(context, surah),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_forward_ios, size: 12),
+              ],
+            ),
             onTap: () => _openReader(startPage),
           ),
         );
@@ -942,6 +975,320 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
         message: 'تعذر تحميل العلامات المرجعية.',
         onRetry: () => ref.read(bookmarksControllerProvider.notifier).retry(),
       ),
+    );
+  }
+
+  Widget _buildIndexAudioBar(
+    BuildContext context,
+    AdhanAudioState audioState,
+    bool isDark,
+  ) {
+    final controller = ref.read(adhanAudioControllerProvider.notifier);
+
+    return Container(
+      key: const ValueKey('quran_index_active_audio_bar'),
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : const Color(0xFFF0F5F1),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
+          ),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        key: const ValueKey('index_audio_stop_button'),
+                        icon: const Icon(Icons.stop, size: 18),
+                        tooltip: 'إيقاف التلاوة',
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 28, minHeight: 28),
+                        color:
+                            isDark ? Colors.red.shade300 : Colors.red.shade700,
+                        onPressed: () => controller.stop(),
+                      ),
+                      const SizedBox(width: 4),
+                      if (audioState.isLoading || audioState.isBuffering) ...[
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 6),
+                      ] else if (audioState.hasError) ...[
+                        IconButton(
+                          key: const ValueKey('index_audio_retry_button'),
+                          icon: const Icon(Icons.refresh, size: 18),
+                          tooltip: 'إعادة المحاولة',
+                          padding: EdgeInsets.zero,
+                          constraints:
+                              const BoxConstraints(minWidth: 28, minHeight: 28),
+                          onPressed: () {
+                            if (audioState.activeSurahNumber != null) {
+                              controller.playSurah(
+                                surahNumber: audioState.activeSurahNumber!,
+                                surahName: audioState.activeSurahName ?? '',
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                      ] else if (audioState.isPlaying) ...[
+                        IconButton(
+                          key: const ValueKey('index_audio_pause_button'),
+                          icon: const Icon(Icons.pause, size: 18),
+                          tooltip: 'إيقاف مؤقت',
+                          padding: EdgeInsets.zero,
+                          constraints:
+                              const BoxConstraints(minWidth: 28, minHeight: 28),
+                          onPressed: () => controller.pause(),
+                        ),
+                        const SizedBox(width: 4),
+                      ] else if (audioState.isPaused) ...[
+                        IconButton(
+                          key: const ValueKey('index_audio_resume_button'),
+                          icon: const Icon(Icons.play_arrow, size: 18),
+                          tooltip: 'استئناف',
+                          padding: EdgeInsets.zero,
+                          constraints:
+                              const BoxConstraints(minWidth: 28, minHeight: 28),
+                          onPressed: () => controller.resume(),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        'سورة ${audioState.activeSurahName ?? ''}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColors.darkGoldAccent
+                              : AppColors.goldDark,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        audioState.isLoading
+                            ? 'جاري التحميل...'
+                            : audioState.isBuffering
+                                ? 'تخزين مؤقت...'
+                                : audioState.isPaused
+                                    ? 'متوقف مؤقتاً'
+                                    : audioState.hasError
+                                        ? 'تعذر التحميل'
+                                        : 'مشاري العفاسي (حفص)',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (audioState.totalDuration > Duration.zero)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: Text(
+                        '${_formatDuration(audioState.position)} / ${_formatDuration(audioState.totalDuration)}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                          color: isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  void _showSurahAudioDialog(BuildContext context, Surah surah) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.headphones,
+                            color: isDark
+                                ? AppColors.darkGoldAccent
+                                : AppColors.forestPrimary,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'استماع لسورة ${surah.name} كاملة',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : AppColors.cardSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.darkCardBorder
+                            : AppColors.cardBorder,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'القارئ: الشيخ ${QuranAudioSource.reciterName}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'الرواية: ${QuranAudioSource.riwayahName}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'المصدر: موقع MP3Quran (MP3Quran.net)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'تنبيه: يتطلب الاستماع اتصالاً نشطاً بالإنترنت للبث المباشر. تلاوة السورة كاملة ولا تتزامن مع الآيات الفردية أو تقليب الصفحات.',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            height: 1.4,
+                            color: isDark
+                                ? AppColors.darkGoldAccent
+                                : AppColors.forestMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () {
+                            launchUrl(
+                              Uri.parse(QuranAudioSource.privacyPolicyUrl),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                          child: Text(
+                            'سياسة الخصوصية وترخيص المصدر (MP3Quran) ↗',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                              color: isDark
+                                  ? AppColors.darkGoldAccent
+                                  : AppColors.forestPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    key: ValueKey('confirm_play_surah_${surah.number}'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark
+                          ? AppColors.darkForestPrimary
+                          : AppColors.forestPrimary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text(
+                      'استماع للسورة كاملة',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      ref
+                          .read(adhanAudioControllerProvider.notifier)
+                          .playSurah(
+                            surahNumber: surah.number,
+                            surahName: surah.name,
+                          );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
