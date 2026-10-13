@@ -161,20 +161,10 @@ void main() {
     final bytes = await cityFile.readAsBytes();
     cityRepo = CityAssetAdapter.fromBytes(bytes);
 
-    // Load actual application font assets: all 4 IBM Plex weights and Amiri
-    final amiriFile = File('assets/fonts/Amiri-Quran-Regular.ttf');
-    expect(await amiriFile.exists(), isTrue, reason: 'Amiri Quran font must exist');
-    final amiriLoader = FontLoader('Amiri Quran');
-    amiriLoader.addFont(Future.value(ByteData.sublistView(await amiriFile.readAsBytes())));
-    await amiriLoader.load();
+    final naskhBytes = await File('assets/fonts/NotoNaskhArabic-Variable.ttf').readAsBytes();
+    final naskhLoader = FontLoader('Noto Naskh Arabic')..addFont(Future.value(ByteData.sublistView(naskhBytes)));
+    await naskhLoader.load();
 
-    final plexLoader = FontLoader('IBM Plex Sans Arabic');
-    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-      final plexFile = File('assets/fonts/IBM-Plex-Sans-Arabic-$weight.ttf');
-      expect(await plexFile.exists(), isTrue, reason: 'IBM Plex Sans Arabic $weight must exist');
-      plexLoader.addFont(Future.value(ByteData.sublistView(await plexFile.readAsBytes())));
-    }
-    await plexLoader.load();
   });
 
   tearDownAll(() {
@@ -243,7 +233,7 @@ void main() {
       'daily_source_confirmations',
     ];
 
-    test('fresh v4 database creates all 9 tables with schemaVersion 4 and Cairo defaults', () async {
+    test('fresh v4 database creates all 9 tables with schemaVersion 5 and Cairo defaults', () async {
       final dbPath = createDbPath('fresh_v4.db');
       final appDb = AppDatabase(
         databaseFactory: databaseFactory,
@@ -252,7 +242,7 @@ void main() {
       final rawDb = await appDb.database;
 
       final version = await rawDb.getVersion();
-      expect(version, 4);
+      expect(version, AppDatabase.schemaVersion);
 
       final tableRows = await rawDb.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%'",
@@ -341,7 +331,7 @@ void main() {
       );
       final rawDb = await appDb.database;
 
-      expect(await rawDb.getVersion(), 4);
+      expect(await rawDb.getVersion(), AppDatabase.schemaVersion);
 
       final tableRows = await rawDb.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%'",
@@ -410,7 +400,7 @@ void main() {
       );
       final rawDb = await appDb.database;
 
-      expect(await rawDb.getVersion(), 4);
+      expect(await rawDb.getVersion(), AppDatabase.schemaVersion);
       final row = (await rawDb.query('user_preferences', where: 'id = 1')).first;
       expect(row['selected_city_id'], 292223);
       expect(row['general_adhan_voice'], 'atcovi');
@@ -472,7 +462,7 @@ void main() {
       );
       final rawDb = await appDb.database;
 
-      expect(await rawDb.getVersion(), 4);
+      expect(await rawDb.getVersion(), AppDatabase.schemaVersion);
       final row = (await rawDb.query('user_preferences', where: 'id = 1')).first;
       expect(row['selected_city_id'], 281184);
 

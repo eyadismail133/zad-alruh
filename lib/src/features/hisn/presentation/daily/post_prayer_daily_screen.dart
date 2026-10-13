@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../domain/models/hisn_invocation_catalog.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -467,7 +468,7 @@ class _PostPrayerDailyScreenState extends ConsumerState<PostPrayerDailyScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    'ذكر #${item.number}',
+                                    '${HisnInvocationCatalog.label(item.id)} #${item.number}',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -512,7 +513,6 @@ class _PostPrayerDailyScreenState extends ConsumerState<PostPrayerDailyScreen> {
                               item.text,
                               textAlign: TextAlign.justify,
                               style: TextStyle(
-                                fontFamily: 'Amiri Quran',
                                 fontSize: 16.5,
                                 height: 1.9,
                                 color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="زادُ الروح: القرآن الكريم والأذكار والأحاديث ومواقيت الصلاة في تطبيق عربي. تعرّف على التطبيق وحمّل نسخة أندرويد التجريبية.">
+  <meta name="theme-color" content="#15543f">
+  <title>زادُ الروح — رفيقك اليومي للعبادة والطمأنينة</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <style>
+    :root { color-scheme:light; --green:#15543f; --ink:#183e32; --muted:#52685d; --cream:#faf7ef; --gold:#dfbd72; --line:#e3dfd2; font-family:Tahoma,Arial,sans-serif; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:24px; }
+    body { margin:0; background:var(--cream); color:var(--ink); line-height:1.8; }
+    a { color:inherit; text-underline-offset:5px; }
+    a:focus-visible { outline:3px solid #b68121; outline-offset:6px; }
+    .wrap { width:min(1100px, calc(100% - 40px)); margin-inline:auto; }
+    .skip { position:absolute; top:8px; right:12px; transform:translateY(-160%); z-index:3; padding:8px 16px; background:white; }
+    .skip:focus { transform:none; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding-block:24px; }
+    .brand { display:flex; align-items:center; gap:12px; text-decoration:none; }
+    .brand img { width:48px; height:48px; border-radius:13px; }
+    .brand strong { font-size:23px; }
+    nav { display:flex; flex-wrap:wrap; gap:24px; font-size:14px; }
+    nav a { text-decoration:none; }
+    nav a:hover { text-decoration:underline; }
+    .hero { display:grid; grid-template-columns:1.1fr 1fr; align-items:center; gap:48px; padding:46px 0 70px; }
+    .eyebrow { color:var(--green); font-size:13px; font-weight:bold; letter-spacing:.4px; }
+    h1 { font-size:clamp(38px,5vw,66px); line-height:1.35; margin:18px 0; letter-spacing:-1.5px; }
+    h1 span { color:var(--green); }
+    .intro { max-width:480px; font-size:18px; color:var(--muted); margin-bottom:27px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; gap:12px; background:var(--green); color:white; text-decoration:none; padding:15px 25px; border-radius:12px; font-weight:bold; box-shadow:0 5px 18px #15543f16; }
+    .button:hover { background:#0c4130; }
+    .button svg { width:22px; height:22px; flex-shrink:0; }
+    .download-note { font-size:12px; color:var(--muted); margin:11px 0 20px; }
+    .pills { display:flex; flex-wrap:wrap; gap:8px; font-size:12px; }
+    .pills span { padding:5px 12px; border:1px solid var(--line); border-radius:30px; }
+    .visual { position:relative; min-height:610px; display:flex; align-items:center; justify-content:center; border-radius:190px 190px 24px 24px; background:var(--green); overflow:hidden; }
+    .visual::before { content:""; position:absolute; width:430px; height:430px; border:1px solid #dfbd723b; border-radius:50%; top:55px; }
+    .visual::after { content:""; position:absolute; width:340px; height:340px; border:1px solid #dfbd723b; border-radius:50%; top:100px; }
+    .phone { position:relative; z-index:1; border:8px solid #10291f; border-radius:31px; background:#10291f; box-shadow:0 24px 50px #00150e55; overflow:hidden; width:240px; }
+    .phone img { width:100%; height:auto; display:block; border-radius:23px; }
+    .visual-label { position:absolute; bottom:22px; z-index:1; color:#f5e8c9; font-size:12px; }
+    .section { padding-block:55px; border-top:1px solid var(--line); }
+    h2 { font-size:clamp(26px,3vw,36px); line-height:1.5; margin:8px 0 14px; }
+    .subheading { color:var(--muted); margin:0 0 30px; max-width:620px; }
+    .features { display:grid; grid-template-columns:repeat(4,1fr); gap:26px; }
+    .feature { border-top:3px solid var(--gold); padding-top:20px; }
+    .feature small { color:var(--muted); font-size:12px; }
+    h3 { font-size:19px; margin:6px 0 10px; }
+    .feature p { color:var(--muted); font-size:14px; margin:0; }
+    .gallery { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
+    figure { margin:0; text-align:center; }
+    .screen { background:#f0eadc; border:1px solid var(--line); border-radius:20px; padding:22px; }
+    .screen img { display:block; width:100%; max-width:220px; height:auto; margin:auto; border:5px solid #183e32; border-radius:19px; }
+    figcaption { margin-top:14px; font-size:14px; font-weight:bold; }
+    .install { display:grid; grid-template-columns:1fr 1.3fr; gap:50px; }
+    ol { margin:0; padding-inline-start:24px; }
+    li { padding-inline-start:8px; margin-bottom:15px; }
+    li::marker { color:var(--green); font-weight:bold; }
+    .notice { margin-top:24px; padding:18px 22px; border:1px solid #dfcfab; border-radius:12px; background:#fff9eb; color:#63512f; font-size:13px; }
+    .privacy { max-width:800px; font-size:14px; color:var(--muted); }
+    .end { margin-block:28px 55px; padding:36px; display:flex; align-items:center; justify-content:space-between; gap:25px; border-radius:18px; background:#eaf0e7; }
+    .end h2 { font-size:26px; margin:0; }
+    .end p { color:var(--muted); margin:4px 0 0; font-size:13px; }
+    footer { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; border-top:1px solid var(--line); padding-block:24px; color:var(--muted); font-size:12px; }
+    @media(max-width:850px) { .hero{gap:25px;} .visual{min-height:540px;} .features{grid-template-columns:repeat(2,1fr);} .gallery{gap:15px;} .screen{padding:14px;} }
+    @media(max-width:620px) { .wrap{width:calc(100% - 32px);} header{padding-block:18px;} .brand strong{font-size:20px;} nav{gap:14px;font-size:12px;} nav a:first-child{display:none;} .hero{grid-template-columns:1fr;padding:20px 0 40px;gap:32px;} h1{font-size:43px;} .intro{font-size:16px;} .visual{min-height:550px;max-width:360px;width:100%;margin:auto;} .section{padding-block:35px;} .features{gap:24px 18px;} .gallery{grid-template-columns:1fr;gap:24px;} .screen{max-width:340px;margin:auto;padding:22px;} .screen img{max-width:230px;} .install{grid-template-columns:1fr;gap:18px;} .end{flex-direction:column;align-items:flex-start;padding:25px;} .button{width:100%;} }
+    @media(prefers-reduced-motion:reduce) { html{scroll-behavior:auto;} }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">انتقل إلى المحتوى</a>
+  <header class="wrap">
+    <a class="brand" href="#main" aria-label="زادُ الروح — الرئيسية"><img src="assets/logo.png" width="192" height="192" alt=""><strong>زادُ الروح</strong></a>
+    <nav aria-label="التنقل"><a href="#features">عن التطبيق</a><a href="#screens">نظرة من الداخل</a><a href="#install">التثبيت</a></nav>
+  </header>
+  <main id="main" class="wrap">
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <div class="eyebrow">مساحة للذكر، ووقت للطمأنينة</div>
+        <h1 id="hero-title">زادٌ لقلبك.<br><span>رفيقٌ ليومك.</span></h1>
+        <p class="intro">القرآن الكريم، وأذكارك اليومية، ومواقيت الصلاة في مكان واحد. تجربة عربية هادئة، تساعدك تكمّل وردك وتحفظ تقدمك.</p>
+        <a class="button" href="https://zad-alruh.whiterat16.chatgpt.site">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          تحميل التطبيق لأندرويد
+        </a>
+        <p class="download-note">نسخة تجريبية 0.3.0 · أندرويد 8 فأحدث · الحجم 281.6 MB</p>
+        <div class="pills"><span>دون إعلانات</span><span>دون إنشاء حساب</span><span>حفظ محلي للتقدم</span></div>
+      </div>
+      <div class="visual">
+        <div class="phone"><img src="assets/home.png" width="360" height="800" fetchpriority="high" alt="الشاشة الرئيسية لتطبيق زاد الروح، وفيها ورد اليوم ومواقيت الصلاة والتقدم اليومي"></div>
+        <span class="visual-label">تفاصيل بسيطة. مساحة أكبر لوردك.</span>
+      </div>
+    </section>
+    <section id="features" class="section" aria-labelledby="features-title">
+      <div class="eyebrow">قريب من يومك</div>
+      <h2 id="features-title">كل ما تحتاجه لوردك اليومي</h2>
+      <p class="subheading">المحتوى الأساسي مدمج في التطبيق، لتقرأ وتتصفح حتى من غير اتصال بالإنترنت.</p>
+      <div class="features">
+        <article class="feature"><small>٠١ / القرآن الكريم</small><h3>مصحفك معك</h3><p>٦٠٤ صفحات مصوّرة للمصحف، مع مفضلة الصفحات وعلامات الوقف. بعد تأكيد قراءة الصفحة، كمّل وردك من الصفحة التالية. استمع لتلاوة مشاري العفاسي عند الاتصال بالإنترنت.</p></article>
+        <article class="feature"><small>٠٢ / الأذكار والأدعية</small><h3>ذكرٌ على مدار اليوم</h3><p>أدعية وأذكار من حصن المسلم ومختارات إضافية موثّقة، مع أقسام واضحة للتصفح، ومتابعة إنجاز اليوم وسبحة إلكترونية.</p></article>
+        <article class="feature"><small>٠٣ / الصلاة</small><h3>على توقيت مدينتك</h3><p>اختر مدينتك وطريقة حساب الصلاة، وتابع الصلاة القادمة. فعّل تنبيهات أندرويد واختر صوت الأذان من الإعدادات.</p></article>
+        <article class="feature"><small>٠٤ / الحديث النبوي</small><h3>اقرأ وارجع للمصدر</h3><p>٣٢١٣ حديثًا من موسوعة الأحاديث النبوية، متاحة مباشرة من تبويب «الحديث». تصفّحها بترتيب أرقامها، وتنقّل بين السابق والتالي، مع البحث والتخريج والدرجة وروابط المصدر.</p></article>
+      </div>
+    </section>
+    <section id="screens" class="section" aria-labelledby="screens-title">
+      <div class="eyebrow">نظرة من الداخل</div>
+      <h2 id="screens-title">واجهة عربية، بتفاصيل مريحة</h2>
+      <p class="subheading">لقطات من واجهة التطبيق. الألوان وحجم الخط قابلان للتعديل من الإعدادات.</p>
+      <div class="gallery">
+        <figure><div class="screen"><img src="assets/quran.png" width="360" height="800" loading="lazy" alt="المصحف المصوّر في تطبيق زاد الروح، صفحة سورة الفاتحة"></div><figcaption>القرآن الكريم</figcaption></figure>
+        <figure><div class="screen"><img src="assets/prayers.png" width="360" height="800" loading="lazy" alt="شاشة مواقيت الصلاة في تطبيق زاد الروح"></div><figcaption>مواقيت الصلاة</figcaption></figure>
+        <figure><div class="screen"><img src="assets/dhikr.png" width="360" height="800" loading="lazy" alt="شاشة الأذكار والسبحة في تطبيق زاد الروح"></div><figcaption>الأذكار والسبحة</figcaption></figure>
+      </div>
+    </section>
+    <section id="install" class="section" aria-labelledby="install-title">
+      <div class="install">
+        <div><div class="eyebrow">ابدأ بخطوات بسيطة</div><h2 id="install-title">إزاي تثبّت التطبيق؟</h2><p class="subheading">التحميل مباشر بصيغة APK. النسخة الحالية للتجربة على أجهزة أندرويد 8 أو أحدث.</p></div>
+        <ol>
+          <li>اضغط «تحميل التطبيق لأندرويد»، وانتظر اكتمال تنزيل الملف.</li>
+          <li>افتح الملف من التنزيلات. لو طلب النظام، اسمح مؤقتًا للمتصفح أو مدير الملفات بتثبيت تطبيقات من هذا المصدر، ثم أوقف السماح بعد التثبيت.</li>
+          <li>اضغط «تثبيت»، ثم افتح زادُ الروح من أيقونته على موبايلك.</li>
+          <li>اختَر مدينتك من الإعدادات. لو حابب تنبيهات الصلاة، فعّلها وامنح الصلاحيات المطلوبة. قيود البطارية في بعض الأجهزة قد تؤثر على وصول التنبيه.</li>
+        </ol>
+      </div>
+      <p class="notice"><strong>عن النسخة الحالية:</strong> هذه نسخة تجريبية وليست إصدارًا نهائيًا. اختبار الصوت والتنبيهات على الأجهزة المختلفة، والمراجعة البشرية المؤهلة للمحتوى الديني، ما زالا مطلوبين. التوافق مع جميع أجهزة أندرويد غير مضمون.</p>
+    </section>
+    <section id="privacy" class="section" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">تقدمك محفوظ على جهازك</h2>
+      <p class="privacy">التطبيق لا يحتاج حسابًا، ولا يضم إعلانات أو حزم تحليلات. تُحفظ التفضيلات والتقدم والمفضلة محليًا. قراءة المصحف والأذكار والأحاديث متاحة دون إنترنت؛ تلاوة القرآن تحتاج اتصالًا بخادم صوت خارجي، وقد يسجل المزود بيانات الاتصال المعتادة مثل عنوان الإنترنت. تفاصيل المصادر والتراخيص والخصوصية متاحة داخل التطبيق في «المزيد ← المصادر والخصوصية».</p>
+    </section>
+    <div class="end"><div><h2>خذ معك زادًا ليومك</h2><p>القراءة والذكر، في متناول يدك.</p></div><a class="button" href="https://zad-alruh.whiterat16.chatgpt.site">تحميل نسخة أندرويد التجريبية</a></div>
+  </main>
+  <footer class="wrap"><span>زادُ الروح · رفيقك اليومي للعبادة والطمأنينة</span><span>نسخة التجربة 0.3.0 · أكتوبر ٢٠٢٦</span></footer>
+</body>
+</html>

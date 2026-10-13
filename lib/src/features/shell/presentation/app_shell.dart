@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../dhikr/presentation/dhikr_screen.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../more/presentation/hadith_screen.dart';
 import '../../more/presentation/more_screen.dart';
 import '../../prayer/domain/services/prayer_notification_coordinator.dart';
 import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
@@ -39,9 +40,7 @@ class _AppShellState extends ConsumerState<AppShell>
         state == AppLifecycleState.hidden) {
       ref.read(adhanAudioControllerProvider.notifier).stop().catchError((_) {});
     } else if (state == AppLifecycleState.resumed) {
-      ref
-          .read(prayerNotificationCoordinatorProvider)
-          .reconcile(passive: true);
+      ref.read(prayerNotificationCoordinatorProvider).reconcile(passive: true);
     }
   }
 
@@ -68,16 +67,14 @@ class _AppShellState extends ConsumerState<AppShell>
       const PrayersScreen(),
       const DhikrScreen(),
       const MoreScreen(),
+      const HadithScreen(),
     ];
 
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: IndexedStack(
-            index: _currentIndex,
-            children: pages,
-          ),
+          child: IndexedStack(index: _currentIndex, children: pages),
         ),
       ),
       bottomNavigationBar: Center(
@@ -112,6 +109,11 @@ class _AppShellState extends ConsumerState<AppShell>
                 icon: Icon(Icons.more_horiz_outlined),
                 selectedIcon: Icon(Icons.more_horiz),
                 label: 'المزيد',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.library_books_outlined),
+                selectedIcon: Icon(Icons.library_books),
+                label: 'الحديث',
               ),
             ],
           ),

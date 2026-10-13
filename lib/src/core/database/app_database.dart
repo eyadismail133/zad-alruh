@@ -7,14 +7,22 @@ class AppDatabase {
   Database? _db;
   bool _isClosed = false;
 
-  AppDatabase({
-    DatabaseFactory? databaseFactory,
-    String? databasePath,
-  })  : _factory = databaseFactory,
-        _customPath = databasePath;
+  AppDatabase({DatabaseFactory? databaseFactory, String? databasePath})
+    : _factory = databaseFactory,
+      _customPath = databasePath;
 
-  static const int schemaVersion = 4;
+  static const int schemaVersion = 6;
   static const String databaseName = 'zad_alruh.db';
+  static const String _sourceConfirmationTableSchema = '''
+    CREATE TABLE IF NOT EXISTS daily_source_confirmations (
+      date_bucket TEXT NOT NULL CHECK (length(date_bucket) > 0 AND instr(date_bucket, '|') > 0),
+      task_key TEXT NOT NULL CHECK (task_key IN ('daily_dua', 'post_prayer')),
+      hisn_item_id INTEGER CHECK (hisn_item_id IS NULL OR (hisn_item_id BETWEEN 1 AND 267) OR (hisn_item_id BETWEEN 1000001 AND 1069999)),
+      is_completed INTEGER NOT NULL DEFAULT 0 CHECK (is_completed IN (0, 1)),
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (date_bucket, task_key)
+    );
+  ''';
 
   DatabaseFactory get _effectiveFactory => _factory ?? databaseFactory;
 
@@ -60,8 +68,30 @@ class AppDatabase {
           if (oldVersion < 4) {
             await _upgradeToV4(db);
           }
+          if (oldVersion < 5) {
+            await db.execute(
+              'ALTER TABLE reading_progress ADD COLUMN resume_page INTEGER CHECK (resume_page >= 1 AND resume_page <= 604)',
+            );
+          }
+          if (oldVersion < 6) await _upgradeToV6(db);
         },
       ),
+    );
+  }
+
+  Future<void> _upgradeToV6(DatabaseExecutor db) async {
+    // SQLite cannot widen a CHECK in place; the upgrade transaction retains
+    // every old row, including selections no longer eligible for new prayers.
+    await db.execute(
+      'ALTER TABLE daily_source_confirmations RENAME TO legacy_source_confirmations',
+    );
+    await db.execute(_sourceConfirmationTableSchema);
+    await db.execute(
+      'INSERT INTO daily_source_confirmations SELECT * FROM legacy_source_confirmations',
+    );
+    await db.execute('DROP TABLE legacy_source_confirmations');
+    await db.execute(
+      'CREATE INDEX idx_daily_source_confirmations_bucket ON daily_source_confirmations (date_bucket)',
     );
   }
 
@@ -75,6 +105,7 @@ class AppDatabase {
         last_page INTEGER NOT NULL DEFAULT 1 CHECK (last_page >= 1 AND last_page <= 604),
         selected_surah INTEGER,
         selected_verse INTEGER,
+        resume_page INTEGER CHECK (resume_page >= 1 AND resume_page <= 604),
         updated_at TEXT NOT NULL
       );
     ''');
@@ -122,8 +153,12 @@ class AppDatabase {
         updated_at TEXT NOT NULL
       );
     ''');
-    batch.execute('CREATE INDEX idx_dhikr_sessions_date ON dhikr_sessions (date_bucket);');
-    batch.execute('CREATE INDEX idx_dhikr_sessions_dhikr ON dhikr_sessions (dhikr_id);');
+    batch.execute(
+      'CREATE INDEX idx_dhikr_sessions_date ON dhikr_sessions (date_bucket);',
+    );
+    batch.execute(
+      'CREATE INDEX idx_dhikr_sessions_dhikr ON dhikr_sessions (dhikr_id);',
+    );
 
     // 5. Daily Progress
     batch.execute('''
@@ -217,16 +252,7 @@ class AppDatabase {
     );
 
     // 9. Daily Source-Linked Confirmations (Daily Dua & Post-Prayer)
-    batch.execute('''
-      CREATE TABLE daily_source_confirmations (
-        date_bucket TEXT NOT NULL CHECK (length(date_bucket) > 0 AND instr(date_bucket, '|') > 0),
-        task_key TEXT NOT NULL CHECK (task_key IN ('daily_dua', 'post_prayer')),
-        hisn_item_id INTEGER CHECK (hisn_item_id IS NULL OR (hisn_item_id >= 1 AND hisn_item_id <= 267)),
-        is_completed INTEGER NOT NULL DEFAULT 0 CHECK (is_completed IN (0, 1)),
-        updated_at TEXT NOT NULL,
-        PRIMARY KEY (date_bucket, task_key)
-      );
-    ''');
+    batch.execute(_sourceConfirmationTableSchema);
     batch.execute(
       'CREATE INDEX idx_daily_source_confirmations_bucket ON daily_source_confirmations (date_bucket);',
     );
@@ -263,16 +289,7 @@ class AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_daily_quran_pages_bucket ON daily_quran_pages (date_bucket);',
     );
 
-    batch.execute('''
-      CREATE TABLE IF NOT EXISTS daily_source_confirmations (
-        date_bucket TEXT NOT NULL CHECK (length(date_bucket) > 0 AND instr(date_bucket, '|') > 0),
-        task_key TEXT NOT NULL CHECK (task_key IN ('daily_dua', 'post_prayer')),
-        hisn_item_id INTEGER CHECK (hisn_item_id IS NULL OR (hisn_item_id >= 1 AND hisn_item_id <= 267)),
-        is_completed INTEGER NOT NULL DEFAULT 0 CHECK (is_completed IN (0, 1)),
-        updated_at TEXT NOT NULL,
-        PRIMARY KEY (date_bucket, task_key)
-      );
-    ''');
+    batch.execute(_sourceConfirmationTableSchema);
     batch.execute(
       'CREATE INDEX IF NOT EXISTS idx_daily_source_confirmations_bucket ON daily_source_confirmations (date_bucket);',
     );
@@ -281,19 +298,45 @@ class AppDatabase {
   }
 
   Future<void> _upgradeToV4(DatabaseExecutor db) async {
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN selected_city_id INTEGER');
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN calculation_method TEXT');
-    await db.execute("ALTER TABLE user_preferences ADD COLUMN asr_madhab TEXT NOT NULL DEFAULT 'shafi'");
-    await db.execute("ALTER TABLE user_preferences ADD COLUMN high_latitude_rule TEXT NOT NULL DEFAULT 'middle_of_the_night'");
-    await db.execute("ALTER TABLE user_preferences ADD COLUMN polar_resolution TEXT NOT NULL DEFAULT 'unresolved'");
-    await db.execute("ALTER TABLE user_preferences ADD COLUMN ramadan_policy TEXT NOT NULL DEFAULT 'eveningOfRamadan'");
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN hijri_day_adjustment INTEGER NOT NULL DEFAULT 0');
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN fajr_offset INTEGER NOT NULL DEFAULT 0');
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN sunrise_offset INTEGER NOT NULL DEFAULT 0');
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN dhuhr_offset INTEGER NOT NULL DEFAULT 0');
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN asr_offset INTEGER NOT NULL DEFAULT 0');
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN maghrib_offset INTEGER NOT NULL DEFAULT 0');
-    await db.execute('ALTER TABLE user_preferences ADD COLUMN isha_offset INTEGER NOT NULL DEFAULT 0');
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN selected_city_id INTEGER',
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN calculation_method TEXT',
+    );
+    await db.execute(
+      "ALTER TABLE user_preferences ADD COLUMN asr_madhab TEXT NOT NULL DEFAULT 'shafi'",
+    );
+    await db.execute(
+      "ALTER TABLE user_preferences ADD COLUMN high_latitude_rule TEXT NOT NULL DEFAULT 'middle_of_the_night'",
+    );
+    await db.execute(
+      "ALTER TABLE user_preferences ADD COLUMN polar_resolution TEXT NOT NULL DEFAULT 'unresolved'",
+    );
+    await db.execute(
+      "ALTER TABLE user_preferences ADD COLUMN ramadan_policy TEXT NOT NULL DEFAULT 'eveningOfRamadan'",
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN hijri_day_adjustment INTEGER NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN fajr_offset INTEGER NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN sunrise_offset INTEGER NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN dhuhr_offset INTEGER NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN asr_offset INTEGER NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN maghrib_offset INTEGER NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE user_preferences ADD COLUMN isha_offset INTEGER NOT NULL DEFAULT 0',
+    );
 
     // Canonical migration of existing exact legacy 8 city+timezone pairs
     final rows = await db.query(
@@ -317,11 +360,9 @@ class AppDatabase {
       };
       final canonicalId = legacyMap[key];
       if (canonicalId != null) {
-        await db.update(
-          'user_preferences',
-          {'selected_city_id': canonicalId},
-          where: 'id = 1',
-        );
+        await db.update('user_preferences', {
+          'selected_city_id': canonicalId,
+        }, where: 'id = 1');
       }
       // If unrecognized, canonicalId is null and selected_city_id remains null (unresolved)!
     }

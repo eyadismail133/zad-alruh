@@ -11,10 +11,7 @@ import '../../hadith/presentation/hadith_detail_screen.dart';
 class HadithScreen extends ConsumerStatefulWidget {
   final HadithRepository? repository;
 
-  const HadithScreen({
-    super.key,
-    this.repository,
-  });
+  const HadithScreen({super.key, this.repository});
 
   @override
   ConsumerState<HadithScreen> createState() => _HadithScreenState();
@@ -59,9 +56,7 @@ class _HadithScreenState extends ConsumerState<HadithScreen> {
       loading: () => Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('الأحاديث النبوية الشريفة'),
-          ),
+          appBar: AppBar(title: const Text('الأحاديث النبوية الشريفة')),
           body: const Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -80,9 +75,7 @@ class _HadithScreenState extends ConsumerState<HadithScreen> {
       error: (err, stack) => Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('الأحاديث النبوية الشريفة'),
-          ),
+          appBar: AppBar(title: const Text('الأحاديث النبوية الشريفة')),
           body: SafeArea(
             child: RetryableErrorView(
               message:
@@ -106,9 +99,7 @@ class _HadithScreenState extends ConsumerState<HadithScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('الأحاديث النبوية الشريفة'),
-        ),
+        appBar: AppBar(title: const Text('الأحاديث النبوية الشريفة')),
         body: SafeArea(
           child: Column(
             children: [
@@ -172,7 +163,10 @@ class _HadithScreenState extends ConsumerState<HadithScreen> {
 
               // 2. Info / Results Count Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -247,8 +241,10 @@ class _HadithScreenState extends ConsumerState<HadithScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
-                                  builder: (context) =>
-                                      HadithDetailScreen(hadith: item),
+                                  builder: (context) => HadithDetailScreen(
+                                    hadith: item,
+                                    repository: repo,
+                                  ),
                                 ),
                               );
                             },
@@ -371,9 +367,7 @@ class _HadithListItemCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11.5,
                   height: 1.6,
-                  color: isDark
-                      ? AppColors.darkTextMuted
-                      : AppColors.textMuted,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

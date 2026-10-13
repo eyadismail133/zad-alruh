@@ -27,17 +27,9 @@ Future<void> _ensureTestFonts(WidgetTester tester) async {
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
 
-    final plex = FontLoader('IBM Plex Sans Arabic');
-    for (final face in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-      plex.addFont(
-        rootBundle.load('assets/fonts/IBM-Plex-Sans-Arabic-$face.ttf'),
-      );
-    }
-    await plex.load();
-
-    final amiri = FontLoader('Amiri Quran')
-      ..addFont(rootBundle.load('assets/fonts/Amiri-Quran-Regular.ttf'));
-    await amiri.load();
+    final naskh = FontLoader('Noto Naskh Arabic')
+      ..addFont(rootBundle.load('assets/fonts/NotoNaskhArabic-Variable.ttf'));
+    await naskh.load();
     _fontsLoaded = true;
   });
 }
@@ -293,7 +285,6 @@ Future<void> _pumpReaderScreen(
   required Size size,
   required EdgeInsets insets,
   double textScale = 1.0,
-  ReaderMode initialMode = ReaderMode.mushaf,
   Widget Function(Widget child)? hostBuilder,
 }) async {
   tester.view.physicalSize = size;
@@ -308,7 +299,6 @@ Future<void> _pumpReaderScreen(
   final readerWidget = QuranReaderScreen(
     key: ValueKey('quran_reader_screen_$initialPage'),
     initialPage: initialPage,
-    initialMode: initialMode,
   );
 
   final hostedChild =
@@ -777,35 +767,12 @@ void main() {
           );
           expect(bottomScrollable, findsOneWidget);
 
-          // Actually scroll to and tap Mode Toggle: switch to text mode
-          final textModeBtn = find.text('نص القرآن');
-          await _scrollRowUntilHitTestable(
-            tester,
-            target: textModeBtn,
-            scrollable: topScrollable,
-          );
-          await tester.tap(textModeBtn.hitTestable());
+          expect(find.text('نص القرآن'), findsNothing);
+          await tester.tap(find.byTooltip('اختيار آية من الصفحة'));
           await tester.pumpAndSettle();
-
-          // Verify accessible text mode rendered without overflow
           expect(tester.takeException(), isNull);
-          final verse2_6 = quranRepo.getVerse(2, 6);
-          expect(
-            find.textContaining(verse2_6.text, findRichText: true),
-            findsWidgets,
-          );
-
-          // Scroll back to Mushaf mode button and tap it
-          final mushafModeBtn = find.text('المصحف');
-          await _scrollRowUntilHitTestable(
-            tester,
-            target: mushafModeBtn,
-            scrollable: topScrollable,
-          );
-          await tester.tap(mushafModeBtn.hitTestable());
+          await tester.tap(find.text('إلغاء'));
           await tester.pumpAndSettle();
-          expect(find.byType(InteractiveViewer), findsOneWidget);
-
           // Actually scroll to and tap Next page button in bottom bar
           final nextBtn =
               find.widgetWithText(ElevatedButton, 'التالي');
@@ -1024,7 +991,7 @@ void main() {
     );
 
     testWidgets(
-      'Zoom lifecycle: mode-switch to text mode and back while genuinely zoomed clears zoom without tree-lock error and preserves normal swipe',
+      'Zoom lifecycle: verse picker preserves zoom, reset restores normal swipe',
       (tester) async {
         await _ensureTestFonts(tester);
         final ctx = (await tester.runAsync(
@@ -1069,33 +1036,13 @@ void main() {
           );
           expect(topScrollable, findsOneWidget);
 
-          // Switch to accessible text mode while zoomed
-          final textModeBtn = find.text('نص القرآن');
-          await _scrollRowUntilHitTestable(
-            tester,
-            target: textModeBtn,
-            scrollable: topScrollable,
-          );
-          await tester.tap(textModeBtn.hitTestable());
+          await tester.tap(find.byTooltip('اختيار آية من الصفحة'));
           await tester.pumpAndSettle();
-
-          expect(tester.takeException(), isNull);
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-
-          // Switch back to mushaf image mode
-          final mushafModeBtn = find.text('المصحف');
-          await _scrollRowUntilHitTestable(
-            tester,
-            target: mushafModeBtn,
-            scrollable: topScrollable,
-          );
-          await tester.tap(mushafModeBtn.hitTestable());
+          await tester.tap(find.text('إلغاء'));
           await tester.pumpAndSettle();
-
-          expect(tester.takeException(), isNull);
-          // Restored to unzoomed state: reset zoom button must not be visible
-          expect(find.byIcon(Icons.zoom_out_map), findsNothing);
-
+          expect(find.byIcon(Icons.zoom_out_map), findsOneWidget);
+          await tester.tap(find.byIcon(Icons.zoom_out_map));
+          await tester.pumpAndSettle();
           // Precache page 4 before navigation
           await tester.runAsync(() async {
             final element = tester.element(find.byType(QuranReaderScreen));

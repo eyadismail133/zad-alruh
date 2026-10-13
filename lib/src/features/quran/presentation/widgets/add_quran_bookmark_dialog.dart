@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../progress/presentation/controllers/progress_controller.dart';
 import '../../domain/models/verse.dart';
-import '../utils/quran_ui_utils.dart';
+import 'page_verse_selector.dart';
 
 /// Modal dialog for creating a named bookmark with optional exact verse reference.
 ///
@@ -51,7 +51,13 @@ class _AddQuranBookmarkDialogState
   @override
   void initState() {
     super.initState();
-    _selectedVerse = widget.initialVerse;
+    _selectedVerse = widget.versesOnPage
+        .where(
+          (v) =>
+              v.pageNumber == widget.currentPage &&
+              v.id == widget.initialVerse?.id,
+        )
+        .firstOrNull;
     final defaultName = widget.initialVerse != null
         ? 'علامة آية ${widget.initialVerse!.verseNumber} - صفحة ${widget.currentPage}'
         : 'علامة صفحة ${widget.currentPage}';
@@ -150,37 +156,16 @@ class _AddQuranBookmarkDialogState
               ),
             ),
             const SizedBox(height: 6),
-            DropdownButtonFormField<Verse?>(
-              initialValue: _selectedVerse,
-              isExpanded: true,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              items: [
-                const DropdownMenuItem<Verse?>(
-                  value: null,
-                  child: Text('الصفحة كاملة', style: TextStyle(fontSize: 12)),
+            if (widget.versesOnPage.isNotEmpty)
+              IgnorePointer(
+                ignoring: _isLoading,
+                child: PageVerseSelector(
+                  verses: widget.versesOnPage,
+                  initialVerse: _selectedVerse,
+                  allowWholePage: true,
+                  onChanged: (value) => setState(() => _selectedVerse = value),
                 ),
-                ...widget.versesOnPage.map((v) {
-                  final snippet = v.text.length > 25
-                      ? '${v.text.substring(0, 25)}...'
-                      : v.text;
-                  return DropdownMenuItem<Verse?>(
-                    value: v,
-                    child: Text(
-                      'الآية ${QuranUiUtils.toArabicDigits(v.verseNumber)}: $snippet',
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }),
-              ],
-              onChanged: _isLoading
-                  ? null
-                  : (val) {
-                      setState(() {
-                        _selectedVerse = val;
-                      });
-                    },
-            ),
+              ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
               Container(

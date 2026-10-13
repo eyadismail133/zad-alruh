@@ -1,3 +1,4 @@
+import '../../domain/models/hisn_invocation_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,8 +49,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
       dateBucket: bucket,
       taskKey: DailySourceTasks.dailyDua,
     );
-    final notifier =
-        ref.read(dailySourceConfirmationControllerProvider(key).notifier);
+    final notifier = ref.read(
+      dailySourceConfirmationControllerProvider(key).notifier,
+    );
 
     setState(() {
       _isSaving = true;
@@ -73,10 +75,7 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
       });
     } catch (_) {
       if (!mounted) return;
-      _showErrorSnackBar(
-        notifier: notifier,
-        capturedGen: capturedGen,
-      );
+      _showErrorSnackBar(notifier: notifier, capturedGen: capturedGen);
     } finally {
       if (mounted) {
         setState(() {
@@ -97,8 +96,7 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
       return;
     }
 
-    final errorMsg =
-        notifier.saveErrorMessageArabic ?? 'تعذر حفظ دعاء اليوم.';
+    final errorMsg = notifier.saveErrorMessageArabic ?? 'تعذر حفظ دعاء اليوم.';
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -183,7 +181,7 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('دعاء اليوم (حصن المسلم)'),
+          title: const Text('دعاء اليوم'),
           actions: [
             if (!_isSelectingNew)
               IconButton(
@@ -205,7 +203,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (readiness.hasError || !readiness.isReady || readiness.activeBucket == null) {
+              if (readiness.hasError ||
+                  !readiness.isReady ||
+                  readiness.activeBucket == null) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
@@ -236,8 +236,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                 dateBucket: dateBucket,
                 taskKey: DailySourceTasks.dailyDua,
               );
-              final confirmationAsync =
-                  ref.watch(dailySourceConfirmationControllerProvider(sourceKey));
+              final confirmationAsync = ref.watch(
+                dailySourceConfirmationControllerProvider(sourceKey),
+              );
 
               if (confirmationAsync.isLoading) {
                 return const Center(child: CircularProgressIndicator());
@@ -260,11 +261,14 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
               final confirmation = confirmationAsync.requireValue;
               final int? chosenItemId = confirmation?.hisnItemId;
               final bool isConfirmed = confirmation?.isCompleted ?? false;
-              final HisnItem? chosenItem =
-                  chosenItemId != null ? repo.getById(chosenItemId) : null;
+              final HisnItem? chosenItem = chosenItemId != null
+                  ? repo.getById(chosenItemId)
+                  : null;
 
               // If user is selecting new OR no item is chosen yet, render search & selection view
-              if (_isSelectingNew || chosenItem == null) {
+              if (_isSelectingNew ||
+                  chosenItem == null ||
+                  !HisnInvocationCatalog.contains(chosenItem.id)) {
                 return _buildSelectionView(
                   context: context,
                   repo: repo,
@@ -325,15 +329,24 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: isConfirmed
-                          ? (isDark ? Colors.green.withAlpha(40) : const Color(0xFFE8F5E9))
-                          : (isDark ? Colors.amber.withAlpha(30) : const Color(0xFFFFF8E1)),
+                          ? (isDark
+                                ? Colors.green.withAlpha(40)
+                                : const Color(0xFFE8F5E9))
+                          : (isDark
+                                ? Colors.amber.withAlpha(30)
+                                : const Color(0xFFFFF8E1)),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -342,8 +355,12 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: isConfirmed
-                            ? (isDark ? Colors.greenAccent : const Color(0xFF2E7D32))
-                            : (isDark ? AppColors.darkGoldAccent : AppColors.goldDark),
+                            ? (isDark
+                                  ? Colors.greenAccent
+                                  : const Color(0xFF2E7D32))
+                            : (isDark
+                                  ? AppColors.darkGoldAccent
+                                  : AppColors.goldDark),
                       ),
                     ),
                   ),
@@ -355,15 +372,19 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                'الباب ${item.chapterNumber}: ${item.chapterTitle}',
+                item.contextLabel,
                 style: TextStyle(
                   fontSize: 11,
-                  color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                  color: isDark
+                      ? AppColors.darkGoldAccent
+                      : AppColors.forestPrimary,
                 ),
               ),
             ],
@@ -379,7 +400,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
             color: isDark ? AppColors.darkCardBorder : const Color(0xFFF3F6F2),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isDark ? AppColors.darkCardBorder : const Color(0xFFE0E8E1),
+              color: isDark
+                  ? AppColors.darkCardBorder
+                  : const Color(0xFFE0E8E1),
             ),
           ),
           child: Row(
@@ -388,7 +411,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
               Icon(
                 Icons.info_outline,
                 size: 16,
-                color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                color: isDark
+                    ? AppColors.darkGoldAccent
+                    : AppColors.forestPrimary,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -397,7 +422,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                   style: TextStyle(
                     fontSize: 10.5,
                     height: 1.4,
-                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    color: isDark
+                        ? AppColors.darkTextMuted
+                        : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -413,7 +440,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
               color: isConfirmed
-                  ? (isDark ? AppColors.darkForestPrimary : AppColors.forestLight)
+                  ? (isDark
+                        ? AppColors.darkForestPrimary
+                        : AppColors.forestLight)
                   : (isDark ? AppColors.darkCardBorder : AppColors.cardBorder),
               width: isConfirmed ? 1.5 : 0.8,
             ),
@@ -427,28 +456,41 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCardBorder : AppColors.forestSoftTint,
+                        color: isDark
+                            ? AppColors.darkCardBorder
+                            : AppColors.forestSoftTint,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'ذكر #${item.number}',
+                        '${HisnInvocationCatalog.label(item.id)} #${item.number}',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                          color: isDark
+                              ? AppColors.darkGoldAccent
+                              : AppColors.forestPrimary,
                         ),
                       ),
                     ),
                     OutlinedButton.icon(
                       key: const Key('change_daily_dua_inline_button'),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         visualDensity: VisualDensity.compact,
                       ),
                       icon: const Icon(Icons.sync, size: 14),
-                      label: const Text('تغيير الدعاء', style: TextStyle(fontSize: 11)),
+                      label: const Text(
+                        'تغيير الدعاء',
+                        style: TextStyle(fontSize: 11),
+                      ),
                       onPressed: () {
                         setState(() {
                           _isSelectingNew = true;
@@ -464,10 +506,11 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                   item.text,
                   textAlign: TextAlign.justify,
                   style: TextStyle(
-                    fontFamily: 'Amiri Quran',
                     fontSize: 17,
                     height: 2.0,
-                    color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textDark,
                   ),
                 ),
 
@@ -486,7 +529,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 10.5,
-                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                            color: isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
                           ),
                         ),
                       )
@@ -516,14 +561,23 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
 
                 // Explicit Checkbox: قرأت هذا الدعاء (with undo)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: isConfirmed
-                        ? (isDark ? AppColors.darkForestPrimary.withAlpha(40) : const Color(0xFFEFF5F0))
-                        : (isDark ? AppColors.darkBackground : const Color(0xFFF7F9F7)),
+                        ? (isDark
+                              ? AppColors.darkForestPrimary.withAlpha(40)
+                              : const Color(0xFFEFF5F0))
+                        : (isDark
+                              ? AppColors.darkBackground
+                              : const Color(0xFFF7F9F7)),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: isConfirmed ? AppColors.forestPrimary : Colors.transparent,
+                      color: isConfirmed
+                          ? AppColors.forestPrimary
+                          : Colors.transparent,
                     ),
                   ),
                   child: InkWell(
@@ -551,7 +605,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                                   child: SizedBox(
                                     width: 14,
                                     height: 14,
-                                    child: CircularProgressIndicator(strokeWidth: 1.5),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                    ),
                                   ),
                                 )
                               : Checkbox(
@@ -584,8 +640,12 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
                               color: isConfirmed
-                                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
-                                  : (isDark ? AppColors.darkTextPrimary : AppColors.textDark),
+                                  ? (isDark
+                                        ? AppColors.darkGoldAccent
+                                        : AppColors.forestPrimary)
+                                  : (isDark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.textDark),
                             ),
                           ),
                         ),
@@ -594,7 +654,9 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                             'مُسجل ✓ (اضغط للإلغاء)',
                             style: TextStyle(
                               fontSize: 10,
-                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                              color: isDark
+                                  ? AppColors.darkTextMuted
+                                  : AppColors.textMuted,
                             ),
                           ),
                       ],
@@ -617,18 +679,24 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
     required bool isDark,
     required bool isResetInProgress,
   }) {
-    final allItems = repo.allItems;
-    final filteredItems = _searchQuery.isEmpty
-        ? allItems
-        : allItems.where((it) {
-            final q = _searchQuery.trim();
-            return it.text.contains(q) ||
-                it.chapterTitle.contains(q) ||
-                it.number.toString() == q;
-          }).toList();
+    final filteredItems = repo
+        .search(_searchQuery)
+        .where((item) => HisnInvocationCatalog.contains(item.id))
+        .toList();
+    final isLegacySelection =
+        currentlyChosenId != null &&
+        !HisnInvocationCatalog.contains(currentlyChosenId);
 
     return Column(
       children: [
+        if (isLegacySelection)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text(
+              'الاختيار السابق ذكر وليس من الأدعية المختارة. اختر دعاءً بديلاً؛ سجلك السابق محفوظ.',
+              key: Key('legacy_daily_dua_notice'),
+            ),
+          ),
         // Search Header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -639,17 +707,20 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'اختر دعاء اليوم من حصن المسلم',
+                    'اختر دعاء اليوم من الأدعية الموثقة',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                   ),
-                  if (currentlyChosenId != null)
+                  if (currentlyChosenId != null && !isLegacySelection)
                     TextButton(
                       onPressed: () {
                         setState(() {
                           _isSelectingNew = false;
                         });
                       },
-                      child: const Text('إلغاء التغيير', style: TextStyle(fontSize: 11)),
+                      child: const Text(
+                        'إلغاء التغيير',
+                        style: TextStyle(fontSize: 11),
+                      ),
                     ),
                 ],
               ),
@@ -657,7 +728,7 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'ابحث في ٢٦٧ ذكراً ودعاءً أو باسم الباب...',
+                  hintText: 'ابحث في الأدعية المختارة أو باسم الباب...',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -670,8 +741,13 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                           },
                         )
                       : null,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onChanged: (val) {
                   setState(() {
@@ -693,13 +769,18 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                       'لم يتم العثور على أذكار تطابق "$_searchQuery".',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.textMuted,
                       ),
                     ),
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   itemCount: filteredItems.length,
                   itemBuilder: (ctx, index) {
                     final item = filteredItems[index];
@@ -715,21 +796,25 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'الباب ${item.chapterNumber}: ${item.chapterTitle}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? AppColors.darkGoldAccent
-                                        : AppColors.forestPrimary,
+                                Expanded(
+                                  child: Text(
+                                    item.contextLabel,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? AppColors.darkGoldAccent
+                                          : AppColors.forestPrimary,
+                                    ),
                                   ),
                                 ),
                                 Text(
-                                  'ذكر #${item.number}',
+                                  '${HisnInvocationCatalog.label(item.id)} #${item.number}',
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                    color: isDark
+                                        ? AppColors.darkTextMuted
+                                        : AppColors.textMuted,
                                   ),
                                 ),
                               ],
@@ -740,10 +825,11 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontFamily: 'Amiri Quran',
                                 fontSize: 14,
                                 height: 1.7,
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textDark,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -754,20 +840,34 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isCurrentlySelected
                                       ? Colors.grey.shade600
-                                      : (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary),
+                                      : (isDark
+                                            ? AppColors.darkGoldAccent
+                                            : AppColors.forestPrimary),
                                   foregroundColor: isCurrentlySelected
                                       ? Colors.white
-                                      : (isDark ? AppColors.textDark : Colors.white),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      : (isDark
+                                            ? AppColors.textDark
+                                            : Colors.white),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
                                   elevation: 0,
                                 ),
                                 icon: Icon(
-                                  isCurrentlySelected ? Icons.check : Icons.touch_app,
+                                  isCurrentlySelected
+                                      ? Icons.check
+                                      : Icons.touch_app,
                                   size: 14,
                                 ),
                                 label: Text(
-                                  isCurrentlySelected ? 'مختار حالياً' : 'اختيار كدعاء اليوم',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  isCurrentlySelected
+                                      ? 'مختار حالياً'
+                                      : 'اختيار كدعاء اليوم',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 onPressed: (_isSaving || isResetInProgress)
                                     ? null

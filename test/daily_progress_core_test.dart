@@ -758,7 +758,7 @@ void main() {
       expect(progressGoal3.confirmedPages, equals(<int>{5, 6}));
     });
 
-    test('daily dua requires valid Hisn item ID 1..267 when completed; post-prayer links to Chapter 25', () async {
+    test('daily dua requires a petition from the invocation catalog when completed; post-prayer links to Chapter 25', () async {
       final appDb = AppDatabase(
         databaseFactory: databaseFactory,
         databasePath: dbPath,
@@ -777,15 +777,15 @@ void main() {
         throwsA(isA<ArgumentError>()),
       );
 
-      // Daily dua with valid ID 75 succeeds
+      // Daily dua with valid ID 120 succeeds
       final duaConf = await repo.setSourceConfirmation(
         dateBucket: 'Africa/Cairo|2026-10-07',
         taskKey: DailySourceTasks.dailyDua,
         isCompleted: true,
-        hisnItemId: 75,
+        hisnItemId: 120,
       );
       expect(duaConf.isCompleted, isTrue);
-      expect(duaConf.hisnItemId, 75);
+      expect(duaConf.hisnItemId, 120);
 
       // Post-prayer with invalid chapter ID throws
       expect(
@@ -1420,7 +1420,7 @@ void main() {
       // Induce transient write failure
       repo.failNextWrite = true;
       await expectLater(
-        oldCtrl.setConfirmation(isCompleted: true, hisnItemId: 5),
+        oldCtrl.setConfirmation(isCompleted: true, hisnItemId: 120),
         throwsA(isA<SocketException>()),
       );
 
@@ -1452,7 +1452,7 @@ void main() {
       expect(newCtrl.hasSaveError, isFalse);
 
       // Fresh write works
-      await newCtrl.setConfirmation(isCompleted: true, hisnItemId: 5);
+      await newCtrl.setConfirmation(isCompleted: true, hisnItemId: 120);
       final rowsAfterWrite = await rawDb.query(
         'daily_source_confirmations',
         where: 'task_key = ?',

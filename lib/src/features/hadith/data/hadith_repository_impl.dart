@@ -36,14 +36,23 @@ class HadithRepositoryImpl implements HadithRepository {
   final Map<int, HadithItem> _byId;
   final List<String> _normalizedSearchKeys;
 
-  HadithRepositoryImpl({
-    required this.metadata,
-    required this.allHadiths,
-  })  : _byId = {for (final item in allHadiths) item.id: item},
-        _normalizedSearchKeys = [
-          for (final item in allHadiths)
-            '${item.id} ${ArabicNormalizer.normalize('${item.title} ${item.hadithText} ${item.takhrij}')}'
-        ];
+  factory HadithRepositoryImpl({
+    required HadithMetadata metadata,
+    required List<HadithItem> allHadiths,
+  }) {
+    final ordered = allHadiths.toList()..sort((a, b) => a.id.compareTo(b.id));
+    return HadithRepositoryImpl._(
+      metadata: metadata,
+      allHadiths: List.unmodifiable(ordered),
+    );
+  }
+
+  HadithRepositoryImpl._({required this.metadata, required this.allHadiths})
+    : _byId = {for (final item in allHadiths) item.id: item},
+      _normalizedSearchKeys = [
+        for (final item in allHadiths)
+          '${item.id} ${ArabicNormalizer.normalize('${item.title} ${item.hadithText} ${item.takhrij}')}',
+      ];
 
   /// Creates a repository from JSON asset bytes.
   ///
@@ -65,12 +74,16 @@ class HadithRepositoryImpl implements HadithRepository {
     final dynamic decoded = jsonDecode(jsonString);
 
     if (decoded is! Map<String, dynamic>) {
-      throw const HadithValidationException('Hadith JSON root must be an object');
+      throw const HadithValidationException(
+        'Hadith JSON root must be an object',
+      );
     }
 
     final metaRaw = decoded['metadata'];
     if (metaRaw is! Map<String, dynamic>) {
-      throw const HadithValidationException('Missing or invalid "metadata" section');
+      throw const HadithValidationException(
+        'Missing or invalid "metadata" section',
+      );
     }
     final meta = HadithMetadata.fromJson(metaRaw);
 
@@ -85,7 +98,9 @@ class HadithRepositoryImpl implements HadithRepository {
     for (int i = 0; i < itemsRaw.length; i++) {
       final itemRaw = itemsRaw[i];
       if (itemRaw is! Map<String, dynamic>) {
-        throw HadithValidationException('Item at index $i is not a JSON object');
+        throw HadithValidationException(
+          'Item at index $i is not a JSON object',
+        );
       }
 
       final item = HadithItem.fromJson(itemRaw);
@@ -99,7 +114,9 @@ class HadithRepositoryImpl implements HadithRepository {
         throw HadithValidationException('Hadith ID ${item.id} has empty title');
       }
       if (item.hadithText.isEmpty) {
-        throw HadithValidationException('Hadith ID ${item.id} has empty hadith_text');
+        throw HadithValidationException(
+          'Hadith ID ${item.id} has empty hadith_text',
+        );
       }
       if (item.grade != 'صحيح') {
         throw HadithValidationException(
@@ -107,7 +124,9 @@ class HadithRepositoryImpl implements HadithRepository {
         );
       }
       if (item.takhrij.isEmpty) {
-        throw HadithValidationException('Hadith ID ${item.id} has empty takhrij');
+        throw HadithValidationException(
+          'Hadith ID ${item.id} has empty takhrij',
+        );
       }
       if (item.link.isEmpty) {
         throw HadithValidationException('Hadith ID ${item.id} has empty link');
@@ -136,7 +155,8 @@ class HadithRepositoryImpl implements HadithRepository {
     }
 
     // Direct ID lookup if user typed numbers (ASCII, Arabic-Indic, or Persian digits)
-    final intQuery = ArabicNormalizer.parseArabicInt(trimmed) ?? int.tryParse(trimmed);
+    final intQuery =
+        ArabicNormalizer.parseArabicInt(trimmed) ?? int.tryParse(trimmed);
     if (intQuery != null && _byId.containsKey(intQuery)) {
       final direct = _byId[intQuery]!;
       final result = <HadithItem>[direct];
@@ -148,7 +168,7 @@ class HadithRepositoryImpl implements HadithRepository {
           result.add(allHadiths[i]);
         }
       }
-      return result;
+      return result..sort((a, b) => a.id.compareTo(b.id));
     }
 
     final normalizedQ = ArabicNormalizer.normalize(trimmed);

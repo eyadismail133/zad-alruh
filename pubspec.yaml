@@ -1,7 +1,7 @@
 name: zad_alruh
 description: "Zad Alruh - Islamic Spiritual Companion"
 publish_to: "none"
-version: 0.2.0+2
+version: 0.3.0+3
 
 environment:
   sdk: ">=3.11.0 <4.0.0"
@@ -39,6 +39,7 @@ flutter:
   assets:
     - assets/branding/logo.png
     - assets/fonts/Amiri-OFL.txt
+    - assets/fonts/NotoNaskhArabic-OFL.txt
     - assets/fonts/IBM-Plex-LICENSE.txt
     - assets/licenses/Adhan-MIT.txt
     - assets/licenses/Hijri-BSD.txt
@@ -55,6 +56,9 @@ flutter:
     - assets/audio/adhan/
 
   fonts:
+    - family: Noto Naskh Arabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-Variable.ttf
     - family: IBM Plex Sans Arabic
       fonts:
         - asset: assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf

@@ -7,11 +7,13 @@ class _LoadedLicenses {
   final String tanzilCopyright;
   final String ibmPlexLicense;
   final String amiriLicense;
+  final String naskhLicense;
 
   const _LoadedLicenses({
     required this.tanzilCopyright,
     required this.ibmPlexLicense,
     required this.amiriLicense,
+    required this.naskhLicense,
   });
 }
 
@@ -58,11 +60,16 @@ class _SourcesScreenState extends State<SourcesScreen> {
       'assets/fonts/Amiri-OFL.txt',
       cache: false,
     )).trim();
+    final naskh = (await bundle.loadString(
+      'assets/fonts/NotoNaskhArabic-OFL.txt',
+      cache: false,
+    )).trim();
 
     return _LoadedLicenses(
       tanzilCopyright: tanzil,
       ibmPlexLicense: plex,
       amiriLicense: amiri,
+      naskhLicense: naskh,
     );
   }
 
@@ -246,7 +253,8 @@ class _SourcesScreenState extends State<SourcesScreen> {
                         ),
                         const Divider(height: 16),
                         _buildContentStatusItem(
-                          title: 'حصن المسلم من أذكار الكتاب والسنة (٢٦٧ ذكراً ودعاءً)',
+                          title:
+                              'حصن المسلم من أذكار الكتاب والسنة (٢٦٧ ذكراً ودعاءً)',
                           status: 'مدمج ومتحقق من سلامة المصدر',
                           isBundled: true,
                           detail:
@@ -518,11 +526,7 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 ),
                 child: SelectableText(
                   licenses.tanzilCopyright,
-                  style: const TextStyle(
-                    fontFamily: 'Courier',
-                    fontSize: 10,
-                    height: 1.45,
-                  ),
+                  style: const TextStyle(fontSize: 10, height: 1.45),
                   textDirection: TextDirection.ltr,
                 ),
               ),
@@ -783,13 +787,19 @@ class _SourcesScreenState extends State<SourcesScreen> {
               ),
               const SizedBox(height: 10),
               _buildFontLicenseItem(
+                fontName: 'خط الواجهة Noto Naskh Arabic',
+                licenseText: licenses.naskhLicense,
+                isDark: isDark,
+              ),
+              const Divider(height: 16),
+              _buildFontLicenseItem(
                 fontName: 'خط IBM Plex Sans Arabic',
                 licenseText: licenses.ibmPlexLicense,
                 isDark: isDark,
               ),
               const Divider(height: 16),
               _buildFontLicenseItem(
-                fontName: 'خط Amiri Quran (الخط القرآني)',
+                fontName: 'خط Amiri Quran (ترخيص محفوظ للأرشيف)',
                 licenseText: licenses.amiriLicense,
                 isDark: isDark,
               ),
@@ -1096,7 +1106,9 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkGoldAccent : AppColors.forestMedium,
+                  color: isDark
+                      ? AppColors.darkGoldAccent
+                      : AppColors.forestMedium,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1105,7 +1117,9 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.5,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
                 ),
               ),
               const SizedBox(height: 6),
@@ -1115,7 +1129,13 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 children: [
                   ElevatedButton.icon(
                     icon: const Icon(Icons.open_in_browser, size: 12),
-                    label: const Text('صفحة تسجيل Adam-synagda', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'صفحة تسجيل Adam-synagda',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     onPressed: () => _openUrl(
                       context,
                       'https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg',
@@ -1124,7 +1144,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 12),
-                    label: const Text('نسخ رابط المصدر', style: TextStyle(fontSize: 10)),
+                    label: const Text(
+                      'نسخ رابط المصدر',
+                      style: TextStyle(fontSize: 10),
+                    ),
                     onPressed: () => _copyLink(
                       context,
                       'https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg',
@@ -1133,7 +1156,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 12),
-                    label: const Text('نسخ رابط رخصة CC0', style: TextStyle(fontSize: 10)),
+                    label: const Text(
+                      'نسخ رابط رخصة CC0',
+                      style: TextStyle(fontSize: 10),
+                    ),
                     onPressed: () => _copyLink(
                       context,
                       'https://creativecommons.org/publicdomain/zero/1.0/',
@@ -1151,7 +1177,9 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkGoldAccent : AppColors.forestMedium,
+                  color: isDark
+                      ? AppColors.darkGoldAccent
+                      : AppColors.forestMedium,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1160,7 +1188,9 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.5,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
                 ),
               ),
               const SizedBox(height: 6),
@@ -1170,7 +1200,13 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 children: [
                   ElevatedButton.icon(
                     icon: const Icon(Icons.open_in_browser, size: 12),
-                    label: const Text('صفحة تسجيل Atcovi', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'صفحة تسجيل Atcovi',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     onPressed: () => _openUrl(
                       context,
                       'https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3',
@@ -1179,7 +1215,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 12),
-                    label: const Text('نسخ رابط المصدر', style: TextStyle(fontSize: 10)),
+                    label: const Text(
+                      'نسخ رابط المصدر',
+                      style: TextStyle(fontSize: 10),
+                    ),
                     onPressed: () => _copyLink(
                       context,
                       'https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3',
@@ -1188,7 +1227,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 12),
-                    label: const Text('نسخ رابط رخصة CC BY-SA 4.0', style: TextStyle(fontSize: 10)),
+                    label: const Text(
+                      'نسخ رابط رخصة CC BY-SA 4.0',
+                      style: TextStyle(fontSize: 10),
+                    ),
                     onPressed: () => _copyLink(
                       context,
                       'https://creativecommons.org/licenses/by-sa/4.0/',
@@ -1206,7 +1248,9 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.darkGoldAccent : AppColors.forestMedium,
+                  color: isDark
+                      ? AppColors.darkGoldAccent
+                      : AppColors.forestMedium,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1215,7 +1259,9 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.5,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
                 ),
               ),
               const SizedBox(height: 6),
@@ -1225,7 +1271,13 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 children: [
                   ElevatedButton.icon(
                     icon: const Icon(Icons.open_in_browser, size: 12),
-                    label: const Text('صفحة تسجيل مالمو', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'صفحة تسجيل مالمو',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     onPressed: () => _openUrl(
                       context,
                       'https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm',
@@ -1234,7 +1286,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 12),
-                    label: const Text('نسخ رابط المصدر', style: TextStyle(fontSize: 10)),
+                    label: const Text(
+                      'نسخ رابط المصدر',
+                      style: TextStyle(fontSize: 10),
+                    ),
                     onPressed: () => _copyLink(
                       context,
                       'https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm',
@@ -1243,7 +1298,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 12),
-                    label: const Text('نسخ رابط رخصة CC BY 3.0', style: TextStyle(fontSize: 10)),
+                    label: const Text(
+                      'نسخ رابط رخصة CC BY 3.0',
+                      style: TextStyle(fontSize: 10),
+                    ),
                     onPressed: () => _copyLink(
                       context,
                       'https://creativecommons.org/licenses/by/3.0/',
@@ -1351,7 +1409,9 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.6,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                  color: isDark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textDark,
                 ),
               ),
 
@@ -1403,7 +1463,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                 children: [
                   ElevatedButton.icon(
                     icon: const Icon(Icons.open_in_new, size: 14),
-                    label: const Text('موقع MP3Quran', style: TextStyle(fontSize: 11)),
+                    label: const Text(
+                      'موقع MP3Quran',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     onPressed: () => _openUrl(
                       context,
                       'https://www.mp3quran.net',
@@ -1412,7 +1475,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.privacy_tip_outlined, size: 14),
-                    label: const Text('سياسة الخصوصية وحقوق الاستخدام', style: TextStyle(fontSize: 11)),
+                    label: const Text(
+                      'سياسة الخصوصية وحقوق الاستخدام',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     onPressed: () => _openUrl(
                       context,
                       'https://www.mp3quran.net/ar/privacy',
@@ -1421,7 +1487,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.api_outlined, size: 14),
-                    label: const Text('واجهة المطورين API', style: TextStyle(fontSize: 11)),
+                    label: const Text(
+                      'واجهة المطورين API',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     onPressed: () => _openUrl(
                       context,
                       'https://www.mp3quran.net/ar/api',
@@ -1430,7 +1499,10 @@ class _SourcesScreenState extends State<SourcesScreen> {
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.copy, size: 14),
-                    label: const Text('نسخ مسار الخادم', style: TextStyle(fontSize: 11)),
+                    label: const Text(
+                      'نسخ مسار الخادم',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     onPressed: () => _copyLink(
                       context,
                       'https://cdn.mp3quran.net/audio/mishary-alafasy/r1/',
@@ -1546,11 +1618,7 @@ class _SourcesScreenState extends State<SourcesScreen> {
           child: SingleChildScrollView(
             child: SelectableText(
               licenseText,
-              style: const TextStyle(
-                fontFamily: 'Courier',
-                fontSize: 9.5,
-                height: 1.4,
-              ),
+              style: const TextStyle(fontSize: 9.5, height: 1.4),
               textDirection: TextDirection.ltr,
             ),
           ),

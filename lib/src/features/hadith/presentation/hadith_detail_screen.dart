@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../domain/models/hadith_item.dart';
+import '../domain/repositories/hadith_repository.dart';
+import 'controllers/hadith_provider.dart';
 
-class HadithDetailScreen extends StatelessWidget {
+class HadithDetailScreen extends ConsumerStatefulWidget {
   final HadithItem hadith;
+  final HadithRepository? repository;
 
-  const HadithDetailScreen({
-    super.key,
-    required this.hadith,
-  });
+  const HadithDetailScreen({super.key, required this.hadith, this.repository});
+
+  @override
+  ConsumerState<HadithDetailScreen> createState() => _HadithDetailScreenState();
+}
+
+class _HadithDetailScreenState extends ConsumerState<HadithDetailScreen> {
+  late HadithItem hadith = widget.hadith;
+
+  void _showHadith(HadithItem next) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    setState(() => hadith = next);
+  }
 
   Future<void> _copyLink(BuildContext context) async {
     try {
@@ -74,6 +87,14 @@ class HadithDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final repository =
+        widget.repository ?? ref.watch(hadithRepositoryProvider).valueOrNull;
+    final ordered = repository?.allHadiths ?? const <HadithItem>[];
+    final index = ordered.indexWhere((entry) => entry.id == hadith.id);
+    final previous = index > 0 ? ordered[index - 1] : null;
+    final next = index >= 0 && index + 1 < ordered.length
+        ? ordered[index + 1]
+        : null;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -81,6 +102,16 @@ class HadithDetailScreen extends StatelessWidget {
         appBar: AppBar(
           title: Text('حديث #${hadith.id}'),
           actions: [
+            IconButton(
+              tooltip: 'الحديث السابق',
+              icon: const Icon(Icons.navigate_before),
+              onPressed: previous == null ? null : () => _showHadith(previous),
+            ),
+            IconButton(
+              tooltip: 'الحديث التالي',
+              icon: const Icon(Icons.navigate_next),
+              onPressed: next == null ? null : () => _showHadith(next),
+            ),
             IconButton(
               icon: const Icon(Icons.copy_rounded, size: 20),
               tooltip: 'نسخ رابط الحديث',
@@ -90,6 +121,7 @@ class HadithDetailScreen extends StatelessWidget {
         ),
         body: SafeArea(
           child: ListView(
+            key: ValueKey(hadith.id),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             children: [
               // 1. Header Card with Title, ID and Grade
@@ -239,7 +271,6 @@ class HadithDetailScreen extends StatelessWidget {
                         child: SelectableText(
                           hadith.hadithText,
                           style: TextStyle(
-                            fontFamily: 'Amiri Quran',
                             fontSize: 17,
                             height: 2.1,
                             color: isDark

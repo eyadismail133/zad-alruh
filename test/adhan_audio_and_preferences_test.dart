@@ -38,17 +38,8 @@ Future<void> _ensureTestFonts(WidgetTester tester) async {
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
 
-    final plex = FontLoader('IBM Plex Sans Arabic');
-    for (final face in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-      plex.addFont(
-        rootBundle.load('assets/fonts/IBM-Plex-Sans-Arabic-$face.ttf'),
-      );
-    }
-    await plex.load();
-
-    final amiri = FontLoader('Amiri Quran')
-      ..addFont(rootBundle.load('assets/fonts/Amiri-Quran-Regular.ttf'));
-    await amiri.load();
+    final naskh = FontLoader('Noto Naskh Arabic')..addFont(rootBundle.load('assets/fonts/NotoNaskhArabic-Variable.ttf'));
+    await naskh.load();
     _fontsLoaded = true;
   });
 }
@@ -1737,7 +1728,7 @@ void main() {
 
         final openedDb = await appDb.database;
         final version = await openedDb.getVersion();
-        expect(version, 4, reason: 'Database schema version must be upgraded to 4');
+        expect(version, AppDatabase.schemaVersion, reason: 'Database schema version must be upgraded to 4');
 
         final tables = await openedDb.rawQuery(
           "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",

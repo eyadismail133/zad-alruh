@@ -42,17 +42,9 @@ Future<void> _ensureTestFonts(WidgetTester tester) async {
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
 
-    final plex = FontLoader('IBM Plex Sans Arabic');
-    for (final face in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-      plex.addFont(
-        rootBundle.load('assets/fonts/IBM-Plex-Sans-Arabic-$face.ttf'),
-      );
-    }
-    await plex.load();
-
-    final amiri = FontLoader('Amiri Quran')
-      ..addFont(rootBundle.load('assets/fonts/Amiri-Quran-Regular.ttf'));
-    await amiri.load();
+    final naskh = FontLoader('Noto Naskh Arabic')
+      ..addFont(rootBundle.load('assets/fonts/NotoNaskhArabic-Variable.ttf'));
+    await naskh.load();
     _fontsLoaded = true;
   });
 }
@@ -142,39 +134,35 @@ Widget createTestApp({
   ),
 );
 
-Future<void> tapVerseSpan(WidgetTester tester, String verseText) async {
-  final richTextFinder = find.byType(RichText);
-  RenderParagraph? targetParagraph;
-  for (final element in richTextFinder.evaluate()) {
-    final renderObj = element.renderObject as RenderParagraph?;
-    if (renderObj != null &&
-        renderObj.text
-            .toPlainText(includeSemanticsLabels: false)
-            .contains(verseText)) {
-      targetParagraph = renderObj;
-      break;
-    }
-  }
-  expect(
-    targetParagraph,
-    isNotNull,
-    reason: 'Must find RichText paragraph containing verse text "$verseText"',
+Future<void> selectPageVerse(WidgetTester tester, int surah, int ayah) async {
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(QuranReaderScreen)),
   );
-  final text = targetParagraph!.text.toPlainText(
-    includeSemanticsLabels: false,
+  final verse = container
+      .read(quranRepositoryProvider)
+      .requireValue
+      .getVerse(surah, ayah);
+  await tester.tap(find.byTooltip('اختيار آية من الصفحة'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('page_verse_surah')));
+  await tester.pumpAndSettle();
+  final name = container
+      .read(quranRepositoryProvider)
+      .requireValue
+      .getSurah(verse.surahNumber)
+      .name;
+  await tester.tap(find.text('سورة $name').last);
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.byKey(ValueKey('page_verse_ayah_${verse.surahNumber}')),
   );
-  final startIndex = text.indexOf(verseText);
-  final endIndex = startIndex + verseText.length;
-  final boxes = targetParagraph.getBoxesForSelection(
-    TextSelection(baseOffset: startIndex, extentOffset: endIndex),
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.text('الآية ${QuranUiUtils.toArabicDigits(verse.verseNumber)}').last,
   );
-  expect(
-    boxes.isNotEmpty,
-    isTrue,
-    reason: 'Must find glyph bounding box for verse span "$verseText"',
-  );
-  final globalCenter = targetParagraph.localToGlobal(boxes.first.toRect().center);
-  await tester.tapAt(globalCenter);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('اختيار'));
+  await tester.pumpAndSettle();
 }
 
 class TransientCachingAssetBundle extends CachingAssetBundle {
@@ -276,6 +264,16 @@ class _TestContext {
     await container.read(readingProgressControllerProvider.future);
     await container.read(bookmarksControllerProvider.future);
     await container.read(favoritesControllerProvider.future);
+    await container.read(preferencesControllerProvider.future);
+    final readiness = container.read(dateReadinessProvider);
+    if (readiness.activeBucket != null) {
+      await container.read(
+        dailyQuranPagesControllerProvider(readiness.activeBucket!).future,
+      );
+      await container.read(
+        dailyProgressControllerProvider(readiness.activeBucket!).future,
+      );
+    }
   }
 
   Future<void> dispose(WidgetTester tester) async {
@@ -325,6 +323,263 @@ void main() {
   });
 
   group('Quran UI - Core Navigation, Search & Reader Workflows', () {
+    testWidgets(
+      'KFQC page 121 picker excludes neighboring Tanzil boundary verses',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(121));
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 121),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('اختيار آية من الصفحة'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('page_verse_ayah_5')));
+        await tester.pumpAndSettle();
+        expect(find.text('الآية ٧٨'), findsWidgets);
+        expect(find.text('الآية ٨٣'), findsOneWidget);
+        expect(find.text('الآية ٧٧'), findsNothing);
+        expect(find.text('الآية ٨٤'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'bookmark from image picker preserves both surah and ayah on multi-surah page',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(604));
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 604),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await selectPageVerse(tester, 114, 6);
+        await tester.tap(find.text('إضافة علامة مرجعية مخصصة'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining(quranRepo.getVerse(114, 6).text),
+          findsNothing,
+        );
+        await tester.tap(find.text('حفظ العلامة'));
+        await pumpUntil(
+          tester,
+          () =>
+              ctx.container
+                  .read(bookmarksControllerProvider)
+                  .valueOrNull
+                  ?.isNotEmpty ==
+              true,
+        );
+        final bookmark = (await tester.runAsync(
+          () => ctx.repo.getBookmarks(),
+        ))!.single;
+        expect(bookmark.pageNumber, 604);
+        expect(bookmark.surahNumber, 114);
+        expect(bookmark.verseNumber, 6);
+      },
+    );
+    testWidgets(
+      'confirmed page resumes the next image in the same index session without marking it read',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(2));
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(container: ctx.container, child: const QuranScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('متابعة ←'));
+        await pumpUntil(
+          tester,
+          () =>
+              find.byKey(const Key('quran_page_confirm')).evaluate().isNotEmpty,
+        );
+        await tester.ensureVisible(find.byKey(const Key('quran_page_confirm')));
+        await tester.tap(find.byKey(const Key('quran_page_confirm')));
+        await pumpUntil(
+          tester,
+          () =>
+              ctx.container
+                  .read(readingProgressControllerProvider)
+                  .valueOrNull
+                  ?.resumePage ==
+              3,
+        );
+        expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
+        await tester.tap(find.byTooltip('العودة إلى الفهرس'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('متابعة ←'));
+        await tester.pumpAndSettle();
+        expect(find.text('صفحة ٣ / ٦٠٤'), findsOneWidget);
+        final bucket = ctx.container.read(dateReadinessProvider).activeBucket!;
+        expect(
+          await tester.runAsync(() => ctx.repo.getConfirmedQuranPages(bucket)),
+          {2},
+        );
+        expect(find.byKey(const Key('quran_page_confirm')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'page picker verse favorite reopens its canonical image without showing stored text',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(604));
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 604),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await selectPageVerse(tester, 112, 2);
+        await tester.tap(find.text('إضافة الآية إلى المفضلة'));
+        await pumpUntil(
+          tester,
+          () =>
+              ctx.container
+                  .read(favoritesControllerProvider)
+                  .valueOrNull
+                  ?.any((f) => f.stableId == '112:2') ==
+              true,
+        );
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const FavoritesScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('المفضلة'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining(quranRepo.getVerse(112, 2).text),
+          findsNothing,
+        );
+        await tester.tap(find.text('سورة 112 · الآية 2'));
+        await pumpUntil(
+          tester,
+          () => find.text('صفحة ٦٠٤ / ٦٠٤').evaluate().isNotEmpty,
+        );
+        expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'image page semantics identifies its multi-surah source without Quran text',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        final semantics = tester.ensureSemantics();
+        await tester.runAsync(() => ctx.prehydrate(604));
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 604),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.bySemanticsLabel(
+            RegExp('صفحة مصورة رقم ٦٠٤.*الإخلاص.*الفلق.*الناس'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining(
+            quranRepo.getVerse(114, 6).text,
+            findRichText: true,
+          ),
+          findsNothing,
+        );
+        semantics.dispose();
+      },
+    );
+    testWidgets(
+      'image reader selects exact stop on a multi-surah page without text mode',
+      (tester) async {
+        await _ensureTestFonts(tester);
+        final ctx = (await tester.runAsync(
+          () => _TestContext.create(quranRepo: quranRepo),
+        ))!;
+        addTearDown(() => ctx.dispose(tester));
+        await tester.runAsync(() => ctx.prehydrate(604));
+        await tester.runAsync(
+          () => tester.pumpWidget(
+            createTestApp(
+              container: ctx.container,
+              child: const QuranReaderScreen(initialPage: 604),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('نص القرآن'), findsNothing);
+        await tester.tap(find.byTooltip('اختيار آية من الصفحة'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('page_verse_surah')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('سورة الناس').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('page_verse_ayah_114')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('الآية ٦').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('اختيار'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining(quranRepo.getVerse(114, 6).text),
+          findsNothing,
+        );
+        await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
+        await tester.pumpAndSettle();
+        await drainQueue(
+          tester,
+          ctx.container.read(readingProgressControllerProvider.notifier),
+        );
+        final saved = await tester.runAsync(
+          () => ctx.repo.getReadingProgress(),
+        );
+        expect(saved!.lastPage, 604);
+        expect(saved.selectedSurah, 114);
+        expect(saved.selectedVerse, 6);
+      },
+    );
     testWidgets(
       'renders 114 Surahs and 30 Juz tabs, and autosaves chapter navigation immediately',
       (tester) async {
@@ -377,7 +632,7 @@ void main() {
           await tester.tap(chapter);
           await tester.pumpAndSettle();
 
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('المصحف المصوّر'), findsOneWidget);
           expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
 
           await drainQueue(
@@ -403,7 +658,7 @@ void main() {
     );
 
     testWidgets(
-      'searches offline with unmodified verbatim text and opens mapped page',
+      'searches offline metadata without text snippets and opens mapped image page',
       (tester) async {
         await _ensureTestFonts(tester);
         final ctx = (await tester.runAsync(
@@ -434,7 +689,7 @@ void main() {
           expect(find.textContaining('نتائج البحث'), findsOneWidget);
           expect(
             find.textContaining('إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ'),
-            findsOneWidget,
+            findsNothing,
           );
 
           await tester.runAsync(
@@ -442,12 +697,10 @@ void main() {
           );
 
           // Tapping search result opens mapped page (Page 1)
-          await tester.tap(
-            find.textContaining('إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ'),
-          );
+          await tester.tap(find.text('سورة الفاتحة · الآية ٥'));
           await tester.pumpAndSettle();
 
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('المصحف المصوّر'), findsOneWidget);
           expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
 
           await drainQueue(
@@ -477,7 +730,10 @@ void main() {
 
           await tester.runAsync(
             () => tester.pumpWidget(
-              createTestApp(container: ctx.container, child: const QuranScreen()),
+              createTestApp(
+                container: ctx.container,
+                child: const QuranScreen(),
+              ),
             ),
           );
           await tester.pumpAndSettle();
@@ -505,7 +761,7 @@ void main() {
           await tester.tap(find.text('انتقال'));
           await tester.pumpAndSettle();
 
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('المصحف المصوّر'), findsOneWidget);
           expect(find.text('صفحة ١٨٧ / ٦٠٤'), findsOneWidget);
 
           final surah9 = quranRepo.getSurah(9);
@@ -550,7 +806,7 @@ void main() {
     );
 
     testWidgets(
-      'actual displayed Tanzil verse tap sets exact stop verse in UI, persists across reopen, and clears on page turn',
+      'page-scoped image verse selection sets exact stop verse in UI, persists across reopen, and clears on page turn',
       (tester) async {
         await _ensureTestFonts(tester);
         final tempDir = (await tester.runAsync(
@@ -590,24 +846,13 @@ void main() {
             () => tester.pumpWidget(
               createTestApp(
                 container: container1,
-                child: const QuranReaderScreen(
-                  initialPage: 2,
-                  initialMode: ReaderMode.text,
-                ),
+                child: const QuranReaderScreen(initialPage: 2),
               ),
             ),
           );
           await tester.pumpAndSettle();
 
-          // 1. Tap actual displayed Tanzil verse (verse 2:2)
-          final verse2Finder = find.textContaining(
-            quranRepo.getVerse(2, 2).text,
-            findRichText: true,
-          );
-          await tester.ensureVisible(verse2Finder);
-          await tester.pumpAndSettle();
-          expect(verse2Finder, findsOneWidget);
-          await tapVerseSpan(tester, quranRepo.getVerse(2, 2).text);
+          await selectPageVerse(tester, 2, 2);
           await tester.pumpAndSettle();
 
           // BottomSheet options appear
@@ -631,7 +876,7 @@ void main() {
           expect(savedProgress.selectedVerse, 2);
 
           // Reader displays the exact stop badge
-          expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
+          expect(find.textContaining('الآية ٢'), findsWidgets);
 
           // Close Session 1
           await tester.pumpWidget(const SizedBox.shrink());
@@ -681,10 +926,8 @@ void main() {
           await tester.pumpAndSettle();
 
           expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
-          // Switch to text mode to verify stop badge on text view
-          await tester.tap(find.text('نص القرآن'));
-          await tester.pumpAndSettle();
-          expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
+
+          expect(find.textContaining('الآية ٢'), findsWidgets);
 
           // Turn to page 3 via 'التالي' - clears stop verse
           await tester.tap(find.text('التالي'));
@@ -754,8 +997,10 @@ void main() {
           await tester.tap(find.text('التالي'));
           await pumpUntil(
             tester,
-            () =>
-                find.text('تعذر حفظ موضع القراءة الحالي.').evaluate().isNotEmpty,
+            () => find
+                .text('تعذر حفظ موضع القراءة الحالي.')
+                .evaluate()
+                .isNotEmpty,
             reason: 'Arabic error SnackBar must appear after write failure',
           );
 
@@ -776,7 +1021,9 @@ void main() {
           expect(progressBefore.lastPage, 2);
 
           // 3. Restore database writes
-          await tester.runAsync(() => rawDb.execute('PRAGMA query_only = OFF;'));
+          await tester.runAsync(
+            () => rawDb.execute('PRAGMA query_only = OFF;'),
+          );
 
           // 4. Tap SnackBar retry action
           await tester.tap(retryButton);
@@ -859,7 +1106,7 @@ void main() {
           await tester.tap(find.text('ورد الصباح صفحة ١٠'));
           await tester.pumpAndSettle();
 
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('المصحف المصوّر'), findsOneWidget);
           expect(find.text('صفحة ١٠ / ٦٠٤'), findsOneWidget);
 
           // Return to favorites and delete
@@ -926,7 +1173,7 @@ void main() {
     });
 
     testWidgets(
-      'Mushaf image mode defaults to bundled KFQC sheet, shows attribution dialog, and toggles to verified text mode',
+      'Mushaf image mode defaults to bundled KFQC sheet, shows attribution dialog without text mode',
       (tester) async {
         await _ensureTestFonts(tester);
         final ctx = (await tester.runAsync(
@@ -954,30 +1201,16 @@ void main() {
           // 2. Tapping narration badge opens KFQC attribution dialog
           await tester.tap(find.text('مصحف المدينة (حفص)'));
           await tester.pumpAndSettle();
+          expect(find.text('مصحف المدينة النبوية'), findsOneWidget);
           expect(
-            find.text('مصحف المدينة النبوية'),
+            find.textContaining('الدليل الفني لمجمع الملك فهد'),
             findsOneWidget,
           );
-          expect(find.textContaining('الدليل الفني لمجمع الملك فهد'), findsOneWidget);
           expect(find.textContaining('quran-ws/quran-svg'), findsOneWidget);
           await tester.tap(find.text('إغلاق'));
           await tester.pumpAndSettle();
 
-          // 3. Switch to text mode
-          await tester.tap(find.text('نص القرآن'));
-          await tester.pumpAndSettle();
-
-          expect(
-            find.textContaining(
-              quranRepo.getVerse(1, 1).text,
-              findRichText: true,
-            ),
-            findsWidgets,
-          );
-
-          // 4. Switch back to Mushaf image mode
-          await tester.tap(find.text('المصحف'));
-          await tester.pumpAndSettle();
+          expect(find.text('نص القرآن'), findsNothing);
           expect(find.byType(InteractiveViewer), findsOneWidget);
         } finally {
           await ctx.dispose(tester);
@@ -1294,7 +1527,7 @@ void main() {
           await tester.pumpAndSettle();
 
           expect(tester.takeException(), isNull);
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('المصحف المصوّر'), findsOneWidget);
 
           // Bookmark dialog at 1.8
           await tester.tap(find.byIcon(Icons.bookmark_add_outlined));
@@ -1363,7 +1596,10 @@ void main() {
 
           await tester.runAsync(
             () => tester.pumpWidget(
-              createTestApp(container: ctx.container, child: const QuranScreen()),
+              createTestApp(
+                container: ctx.container,
+                child: const QuranScreen(),
+              ),
             ),
           );
           await tester.pumpAndSettle();
@@ -1469,7 +1705,10 @@ void main() {
 
           await tester.runAsync(
             () => tester.pumpWidget(
-              createTestApp(container: ctx.container, child: const QuranScreen()),
+              createTestApp(
+                container: ctx.container,
+                child: const QuranScreen(),
+              ),
             ),
           );
           await tester.pump();
@@ -1507,7 +1746,7 @@ void main() {
           await tester.tap(find.text('متابعة ←'));
           await tester.pumpAndSettle();
 
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+          expect(find.text('المصحف المصوّر'), findsOneWidget);
           expect(find.text('صفحة ١٥٥ / ٦٠٤'), findsOneWidget);
 
           // Position was safely preserved as 155 and not corrupted to 1
@@ -1515,584 +1754,6 @@ void main() {
             () => gatedRepo!.getReadingProgress(),
           ))!;
           expect(progress.lastPage, 155);
-        } finally {
-          await ctx.dispose(tester);
-        }
-      },
-    );
-
-    testWidgets(
-      'compact continuous Mushaf sheet renders all verses assigned to page 1, 2, and 604 with surah headers',
-      (tester) async {
-        await _ensureTestFonts(tester);
-        final ctx = (await tester.runAsync(
-          () => _TestContext.create(quranRepo: quranRepo),
-        ))!;
-        addTearDown(() => ctx.dispose(tester));
-        try {
-          await tester.runAsync(() => ctx.prehydrate(1));
-
-          await tester.runAsync(
-            () => tester.pumpWidget(
-              createTestApp(
-                container: ctx.container,
-                child: const QuranReaderScreen(
-                  initialPage: 1,
-                  initialMode: ReaderMode.text,
-                ),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          // Page 1: Al-Fatiha all 7 verses rendered on the sheet
-          final page1Verses = quranRepo.getVersesForPage(1);
-          expect(page1Verses.length, 7);
-          for (final verse in page1Verses) {
-            expect(
-              find.textContaining(verse.text, findRichText: true),
-              findsOneWidget,
-              reason: 'Verse 1:${verse.verseNumber} must be rendered on page 1',
-            );
-            expect(
-              find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
-              findsOneWidget,
-              reason: 'Marker 1:${verse.verseNumber} must be rendered on page 1',
-            );
-          }
-          expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
-          expect(find.text('سورة الفاتحة'), findsWidgets);
-
-          // Turn to Page 2: Al-Baqarah 2:1..5
-          await tester.tap(find.text('التالي'));
-          await tester.pumpAndSettle();
-
-          final page2Verses = quranRepo.getVersesForPage(2);
-          expect(page2Verses.length, 5);
-          for (final verse in page2Verses) {
-            expect(
-              find.textContaining(verse.text, findRichText: true),
-              findsOneWidget,
-              reason: 'Verse 2:${verse.verseNumber} must be rendered on page 2',
-            );
-            expect(
-              find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
-              findsOneWidget,
-              reason: 'Marker 2:${verse.verseNumber} must be rendered on page 2',
-            );
-          }
-          expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
-
-          // Jump to Page 604: All 15 verses across 3 surahs
-          await tester.tap(find.byIcon(Icons.pin_outlined));
-          await tester.pumpAndSettle();
-          final jumpField = find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.byType(TextField),
-          );
-          await tester.enterText(jumpField, '604');
-          await tester.tap(find.text('انتقال'));
-          await tester.pumpAndSettle();
-
-          final page604Verses = quranRepo.getVersesForPage(604);
-          expect(page604Verses.length, 15);
-          for (final verse in page604Verses) {
-            expect(
-              find.textContaining(verse.text, findRichText: true),
-              findsOneWidget,
-              reason:
-                  'Verse ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
-            );
-            expect(
-              find.textContaining('۝${QuranUiUtils.toArabicDigits(verse.verseNumber)}'),
-              findsWidgets,
-              reason:
-                  'Marker ${verse.surahNumber}:${verse.verseNumber} must be rendered on page 604',
-            );
-          }
-          expect(find.text('۞ سُورَةُ الإخلاص ۞'), findsOneWidget);
-          expect(find.text('۞ سُورَةُ الفلق ۞'), findsOneWidget);
-          expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
-          expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
-        } finally {
-          await ctx.dispose(tester);
-        }
-      },
-    );
-
-    testWidgets(
-      'preserves exact page boundaries: 1->2 advances to Baqarah start, and 603->604 advances to final page with disabled next button',
-      (tester) async {
-        await _ensureTestFonts(tester);
-        final ctx = (await tester.runAsync(
-          () => _TestContext.create(quranRepo: quranRepo),
-        ))!;
-        addTearDown(() => ctx.dispose(tester));
-        try {
-          await tester.runAsync(() => ctx.prehydrate(1));
-
-          await tester.runAsync(
-            () => tester.pumpWidget(
-              createTestApp(
-                container: ctx.container,
-                child: const QuranReaderScreen(
-                  initialPage: 1,
-                  initialMode: ReaderMode.text,
-                ),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          // On Page 1, 'السابق' is disabled
-          final prevButtonFinder = find.widgetWithText(OutlinedButton, 'السابق');
-          final prevButton = tester.widget<OutlinedButton>(prevButtonFinder);
-          expect(prevButton.onPressed, isNull);
-
-          // Tap 'التالي' moves to Page 2
-          await tester.tap(find.text('التالي'));
-          await tester.pumpAndSettle();
-          expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
-          expect(
-            find.textContaining(
-              quranRepo.getVerse(2, 1).text,
-              findRichText: true,
-            ),
-            findsOneWidget,
-          );
-          // Fatiha verses are no longer present
-          expect(
-            find.textContaining(
-              quranRepo.getVerse(1, 7).text,
-              findRichText: true,
-            ),
-            findsNothing,
-          );
-
-          // Jump to Page 603
-          await tester.tap(find.byIcon(Icons.pin_outlined));
-          await tester.pumpAndSettle();
-          final jumpField = find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.byType(TextField),
-          );
-          await tester.enterText(jumpField, '603');
-          await tester.tap(find.text('انتقال'));
-          await tester.pumpAndSettle();
-
-          expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
-          // Page 603 contains Surahs 109, 110, 111
-          expect(find.text('۞ سُورَةُ الكافرون ۞'), findsOneWidget);
-
-          // Tap 'التالي' moves to Page 604
-          await tester.tap(find.text('التالي'));
-          await tester.pumpAndSettle();
-
-          expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
-          // On Page 604, 'التالي' is disabled
-          final nextButtonFinder = find.widgetWithText(ElevatedButton, 'التالي');
-          final nextButton = tester.widget<ElevatedButton>(nextButtonFinder);
-          expect(nextButton.onPressed, isNull);
-        } finally {
-          await ctx.dispose(tester);
-        }
-      },
-    );
-
-    testWidgets(
-      'compact sheet verse tap opens bottom sheet, sets exact stop verse and displays stop badge',
-      (tester) async {
-        await _ensureTestFonts(tester);
-        final ctx = (await tester.runAsync(
-          () => _TestContext.create(quranRepo: quranRepo),
-        ))!;
-        addTearDown(() => ctx.dispose(tester));
-        try {
-          await tester.runAsync(() => ctx.prehydrate(1));
-
-          await tester.runAsync(
-            () => tester.pumpWidget(
-              createTestApp(
-                container: ctx.container,
-                child: const QuranReaderScreen(
-                  initialPage: 1,
-                  initialMode: ReaderMode.text,
-                ),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          // Tap verse 1:2: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ"
-          final verse2 = quranRepo.getVerse(1, 2);
-          final verse2Finder = find.textContaining(
-            verse2.text,
-            findRichText: true,
-          );
-          expect(verse2Finder, findsOneWidget);
-          await tapVerseSpan(tester, verse2.text);
-          await tester.pumpAndSettle();
-
-          // Options bottomsheet appears
-          expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
-          await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
-          await drainQueue(
-            tester,
-            ctx.container.read(readingProgressControllerProvider.notifier),
-          );
-          await tester.pumpAndSettle();
-
-          // Stop badge appears on compact sheet
-          expect(find.text('موضع التوقف الحالي 🔖'), findsOneWidget);
-
-          final saved = (await tester.runAsync(
-            () => ctx.repo.getReadingProgress(),
-          ))!;
-          expect(saved.lastPage, 1);
-          expect(saved.selectedSurah, 1);
-          expect(saved.selectedVerse, 2);
-        } finally {
-          await ctx.dispose(tester);
-        }
-      },
-    );
-
-    testWidgets(
-      'compact continuous sheet renders at 320x480 small screen with 2.0 text scale without overflow',
-      (tester) async {
-        await _ensureTestFonts(tester);
-        tester.view.physicalSize = const Size(320, 480);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        final ctx = (await tester.runAsync(
-          () => _TestContext.create(quranRepo: quranRepo),
-        ))!;
-        addTearDown(() => ctx.dispose(tester));
-        try {
-          await tester.runAsync(() => ctx.prehydrate(604));
-
-          await tester.runAsync(
-            () => tester.pumpWidget(
-              createTestApp(
-                container: ctx.container,
-                builder: (context, child) => MediaQuery(
-                  data: MediaQuery.of(context).copyWith(
-                    textScaler: const TextScaler.linear(2.0),
-                  ),
-                  child: child!,
-                ),
-                child: const QuranReaderScreen(
-                  initialPage: 604,
-                  initialMode: ReaderMode.text,
-                ),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          expect(tester.takeException(), isNull);
-          expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
-          expect(find.text('صفحة ٦٠٤ / ٦٠٤'), findsOneWidget);
-          expect(find.text('۞ سُورَةُ الناس ۞'), findsOneWidget);
-
-          // Turn to Page 603 at 2.0 font scale on 320x480
-          final prevFinder = find.text('السابق');
-          final footerScrollable = find.descendant(
-            of: find.byKey(const ValueKey('quran_reader_bottom_controls')),
-            matching: find.byType(Scrollable),
-          );
-          expect(
-            footerScrollable,
-            findsOneWidget,
-            reason: 'Keyed footer scrollable must exist',
-          );
-          int footerDrags = 0;
-          while (prevFinder.hitTestable().evaluate().isEmpty && footerDrags < 15) {
-            footerDrags++;
-            final targetBox = tester.renderObject<RenderBox>(prevFinder.first);
-            final targetCenter = targetBox.localToGlobal(
-              targetBox.size.center(Offset.zero),
-            );
-            final scrollBox = tester.renderObject<RenderBox>(footerScrollable);
-            final scrollBounds =
-                scrollBox.localToGlobal(Offset.zero) & scrollBox.size;
-            final dragDelta = targetCenter.dx < scrollBounds.left
-                ? const Offset(80.0, 0.0)
-                : const Offset(-80.0, 0.0);
-            await tester.drag(footerScrollable, dragDelta);
-            await tester.pumpAndSettle();
-          }
-          expect(
-            prevFinder.hitTestable(),
-            findsOneWidget,
-            reason:
-                'Previous button must be hitTestable via real drag within keyed footer',
-          );
-          await tester.tap(prevFinder.hitTestable());
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.text('صفحة ٦٠٣ / ٦٠٤'), findsOneWidget);
-        } finally {
-          await ctx.dispose(tester);
-        }
-      },
-    );
-
-    testWidgets(
-      'flowing rich-text paragraph geometry: adjacent short verses share line in wide viewport and verse span tap works',
-      (tester) async {
-        await _ensureTestFonts(tester);
-        tester.view.physicalSize = const Size(800, 600);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        final ctx = (await tester.runAsync(
-          () => _TestContext.create(quranRepo: quranRepo),
-        ))!;
-        addTearDown(() => ctx.dispose(tester));
-        try {
-          await tester.runAsync(() => ctx.prehydrate(604));
-
-          await tester.runAsync(
-            () => tester.pumpWidget(
-              createTestApp(
-                container: ctx.container,
-                child: const QuranReaderScreen(
-                  initialPage: 604,
-                  initialMode: ReaderMode.text,
-                ),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          // On Page 604, Surah Al-Ikhlas (112) verses 1 and 2 are short:
-          // 112:1: "قُلْ هُوَ ٱللَّهُ أَحَدٌ ۝١ "
-          // 112:2: "ٱللَّهُ ٱلصَّمَدُ ۝٢ "
-          final v1 = quranRepo.getVerse(112, 1);
-          final v2 = quranRepo.getVerse(112, 2);
-
-          final richTextFinder = find.byType(RichText);
-          RenderParagraph? ikhlasParagraph;
-          for (final element in richTextFinder.evaluate()) {
-            final renderObj = element.renderObject as RenderParagraph?;
-            if (renderObj != null &&
-                renderObj.text.toPlainText().contains(v1.text) &&
-                renderObj.text.toPlainText().contains(v2.text)) {
-              ikhlasParagraph = renderObj;
-              break;
-            }
-          }
-          expect(
-            ikhlasParagraph,
-            isNotNull,
-            reason: 'Flowing paragraph for Surah 112 must exist',
-          );
-
-          final fullText = ikhlasParagraph!.text.toPlainText(
-            includeSemanticsLabels: false,
-          );
-          final start1 = fullText.indexOf(v1.text);
-          final boxes1 = ikhlasParagraph.getBoxesForSelection(
-            TextSelection(
-              baseOffset: start1,
-              extentOffset: start1 + v1.text.length,
-            ),
-          );
-          final start2 = fullText.indexOf(v2.text);
-          final boxes2 = ikhlasParagraph.getBoxesForSelection(
-            TextSelection(
-              baseOffset: start2,
-              extentOffset: start2 + v2.text.length,
-            ),
-          );
-
-          expect(boxes1.isNotEmpty, isTrue);
-          expect(boxes2.isNotEmpty, isTrue);
-
-          // PROOF OF CONTINUOUS FLOW: In an 800px viewport, adjacent short verses 112:1 and 112:2
-          // share the same line (same vertical top coordinate within font tolerance),
-          // rather than being stacked on separate lines as isolated block containers.
-          expect(
-            (boxes1.first.top - boxes2.first.top).abs(),
-            lessThanOrEqualTo(2.0),
-            reason:
-                'Adjacent short verses in flowing paragraph must share the same line in a wide viewport',
-          );
-
-          // Prove working tap on specific verse span (112:2)
-          await tapVerseSpan(tester, v2.text);
-          await tester.pumpAndSettle();
-
-          expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
-          await tester.tap(find.text('تحديد كموضع توقف عند هذه الآية'));
-          await drainQueue(
-            tester,
-            ctx.container.read(readingProgressControllerProvider.notifier),
-          );
-          await tester.pumpAndSettle();
-
-          final saved = (await tester.runAsync(
-            () => ctx.repo.getReadingProgress(),
-          ))!;
-          expect(saved.lastPage, 604);
-          expect(saved.selectedSurah, 112);
-          expect(saved.selectedVerse, 2);
-        } finally {
-          await ctx.dispose(tester);
-        }
-      },
-    );
-
-    testWidgets(
-      'accessibility: screen reader semantics provides exactly one node per verse with content, chapter, number, and tap action',
-      (tester) async {
-        await _ensureTestFonts(tester);
-        final semanticsHandle = tester.ensureSemantics();
-        _TestContext? ctx;
-        try {
-          ctx = (await tester.runAsync(
-            () => _TestContext.create(quranRepo: quranRepo),
-          ))!;
-          addTearDown(() => ctx?.dispose(tester));
-          await tester.runAsync(() => ctx!.prehydrate(1));
-
-          await tester.runAsync(
-            () => tester.pumpWidget(
-              createTestApp(
-                container: ctx!.container,
-                child: const QuranReaderScreen(
-                  initialPage: 1,
-                  initialMode: ReaderMode.text,
-                ),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          final surah1 = quranRepo.getSurah(1);
-          final page1Verses = quranRepo.getVersesForPage(1);
-
-          for (final verse in page1Verses) {
-            // 1. Assert exactly ONE semantics node per verse matching the verse content and ayah number
-            final verseFinder = find.semantics.byPredicate(
-              (node) =>
-                  node.label.startsWith(verse.text) &&
-                  node.label.contains('الآية ${verse.verseNumber}'),
-            );
-            expect(
-              verseFinder,
-              findsOneWidget,
-              reason:
-                  'Must have exactly one semantics node for Verse 1:${verse.verseNumber}',
-            );
-
-            // 2. Assert content + chapter + number are present in the node
-            final SemanticsNode node = verseFinder.evaluate().single;
-            final SemanticsData data = node.getSemanticsData();
-            expect(data.label, contains(verse.text));
-            expect(data.label, contains(surah1.name));
-            expect(data.label, contains('${verse.verseNumber}'));
-
-            // 3. Assert tap action is available on the semantics node
-            expect(
-              data.hasAction(SemanticsAction.tap),
-              isTrue,
-              reason:
-                  'Verse 1:${verse.verseNumber} semantics node must have a tap action',
-            );
-          }
-
-          // 4. REGRESSION PROOF: Assert no duplicate or separate marker node exists in semantics
-          final markerSemanticsFinder = find.semantics.byPredicate(
-            (node) => node.label.contains('۝'),
-          );
-          expect(
-            markerSemanticsFinder,
-            findsNothing,
-            reason:
-                'Visual ayah markers must be excluded from semantics to prevent duplicate focus stops',
-          );
-
-          // 5. Verify the visual marker is still physically tappable on screen
-          final markerWidgetFinder = find.textContaining(' ۝١ ');
-          expect(markerWidgetFinder, findsOneWidget);
-          await tester.tap(markerWidgetFinder);
-          await tester.pumpAndSettle();
-          expect(find.text('تحديد كموضع توقف عند هذه الآية'), findsOneWidget);
-        } finally {
-          try {
-            if (ctx != null) {
-              await ctx.dispose(tester);
-            }
-          } finally {
-            semanticsHandle.dispose();
-          }
-        }
-      },
-    );
-
-    testWidgets(
-      'horizontal drag/swipe on reader advances page number and official Medina verse boundaries',
-      (tester) async {
-        await _ensureTestFonts(tester);
-        final ctx = (await tester.runAsync(
-          () => _TestContext.create(quranRepo: quranRepo),
-        ))!;
-        addTearDown(() => ctx.dispose(tester));
-        try {
-          await tester.runAsync(() => ctx.prehydrate(1));
-
-          await tester.runAsync(
-            () => tester.pumpWidget(
-              createTestApp(
-                container: ctx.container,
-                child: const QuranReaderScreen(
-                  initialPage: 1,
-                  initialMode: ReaderMode.text,
-                ),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
-
-          // Initially on Page 1 (Al-Fatiha 1:1..7)
-          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
-          expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
-          final p1v1 = quranRepo.getVerse(1, 1);
-          expect(find.textContaining(p1v1.text), findsOneWidget);
-
-          // Perform horizontal swipe/drag across PageView.
-          // In an RTL PageView, dragging from left-to-right (positive X delta) advances forward
-          // to the next Medina page (Page 2), and right-to-left (negative X delta) navigates backward.
-          final pageViewFinder = find.byType(PageView);
-          expect(pageViewFinder, findsOneWidget);
-
-          // Fling forward to advance to Page 2
-          await tester.fling(pageViewFinder, const Offset(400, 0), 1000);
-          await tester.pumpAndSettle();
-
-          // Assert reader has advanced to official Page 2 (Al-Baqarah 2:1..5)
-          expect(find.text('صفحة ٢ / ٦٠٤'), findsOneWidget);
-          expect(find.text('۞ سُورَةُ البقرة ۞'), findsOneWidget);
-          final p2v1 = quranRepo.getVerse(2, 1);
-          expect(find.textContaining(p2v1.text), findsOneWidget);
-
-          // And verify verses from Page 1 (e.g. Al-Fatiha 1:7) are no longer on current page
-          final p1v7 = quranRepo.getVerse(1, 7);
-          expect(find.textContaining(p1v7.text), findsNothing);
-
-          // Swipe backward to return to Page 1
-          await tester.fling(pageViewFinder, const Offset(-400, 0), 1000);
-          await tester.pumpAndSettle();
-
-          expect(find.text('صفحة ١ / ٦٠٤'), findsOneWidget);
-          expect(find.text('۞ سُورَةُ الفاتحة ۞'), findsOneWidget);
-          expect(find.textContaining(p1v1.text), findsOneWidget);
-          expect(find.textContaining(p2v1.text), findsNothing);
         } finally {
           await ctx.dispose(tester);
         }
@@ -2201,17 +1862,13 @@ void main() {
           final rawDb = await db.database;
 
           // Seed legacy records directly into SQLite: page 121 with selected verse 5:77
-          await rawDb.insert(
-            'reading_progress',
-            {
-              'id': 1,
-              'last_page': 121,
-              'selected_surah': 5,
-              'selected_verse': 77,
-              'updated_at': DateTime.now().toIso8601String(),
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
+          await rawDb.insert('reading_progress', {
+            'id': 1,
+            'last_page': 121,
+            'selected_surah': 5,
+            'selected_verse': 77,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
           await rawDb.insert('bookmarks', {
             'id': 1,
             'name': 'Legacy Stop 5:77',
@@ -2300,17 +1957,13 @@ void main() {
             databasePath: p.join(errTempDir.path, 'err.db'),
           );
           final rawErrDb = await errDb.database;
-          await rawErrDb.insert(
-            'reading_progress',
-            {
-              'id': 1,
-              'last_page': 121,
-              'selected_surah': 5,
-              'selected_verse': 77,
-              'updated_at': DateTime.now().toIso8601String(),
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
+          await rawErrDb.insert('reading_progress', {
+            'id': 1,
+            'last_page': 121,
+            'selected_surah': 5,
+            'selected_verse': 77,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
           final errRepo = ProgressRepository(
             errDb,
             versePageValidator: quranRepo.isValidVerseOnPage,
@@ -2319,8 +1972,7 @@ void main() {
           final errorContainer = ProviderContainer(
             overrides: [
               quranRepositoryProvider.overrideWith(
-                (ref) async =>
-                    throw StateError('Simulated Quran load failure'),
+                (ref) async => throw StateError('Simulated Quran load failure'),
               ),
               progressRepositoryProvider.overrideWithValue(errRepo),
               cityRepositoryProvider.overrideWith((ref) async => cityRepo),
@@ -2482,7 +2134,7 @@ void main() {
 
           expect(find.text('تعذر تحميل صورة الصفحة ١'), findsOneWidget);
           expect(
-            find.text('يرجى إعادة المحاولة أو الانتقال إلى وضع القراءة النصية.'),
+            find.text('يرجى إعادة المحاولة لتحميل صورة الصفحة.'),
             findsOneWidget,
           );
           expect(

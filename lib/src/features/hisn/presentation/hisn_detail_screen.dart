@@ -1,9 +1,13 @@
+import '../domain/models/hisn_invocation_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../domain/models/hisn_item.dart';
 import 'utils/hisn_text_formatter.dart';
+import '../../progress/data/models/favorite.dart';
+import '../../progress/presentation/controllers/progress_controller.dart';
 
 /// Screen presenting the full detail of a single Dhikr / Dua from Hisn al-Muslim,
 /// including verbatim text, chapter title, item number, explicit repetition targets,
@@ -11,12 +15,10 @@ import 'utils/hisn_text_formatter.dart';
 class HisnDetailScreen extends StatelessWidget {
   final HisnItem item;
 
-  const HisnDetailScreen({
-    super.key,
-    required this.item,
-  });
+  const HisnDetailScreen({super.key, required this.item});
 
   static const String islamHouseBookUrl = HisnTextFormatter.islamHouseBookUrl;
+  String get sourceUrl => item.sourceUrl ?? islamHouseBookUrl;
 
   Future<void> _copyDhikrText(BuildContext context) async {
     try {
@@ -47,7 +49,7 @@ class HisnDetailScreen extends StatelessWidget {
 
   Future<void> _openSourceUrl(BuildContext context) async {
     try {
-      final uri = Uri.parse(islamHouseBookUrl);
+      final uri = Uri.parse(sourceUrl);
       final launched = await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,
@@ -72,7 +74,7 @@ class HisnDetailScreen extends StatelessWidget {
           label: 'نسخ الرابط',
           textColor: Colors.white,
           onPressed: () async {
-            await Clipboard.setData(const ClipboardData(text: islamHouseBookUrl));
+            await Clipboard.setData(ClipboardData(text: sourceUrl));
           },
         ),
       ),
@@ -95,8 +97,12 @@ class HisnDetailScreen extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('ذكر #${item.number}'),
+          title: Text(
+            '${HisnInvocationCatalog.label(item.id)} #${item.number}',
+          ),
           actions: [
+            if (item.sourceHadithId != null)
+              _SupplementFavoriteButton(item: item),
             IconButton(
               icon: const Icon(Icons.copy_rounded, size: 20),
               tooltip: 'نسخ نص الذكر والمراجع',
@@ -133,7 +139,9 @@ class HisnDetailScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'الباب ${item.chapterNumber}',
+                              item.sourceHadithId == null
+                                  ? 'الباب ${item.chapterNumber}'
+                                  : 'من السنة — HadeethEnc',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -155,7 +163,9 @@ class HisnDetailScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'رقم ${item.number} من ٢٦٧',
+                              item.sourceHadithId == null
+                                  ? 'رقم ${item.number} من ٢٦٧'
+                                  : 'حديث #${item.sourceHadithId}',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -240,7 +250,6 @@ class HisnDetailScreen extends StatelessWidget {
                         textAlign: TextAlign.justify,
                         style: TextStyle(
                           fontSize: 19,
-                          fontFamily: 'Amiri Quran',
                           height: 2.1,
                           color: isDark
                               ? AppColors.darkTextPrimary
@@ -353,10 +362,12 @@ class HisnDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'كتاب حصن المسلم من أذكار الكتاب والسنة\n'
-                        'المؤلف: فضيلة الشيخ د. سعيد بن علي بن وهف القحطاني رحمه الله\n'
-                        'النشر الرقمي: دار إسلام هاوس (IslamHouse.com) - مرفق 2019-05-02\n'
-                        'نُقل النص والهوامش حرفياً دون تعديل أو توليد آلي.',
+                        item.sourceHadithId != null
+                            ? 'إضافة من موسوعة الأحاديث النبوية HadeethEnc\n${item.sourceUrl}\nالنص والسياق من المصدر كما وردا.'
+                            : 'كتاب حصن المسلم من أذكار الكتاب والسنة\n'
+                                  'المؤلف: فضيلة الشيخ د. سعيد بن علي بن وهف القحطاني رحمه الله\n'
+                                  'النشر الرقمي: دار إسلام هاوس (IslamHouse.com) - مرفق 2019-05-02\n'
+                                  'نُقل النص والهوامش حرفياً دون تعديل أو توليد آلي.',
                         style: TextStyle(
                           fontSize: 11,
                           height: 1.6,
@@ -372,9 +383,11 @@ class HisnDetailScreen extends StatelessWidget {
                         children: [
                           ElevatedButton.icon(
                             icon: const Icon(Icons.open_in_browser, size: 14),
-                            label: const Text(
-                              'صفحة الكتاب في إسلام هاوس',
-                              style: TextStyle(fontSize: 11),
+                            label: Text(
+                              item.sourceHadithId == null
+                                  ? 'صفحة الكتاب في إسلام هاوس'
+                                  : 'صفحة الحديث في HadeethEnc',
+                              style: const TextStyle(fontSize: 11),
                             ),
                             onPressed: () => _openSourceUrl(context),
                           ),
@@ -386,7 +399,7 @@ class HisnDetailScreen extends StatelessWidget {
                             ),
                             onPressed: () async {
                               await Clipboard.setData(
-                                const ClipboardData(text: islamHouseBookUrl),
+                                ClipboardData(text: sourceUrl),
                               );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -408,6 +421,51 @@ class HisnDetailScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SupplementFavoriteButton extends ConsumerWidget {
+  final HisnItem item;
+  const _SupplementFavoriteButton({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorites = ref.watch(favoritesControllerProvider).valueOrNull;
+    final selected =
+        favorites?.any(
+          (favorite) =>
+              favorite.contentKind == 'hisn' &&
+              favorite.stableId == '${item.id}',
+        ) ??
+        false;
+    return IconButton(
+      tooltip: selected ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة',
+      icon: Icon(selected ? Icons.favorite : Icons.favorite_border),
+      onPressed: favorites == null
+          ? null
+          : () async {
+              try {
+                await ref
+                    .read(favoritesControllerProvider.notifier)
+                    .toggleFavorite(
+                      Favorite(
+                        contentKind: 'hisn',
+                        stableId: '${item.id}',
+                        title: item.chapterTitle,
+                        subtitle: 'HadeethEnc #${item.sourceHadithId}',
+                      ),
+                    );
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('تعذر حفظ المفضلة. حاول مرة أخرى.'),
+                    ),
+                  );
+                }
+              }
+            },
     );
   }
 }

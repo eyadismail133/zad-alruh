@@ -48,27 +48,10 @@ void main() {
   late HadithRepository realRepository;
 
   setUpAll(() async {
-    // Assert font files exist and load Amiri Quran + all 4 weights of IBM Plex Sans Arabic
-    final amiriFile = File('assets/fonts/Amiri-Quran-Regular.ttf');
-    expect(await amiriFile.exists(), isTrue, reason: 'Amiri Quran font asset must exist');
-    final amiriBytes = await amiriFile.readAsBytes();
-    final fontLoaderAmiri = FontLoader('Amiri Quran');
-    fontLoaderAmiri.addFont(Future.value(ByteData.sublistView(amiriBytes)));
-    await fontLoaderAmiri.load();
-
-    final fontLoaderPlex = FontLoader('IBM Plex Sans Arabic');
-    for (final fontPath in [
-      'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
-    ]) {
-      final f = File(fontPath);
-      expect(await f.exists(), isTrue, reason: '$fontPath font asset must exist');
-      final bytes = await f.readAsBytes();
-      fontLoaderPlex.addFont(Future.value(ByteData.sublistView(bytes)));
-    }
-    await fontLoaderPlex.load();
+    final notoBytes = await File('assets/fonts/NotoNaskhArabic-Variable.ttf').readAsBytes();
+    final notoLoader = FontLoader('Noto Naskh Arabic');
+    notoLoader.addFont(Future.value(ByteData.sublistView(notoBytes)));
+    await notoLoader.load();
 
     final flutterRoot = Platform.environment['FLUTTER_ROOT'] ?? 'D:/tools/flutter';
     final iconFile = File('$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
@@ -517,7 +500,7 @@ void main() {
 
         // 7. Bounded measured ListView margin drag helper (no ensureVisible/jumpTo/hardcoded geometry)
         final listRect = tester.getRect(find.byType(ListView).first);
-        Future<void> scrollUntilVisible(Finder targetFinder, {int maxDrags = 40, double delta = -120.0}) async {
+        Future<void> scrollUntilVisible(Finder targetFinder, {int maxDrags = 80, double delta = -120.0}) async {
           for (int i = 0; i < maxDrags; i++) {
             if (targetFinder.hitTestable().evaluate().isNotEmpty) return;
             if (targetFinder.evaluate().isNotEmpty) {

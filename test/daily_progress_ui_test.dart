@@ -195,27 +195,10 @@ void main() {
       },
     );
 
-    // Finding 4: Assert font files exist and load Amiri Quran + all 4 weights of IBM Plex Sans Arabic
-    final amiriFile = File('assets/fonts/Amiri-Quran-Regular.ttf');
-    expect(await amiriFile.exists(), isTrue, reason: 'Amiri Quran font asset must exist');
-    final amiriBytes = await amiriFile.readAsBytes();
-    final fontLoaderAmiri = FontLoader('Amiri Quran');
-    fontLoaderAmiri.addFont(Future.value(ByteData.sublistView(amiriBytes)));
-    await fontLoaderAmiri.load();
-
-    final fontLoaderPlex = FontLoader('IBM Plex Sans Arabic');
-    for (final fontPath in [
-      'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
-    ]) {
-      final f = File(fontPath);
-      expect(await f.exists(), isTrue, reason: '$fontPath font asset must exist');
-      final bytes = await f.readAsBytes();
-      fontLoaderPlex.addFont(Future.value(ByteData.sublistView(bytes)));
-    }
-    await fontLoaderPlex.load();
+    final notoBytes = await File('assets/fonts/NotoNaskhArabic-Variable.ttf').readAsBytes();
+    final notoLoader = FontLoader('Noto Naskh Arabic');
+    notoLoader.addFont(Future.value(ByteData.sublistView(notoBytes)));
+    await notoLoader.load();
 
     final fontLoaderIcons = FontLoader('MaterialIcons');
     Uint8List? iconBytes;
@@ -328,6 +311,33 @@ void main() {
       ),
     );
   }
+
+  testWidgets('legacy praise selection offers replacement without erasing history', (tester) async {
+    await runWithAppDatabase(tester, (db) async {
+      final repo = ProgressRepository(db);
+      await tester.runAsync(() async {
+        final sqlite = await db.database;
+        await sqlite.insert('daily_source_confirmations', {
+          'date_bucket': 'Africa/Cairo|2026-10-07',
+          'task_key': 'daily_dua',
+          'hisn_item_id': 1,
+          'is_completed': 1,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      });
+      await tester.pumpWidget(buildTestApp(db: db, progressRepo: repo,
+        clock: () => DateTime(2026, 10, 7, 10), child: const DailyDuaScreen()));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('legacy_daily_dua_notice')), findsOneWidget);
+      expect(find.byKey(const Key('daily_dua_confirm_checkbox')), findsNothing);
+      expect(find.byKey(const Key('select_dua_1')), findsNothing);
+      await tester.runAsync(() async {
+        final saved = await repo.getSourceConfirmation('Africa/Cairo|2026-10-07', 'daily_dua');
+        expect(saved!.hisnItemId, 1);
+        expect(saved.isCompleted, isTrue);
+      });
+    });
+  });
 
   group('Finding 1 & 2: QuranPageConfirmationControl Tests', () {
     testWidgets('unbounded horizontal reader footer layout with textScale 2.0 does not throw RenderFlex', (tester) async {
@@ -834,8 +844,12 @@ void main() {
         expect(find.byKey(const Key('hisn_checklist_checkbox_75')), findsOneWidget);
 
         // Checkbox 75 is fully interactive
+        await tester.scrollUntilVisible(find.byKey(const Key('hisn_checklist_checkbox_75')), 180,
+          scrollable: find.byType(Scrollable).first);
         await tester.tap(find.byKey(const Key('hisn_checklist_checkbox_75')));
         await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text('1 من 22 ذكراً مكتملاً (5٪)'), -180,
+          scrollable: find.byType(Scrollable).first);
         expect(find.text('1 من 22 ذكراً مكتملاً (5٪)'), findsOneWidget);
 
         // Scroll boundedly using viewport margin drags to bring shared 100 card into view
@@ -927,6 +941,7 @@ void main() {
         expect(cb75, findsOneWidget);
 
         // Tap item 75
+        await tester.scrollUntilVisible(cb75, 180, scrollable: find.byType(Scrollable).first);
         await tester.tap(cb75);
 
         // Pump until gate entered
@@ -986,7 +1001,7 @@ void main() {
         await tester.pump();
 
         expect(find.byType(CircularProgressIndicator), findsOneWidget);
-        expect(find.text('اختر دعاء اليوم من حصن المسلم'), findsNothing);
+        expect(find.text('اختر دعاء اليوم من الأدعية الموثقة'), findsNothing);
 
         // Error
         final errorRepo = _FailingProgressRepository(db);
@@ -1080,9 +1095,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Step 1: Choose item (source id 1) from selection view
-        expect(find.text('اختر دعاء اليوم من حصن المسلم'), findsOneWidget);
-        final selectBtn = find.byKey(const Key('select_dua_1'));
+        // Step 1: Choose the sourced petition (item 2) from selection view.
+        expect(find.text('اختر دعاء اليوم من الأدعية الموثقة'), findsOneWidget);
+        final selectBtn = find.byKey(const Key('select_dua_2'));
         expect(selectBtn, findsOneWidget);
         await tester.tap(selectBtn);
         await tester.pumpAndSettle();
@@ -1091,7 +1106,7 @@ void main() {
         await tester.runAsync(() async {
           final conf = await repo.getSourceConfirmation('Africa/Cairo|2026-10-07', 'daily_dua');
           expect(conf, isNotNull);
-          expect(conf!.hisnItemId, equals(1));
+          expect(conf!.hisnItemId, equals(2));
           expect(conf.isCompleted, isFalse, reason: 'Choosing item initially records isCompleted as false');
         });
 
@@ -1110,7 +1125,7 @@ void main() {
         await tester.runAsync(() async {
           final conf = await repo.getSourceConfirmation('Africa/Cairo|2026-10-07', 'daily_dua');
           expect(conf, isNotNull);
-          expect(conf!.hisnItemId, equals(1));
+          expect(conf!.hisnItemId, equals(2));
           expect(conf.isCompleted, isTrue, reason: 'Explicit confirmation sets isCompleted to true in SQLite');
         });
 
@@ -1162,7 +1177,7 @@ void main() {
           await tester.runAsync(() async {
             final conf = await reopenedRepo.getSourceConfirmation('Africa/Cairo|2026-10-07', 'daily_dua');
             expect(conf, isNotNull);
-            expect(conf!.hisnItemId, equals(1));
+            expect(conf!.hisnItemId, equals(2));
             expect(conf.isCompleted, isFalse, reason: 'Undo sets isCompleted to false in SQLite');
           });
 
@@ -1182,14 +1197,14 @@ void main() {
           await tester.pumpAndSettle();
 
           // On new day: selection view is shown fresh
-          expect(find.text('اختر دعاء اليوم من حصن المسلم'), findsOneWidget);
-          expect(find.byKey(const Key('select_dua_1')), findsOneWidget);
+          expect(find.text('اختر دعاء اليوم من الأدعية الموثقة'), findsOneWidget);
+          expect(find.byKey(const Key('select_dua_2')), findsOneWidget);
 
           // Verify SQLite state: old selection kept on Oct 7, Oct 8 is null
           await tester.runAsync(() async {
             final oct7Conf = await reopenedRepo.getSourceConfirmation('Africa/Cairo|2026-10-07', 'daily_dua');
             expect(oct7Conf, isNotNull);
-            expect(oct7Conf!.hisnItemId, equals(1));
+            expect(oct7Conf!.hisnItemId, equals(2));
 
             final oct8Conf = await reopenedRepo.getSourceConfirmation('Africa/Cairo|2026-10-08', 'daily_dua');
             expect(oct8Conf, isNull, reason: 'Next civil day starts fresh with no selection');

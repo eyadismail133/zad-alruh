@@ -103,7 +103,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
             icon: const Icon(Icons.pin_outlined),
             tooltip: 'الانتقال إلى صفحة',
             onPressed: () {
-              final currentPage = readingAsync.valueOrNull?.lastPage ?? 1;
+              final currentPage = readingAsync.valueOrNull?.resumePage ?? 1;
               _openPageJumpDialog(currentPage);
             },
           ),
@@ -111,7 +111,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
             icon: const Icon(Icons.bookmark_add_outlined),
             tooltip: 'إضافة علامة',
             onPressed: () {
-              final currentPage = readingAsync.valueOrNull?.lastPage ?? 1;
+              final currentPage = readingAsync.valueOrNull?.resumePage ?? 1;
               final quranRepo = quranAsync.valueOrNull;
               final verses = quranRepo?.getVersesForPage(currentPage) ?? [];
               AddQuranBookmarkDialog.show(
@@ -159,106 +159,107 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                     );
                   }
 
-            return NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Search Input Field
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                  return NestedScrollView(
+                    headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Search Input Field
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: _buildSearchTextField(context, isDark),
+                            ),
+                            // Resume / Last Read Position Banner
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              child: readingAsync.when(
+                                data: (reading) => _buildResumeBanner(
+                                  context,
+                                  quranRepo,
+                                  reading,
+                                  isDark,
+                                ),
+                                loading: () =>
+                                    _buildResumeBannerLoading(context, isDark),
+                                error: (err, _) => _buildResumeBannerError(
+                                  context,
+                                  isDark,
+                                  onRetry: () => ref.refresh(
+                                    readingProgressControllerProvider,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
                         ),
-                        child: _buildSearchTextField(context, isDark),
                       ),
-                      // Resume / Last Read Position Banner
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        child: readingAsync.when(
-                          data: (reading) => _buildResumeBanner(
-                            context,
-                            quranRepo,
-                            reading,
-                            isDark,
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _SliverTabBarDelegate(
+                          TabBar(
+                            controller: _tabController,
+                            isScrollable: true,
+                            tabAlignment: TabAlignment.start,
+                            tabs: const [
+                              Tab(text: 'السور (١١٤)'),
+                              Tab(text: 'الأجزاء (٣٠)'),
+                              Tab(text: 'العلامات المحفوظة'),
+                            ],
                           ),
-                          loading: () =>
-                              _buildResumeBannerLoading(context, isDark),
-                          error: (err, _) => _buildResumeBannerError(
-                            context,
-                            isDark,
-                            onRetry: () =>
-                                ref.refresh(readingProgressControllerProvider),
-                          ),
+                          isDark: isDark,
                         ),
                       ),
-                      const SizedBox(height: 4),
                     ],
-                  ),
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SliverTabBarDelegate(
-                    TabBar(
+                    body: TabBarView(
                       controller: _tabController,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      tabs: const [
-                        Tab(text: 'السور (١١٤)'),
-                        Tab(text: 'الأجزاء (٣٠)'),
-                        Tab(text: 'العلامات المحفوظة'),
+                      children: [
+                        // Surahs List Tab
+                        _buildSurahsList(
+                          context,
+                          quranRepo,
+                          readingAsync.valueOrNull,
+                          isDark,
+                        ),
+
+                        // Juzs List Tab
+                        _buildJuzsList(
+                          context,
+                          quranRepo,
+                          readingAsync.valueOrNull,
+                          isDark,
+                        ),
+
+                        // Bookmarks Tab
+                        _buildBookmarksList(context, isDark),
                       ],
                     ),
-                    isDark: isDark,
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: RetryableErrorView(
+                      message: 'تعذر تحميل بيانات المصحف الشريف.',
+                      onRetry: () => ref.refresh(quranRepositoryProvider),
+                    ),
                   ),
                 ),
-              ],
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  // Surahs List Tab
-                  _buildSurahsList(
-                    context,
-                    quranRepo,
-                    readingAsync.valueOrNull,
-                    isDark,
-                  ),
-
-                  // Juzs List Tab
-                  _buildJuzsList(
-                    context,
-                    quranRepo,
-                    readingAsync.valueOrNull,
-                    isDark,
-                  ),
-
-                  // Bookmarks Tab
-                  _buildBookmarksList(context, isDark),
-                ],
-              ),
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: RetryableErrorView(
-                message: 'تعذر تحميل بيانات المصحف الشريف.',
-                onRetry: () => ref.refresh(quranRepositoryProvider),
               ),
             ),
-          ),
+          ],
         ),
       ),
-    ],
-  ),
-),
-);
-}
+    );
+  }
 
   Widget _buildSearchTextField(BuildContext context, bool isDark) {
     return TextField(
@@ -298,12 +299,14 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
     ReadingProgress readingProgress,
     bool isDark,
   ) {
-    final lastPage = readingProgress.lastPage;
+    final lastPage = readingProgress.resumePage;
     final selectedSurahNum = readingProgress.selectedSurah;
     final selectedVerseNum = readingProgress.selectedVerse;
 
     String subtitle;
-    if (selectedSurahNum != null && selectedVerseNum != null) {
+    if (selectedSurahNum != null &&
+        selectedVerseNum != null &&
+        readingProgress.nextResumePage == null) {
       final surah = repo.getSurah(selectedSurahNum);
       subtitle =
           'سورة ${surah.name} · الآية ${QuranUiUtils.toArabicDigits(selectedVerseNum)} · صفحة ${QuranUiUtils.toArabicDigits(lastPage)}';
@@ -606,20 +609,6 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                           ],
                         ),
                         const SizedBox(height: 8),
-                        // Unmodified original verbatim Uthmani text in Amiri Quran font
-                        Text(
-                          verse.text,
-                          style: TextStyle(
-                            fontFamily: 'Amiri Quran',
-                            fontSize: 17,
-                            height: 1.8,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : const Color(0xFF1B2921),
-                          ),
-                          textAlign: TextAlign.justify,
-                          textDirection: TextDirection.rtl,
-                        ),
                       ],
                     ),
                   ),
@@ -640,7 +629,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
     bool isDark,
   ) {
     final surahs = repo.getSurahs();
-    final lastPage = readingProgress?.lastPage ?? 1;
+    final lastPage = readingProgress?.resumePage ?? 1;
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -748,8 +737,10 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                   icon: const Icon(Icons.headphones_outlined, size: 18),
                   tooltip: 'استماع للسورة كاملة',
                   padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                   onPressed: () => _showSurahAudioDialog(context, surah),
                 ),
                 const SizedBox(width: 4),
@@ -771,7 +762,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
     bool isDark,
   ) {
     final juzs = repo.getJuzs();
-    final lastPage = readingProgress?.lastPage ?? 1;
+    final lastPage = readingProgress?.resumePage ?? 1;
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1014,10 +1005,13 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                         icon: const Icon(Icons.stop, size: 18),
                         tooltip: 'إيقاف التلاوة',
                         padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 28, minHeight: 28),
-                        color:
-                            isDark ? Colors.red.shade300 : Colors.red.shade700,
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        color: isDark
+                            ? Colors.red.shade300
+                            : Colors.red.shade700,
                         onPressed: () => controller.stop(),
                       ),
                       const SizedBox(width: 4),
@@ -1034,8 +1028,10 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                           icon: const Icon(Icons.refresh, size: 18),
                           tooltip: 'إعادة المحاولة',
                           padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 28, minHeight: 28),
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
                           onPressed: () {
                             if (audioState.activeSurahNumber != null) {
                               controller.playSurah(
@@ -1052,8 +1048,10 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                           icon: const Icon(Icons.pause, size: 18),
                           tooltip: 'إيقاف مؤقت',
                           padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 28, minHeight: 28),
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
                           onPressed: () => controller.pause(),
                         ),
                         const SizedBox(width: 4),
@@ -1063,8 +1061,10 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                           icon: const Icon(Icons.play_arrow, size: 18),
                           tooltip: 'استئناف',
                           padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 28, minHeight: 28),
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
                           onPressed: () => controller.resume(),
                         ),
                         const SizedBox(width: 4),
@@ -1084,12 +1084,12 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                         audioState.isLoading
                             ? 'جاري التحميل...'
                             : audioState.isBuffering
-                                ? 'تخزين مؤقت...'
-                                : audioState.isPaused
-                                    ? 'متوقف مؤقتاً'
-                                    : audioState.hasError
-                                        ? 'تعذر التحميل'
-                                        : 'مشاري العفاسي (حفص)',
+                            ? 'تخزين مؤقت...'
+                            : audioState.isPaused
+                            ? 'متوقف مؤقتاً'
+                            : audioState.hasError
+                            ? 'تعذر التحميل'
+                            : 'مشاري العفاسي (حفص)',
                         style: TextStyle(
                           fontSize: 10,
                           color: isDark

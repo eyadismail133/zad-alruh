@@ -6,25 +6,33 @@ class ReadingProgress {
   final int? selectedSurah;
   final int? selectedVerse;
   final DateTime? updatedAt;
+  final int? nextResumePage;
+  int get resumePage => nextResumePage ?? lastPage;
 
   const ReadingProgress({
     this.lastPage = 1,
     this.selectedSurah,
     this.selectedVerse,
     this.updatedAt,
-  }) : assert(lastPage >= 1 && lastPage <= 604, 'lastPage must be between 1 and 604');
+    this.nextResumePage,
+  }) : assert(
+         lastPage >= 1 && lastPage <= 604,
+         'lastPage must be between 1 and 604',
+       );
 
   ReadingProgress copyWith({
     int? lastPage,
     int? selectedSurah,
     int? selectedVerse,
     DateTime? updatedAt,
+    int? nextResumePage,
   }) {
     return ReadingProgress(
       lastPage: lastPage ?? this.lastPage,
       selectedSurah: selectedSurah ?? this.selectedSurah,
       selectedVerse: selectedVerse ?? this.selectedVerse,
       updatedAt: updatedAt ?? this.updatedAt,
+      nextResumePage: nextResumePage ?? this.nextResumePage,
     );
   }
 
@@ -34,6 +42,7 @@ class ReadingProgress {
       'last_page': lastPage,
       'selected_surah': selectedSurah,
       'selected_verse': selectedVerse,
+      'resume_page': nextResumePage,
       'updated_at': (updatedAt ?? DateTime.now()).toIso8601String(),
     };
   }
@@ -43,7 +52,10 @@ class ReadingProgress {
       lastPage: (map['last_page'] as num?)?.toInt() ?? 1,
       selectedSurah: (map['selected_surah'] as num?)?.toInt(),
       selectedVerse: (map['selected_verse'] as num?)?.toInt(),
-      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'] as String) : null,
+      nextResumePage: (map['resume_page'] as num?)?.toInt(),
+      updatedAt: map['updated_at'] != null
+          ? DateTime.tryParse(map['updated_at'] as String)
+          : null,
     );
   }
 
@@ -53,12 +65,15 @@ class ReadingProgress {
     return other is ReadingProgress &&
         other.lastPage == lastPage &&
         other.selectedSurah == selectedSurah &&
-        other.selectedVerse == selectedVerse;
+        other.selectedVerse == selectedVerse &&
+        other.nextResumePage == nextResumePage;
   }
 
   @override
-  int get hashCode => Object.hash(lastPage, selectedSurah, selectedVerse);
+  int get hashCode =>
+      Object.hash(lastPage, selectedSurah, selectedVerse, nextResumePage);
 
   @override
-  String toString() => 'ReadingProgress(lastPage: $lastPage, surah: $selectedSurah, verse: $selectedVerse)';
+  String toString() =>
+      'ReadingProgress(lastPage: $lastPage, surah: $selectedSurah, verse: $selectedVerse)';
 }

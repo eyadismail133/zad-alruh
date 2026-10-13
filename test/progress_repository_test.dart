@@ -716,19 +716,19 @@ void main() {
         expect(riyadhProgress1.quranCompleted, isFalse);
         expect(riyadhProgress1.dailyDuaCompleted, isFalse);
 
-        // 6. Complete Dua task in Riyadh bucket with authentic Hisn ID 1
+        // 6. Complete Dua task in Riyadh bucket with the sourced petition ID 2.
         const riyadhDuaKey = DailySourceKey(
           dateBucket: 'Asia/Riyadh|2026-09-27',
           taskKey: DailySourceTasks.dailyDua,
         );
         await container
             .read(dailySourceConfirmationControllerProvider(riyadhDuaKey).notifier)
-            .setConfirmation(isCompleted: true, hisnItemId: 1);
+            .setConfirmation(isCompleted: true, hisnItemId: 2);
         final riyadhProgress2 = await container.read(
           dailyProgressControllerProvider(riyadhBucket).future,
         );
         expect(riyadhProgress2.dailyDuaCompleted, isTrue);
-        expect(riyadhProgress2.dailyDuaItemId, 1);
+        expect(riyadhProgress2.dailyDuaItemId, 2);
         expect(riyadhProgress2.quranCompleted, isFalse);
 
         // 7. Switch back to Cairo
@@ -752,7 +752,7 @@ void main() {
           dailyProgressControllerProvider(riyadhBucket).future,
         );
         expect(riyadhProgressPreserved.dailyDuaCompleted, isTrue);
-        expect(riyadhProgressPreserved.dailyDuaItemId, 1);
+        expect(riyadhProgressPreserved.dailyDuaItemId, 2);
         expect(riyadhProgressPreserved.quranCompleted, isFalse);
 
         container.dispose();

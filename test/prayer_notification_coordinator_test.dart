@@ -197,29 +197,9 @@ void main() {
   setUpAll(() async {
     PrayerCalculator.ensureTimeZonesInitialized();
 
-    // Load fonts for compact UI tests
-    final amiriFile = File('assets/fonts/Amiri-Quran-Regular.ttf');
-    if (await amiriFile.exists()) {
-      final amiriBytes = await amiriFile.readAsBytes();
-      final fontLoaderAmiri = FontLoader('Amiri Quran');
-      fontLoaderAmiri.addFont(Future.value(ByteData.sublistView(amiriBytes)));
-      await fontLoaderAmiri.load();
-    }
-
-    final fontLoaderPlex = FontLoader('IBM Plex Sans Arabic');
-    for (final fontPath in [
-      'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
-      'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
-    ]) {
-      final f = File(fontPath);
-      if (await f.exists()) {
-        final bytes = await f.readAsBytes();
-        fontLoaderPlex.addFont(Future.value(ByteData.sublistView(bytes)));
-      }
-    }
-    await fontLoaderPlex.load();
+    final naskhBytes = await File('assets/fonts/NotoNaskhArabic-Variable.ttf').readAsBytes();
+    final naskhLoader = FontLoader('Noto Naskh Arabic')..addFont(Future.value(ByteData.sublistView(naskhBytes)));
+    await naskhLoader.load();
 
     final flutterRoot =
         Platform.environment['FLUTTER_ROOT'] ?? 'D:/tools/flutter';

@@ -91,13 +91,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     tzdata.initializeTimeZones();
     for (final entry in <String, List<String>>{
-      'IBM Plex Sans Arabic': [
-        'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
-        'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
-        'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
-        'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
-      ],
-      'Amiri Quran': ['assets/fonts/Amiri-Quran-Regular.ttf'],
+      'Noto Naskh Arabic': ['assets/fonts/NotoNaskhArabic-Variable.ttf'],
       'MaterialIcons': [
         '${Platform.environment['FLUTTER_ROOT'] ?? 'D:/tools/flutter'}/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
       ],

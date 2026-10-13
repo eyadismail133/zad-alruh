@@ -6,10 +6,7 @@ class HisnFootnote {
   /// Verbatim scholarly citation, reference, or takhrij from the original footnote.
   final String text;
 
-  const HisnFootnote({
-    required this.id,
-    required this.text,
-  });
+  const HisnFootnote({required this.id, required this.text});
 
   factory HisnFootnote.fromJson(Map<String, dynamic> json) {
     return HisnFootnote(
@@ -18,10 +15,7 @@ class HisnFootnote {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'text': text,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'text': text};
 
   @override
   bool operator ==(Object other) =>
@@ -72,6 +66,15 @@ class HisnItem {
   /// or describe a narrative hadith practice rather than a single whole-entry repetition target.
   final int? repeatTarget;
 
+  /// Supplemental entries retain their original HadeethEnc identity and source.
+  /// Null denotes the canonical Hisn book rather than the supplementary corpus.
+  final int? sourceHadithId;
+  final String? sourceUrl;
+
+  String get contextLabel => sourceHadithId == null
+      ? 'الباب $chapterNumber: $chapterTitle'
+      : 'من السنة — حديث #$sourceHadithId: $chapterTitle';
+
   const HisnItem({
     required this.id,
     required this.number,
@@ -82,6 +85,8 @@ class HisnItem {
     required this.footnoteIds,
     required this.footnotes,
     this.repeatTarget,
+    this.sourceHadithId,
+    this.sourceUrl,
   });
 
   factory HisnItem.fromJson(Map<String, dynamic> json) {
@@ -92,13 +97,19 @@ class HisnItem {
         .toList(growable: false);
 
     final rawFootnoteIds = json['footnote_ids'] as List<dynamic>? ?? [];
-    final footnoteIds = rawFootnoteIds.map((e) => e.toString()).toList(growable: false);
+    final footnoteIds = rawFootnoteIds
+        .map((e) => e.toString())
+        .toList(growable: false);
 
     final rawParas = json['paragraphs'] as List<dynamic>? ?? [];
-    final paragraphs = rawParas.map((e) => e.toString()).toList(growable: false);
+    final paragraphs = rawParas
+        .map((e) => e.toString())
+        .toList(growable: false);
 
     return HisnItem(
-      id: json['id'] is int ? json['id'] as int : int.parse(json['id'].toString()),
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.parse(json['id'].toString()),
       number: json['number'] is int
           ? json['number'] as int
           : int.parse(json['number'].toString()),

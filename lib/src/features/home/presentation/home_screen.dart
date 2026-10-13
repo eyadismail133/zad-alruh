@@ -57,7 +57,9 @@ class HomeScreen extends ConsumerWidget {
                     'اختر عدد الصفحات المستهدف قراءتها يومياً (١ إلى ٦٠٤ صفحات):',
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -72,20 +74,35 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkCardBorder : AppColors.forestSoftTint,
+                          color: isDark
+                              ? AppColors.darkCardBorder
+                              : AppColors.forestSoftTint,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                            color: isDark
+                                ? AppColors.darkGoldAccent
+                                : AppColors.forestPrimary,
                           ),
                         ),
                         child: Text(
-                          '$selectedGoal ${selectedGoal == 1 ? 'صفحة' : selectedGoal == 2 ? 'صفحتان' : selectedGoal <= 10 ? 'صفحات' : 'صفحة'}',
+                          '$selectedGoal ${selectedGoal == 1
+                              ? 'صفحة'
+                              : selectedGoal == 2
+                              ? 'صفحتان'
+                              : selectedGoal <= 10
+                              ? 'صفحات'
+                              : 'صفحة'}',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary,
+                            color: isDark
+                                ? AppColors.darkGoldAccent
+                                : AppColors.forestPrimary,
                           ),
                         ),
                       ),
@@ -253,8 +270,8 @@ class HomeScreen extends ConsumerWidget {
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: isDark
-                              ? AppColors.darkGoldAccent
-                              : AppColors.goldDark,
+                                ? AppColors.darkGoldAccent
+                                : AppColors.goldDark,
                           ),
                         ),
                       ],
@@ -315,7 +332,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'آخر صفحة مسجلة: صفحة ${reading.lastPage} من ٦٠٤',
+                          'آخر صفحة مسجلة: صفحة ${reading.resumePage} من ٦٠٤',
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
@@ -338,7 +355,11 @@ class HomeScreen extends ConsumerWidget {
                             ),
                           ),
                           onPressed: () {
-                            _navigateToQuranReader(context, ref, reading.lastPage);
+                            _navigateToQuranReader(
+                              context,
+                              ref,
+                              reading.resumePage,
+                            );
                           },
                           child: const Text(
                             'كمّل وِردك  ←',
@@ -384,7 +405,9 @@ class HomeScreen extends ConsumerWidget {
                     return Container(
                       height: 180,
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.cardSurface,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: const Center(child: CircularProgressIndicator()),
@@ -421,7 +444,8 @@ class HomeScreen extends ConsumerWidget {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'إنجازك اليوم (${formatDisplayDate(today)})',
@@ -508,7 +532,8 @@ class HomeScreen extends ConsumerWidget {
                             // Task 1: Quran Reading
                             _buildQuranTaskRow(
                               daily: daily,
-                              readingPage: readingAsync.valueOrNull?.lastPage ?? 1,
+                              readingPage:
+                                  readingAsync.valueOrNull?.resumePage ?? 1,
                               isDark: isDark,
                               context: context,
                               ref: ref,
@@ -548,7 +573,9 @@ class HomeScreen extends ConsumerWidget {
                     loading: () => Container(
                       height: 180,
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.cardSurface,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: const Center(child: CircularProgressIndicator()),
@@ -864,9 +891,7 @@ class HomeScreen extends ConsumerWidget {
                         : AppColors.cardSurface,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
                 error: (_, __) => Container(
                   padding: const EdgeInsets.all(14),
@@ -1020,10 +1045,14 @@ class HomeScreen extends ConsumerWidget {
         child: Row(
           children: [
             Icon(
-              daily.quranCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              daily.quranCompleted
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
               size: 20,
               color: daily.quranCompleted
-                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  ? (isDark
+                        ? AppColors.darkGoldAccent
+                        : AppColors.forestPrimary)
                   : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
             const SizedBox(width: 10),
@@ -1036,15 +1065,23 @@ class HomeScreen extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
-                      decoration: daily.quranCompleted ? TextDecoration.lineThrough : null,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textDark,
+                      decoration: daily.quranCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
                   ),
                   Text(
-                    daily.quranCompleted ? 'مكتمل بحمد الله' : 'اضغط للمتابعة والقراءة في المصحف',
+                    daily.quranCompleted
+                        ? 'مكتمل بحمد الله'
+                        : 'اضغط للمتابعة والقراءة في المصحف',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1055,7 +1092,8 @@ class HomeScreen extends ConsumerWidget {
               icon: const Icon(Icons.tune, size: 16),
               tooltip: 'تعديل الهدف اليومي',
               visualDensity: VisualDensity.compact,
-              onPressed: () => _showQuranGoalDialog(context, ref, daily.quranGoalPages),
+              onPressed: () =>
+                  _showQuranGoalDialog(context, ref, daily.quranGoalPages),
             ),
             const Icon(Icons.chevron_left, size: 18),
           ],
@@ -1076,7 +1114,8 @@ class HomeScreen extends ConsumerWidget {
         Navigator.push(
           context,
           MaterialPageRoute<void>(
-            builder: (_) => const DailyHisnChecklistScreen(period: DhikrPeriod.morning),
+            builder: (_) =>
+                const DailyHisnChecklistScreen(period: DhikrPeriod.morning),
           ),
         );
       },
@@ -1085,10 +1124,14 @@ class HomeScreen extends ConsumerWidget {
         child: Row(
           children: [
             Icon(
-              daily.morningDhikrCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              daily.morningDhikrCompleted
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
               size: 20,
               color: daily.morningDhikrCompleted
-                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  ? (isDark
+                        ? AppColors.darkGoldAccent
+                        : AppColors.forestPrimary)
                   : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
             const SizedBox(width: 10),
@@ -1101,8 +1144,12 @@ class HomeScreen extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
-                      decoration: daily.morningDhikrCompleted ? TextDecoration.lineThrough : null,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textDark,
+                      decoration: daily.morningDhikrCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
                   ),
                   Text(
@@ -1111,7 +1158,9 @@ class HomeScreen extends ConsumerWidget {
                         : 'اضغط لفتح قائمة أذكار الصباح الموثقة',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1136,7 +1185,8 @@ class HomeScreen extends ConsumerWidget {
         Navigator.push(
           context,
           MaterialPageRoute<void>(
-            builder: (_) => const DailyHisnChecklistScreen(period: DhikrPeriod.evening),
+            builder: (_) =>
+                const DailyHisnChecklistScreen(period: DhikrPeriod.evening),
           ),
         );
       },
@@ -1145,10 +1195,14 @@ class HomeScreen extends ConsumerWidget {
         child: Row(
           children: [
             Icon(
-              daily.eveningDhikrCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              daily.eveningDhikrCompleted
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
               size: 20,
               color: daily.eveningDhikrCompleted
-                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  ? (isDark
+                        ? AppColors.darkGoldAccent
+                        : AppColors.forestPrimary)
                   : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
             const SizedBox(width: 10),
@@ -1161,8 +1215,12 @@ class HomeScreen extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
-                      decoration: daily.eveningDhikrCompleted ? TextDecoration.lineThrough : null,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textDark,
+                      decoration: daily.eveningDhikrCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
                   ),
                   Text(
@@ -1171,7 +1229,9 @@ class HomeScreen extends ConsumerWidget {
                         : 'اضغط لفتح قائمة أذكار المساء الموثقة',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1205,10 +1265,14 @@ class HomeScreen extends ConsumerWidget {
         child: Row(
           children: [
             Icon(
-              daily.postPrayerDhikrCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+              daily.postPrayerDhikrCompleted
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
               size: 20,
               color: daily.postPrayerDhikrCompleted
-                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  ? (isDark
+                        ? AppColors.darkGoldAccent
+                        : AppColors.forestPrimary)
                   : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
             const SizedBox(width: 10),
@@ -1221,8 +1285,12 @@ class HomeScreen extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
-                      decoration: daily.postPrayerDhikrCompleted ? TextDecoration.lineThrough : null,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textDark,
+                      decoration: daily.postPrayerDhikrCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
                   ),
                   Text(
@@ -1231,7 +1299,9 @@ class HomeScreen extends ConsumerWidget {
                         : 'اضغط لفتح أذكار بعد الصلاة من حصن المسلم',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1258,9 +1328,7 @@ class HomeScreen extends ConsumerWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute<void>(
-            builder: (_) => const DailyDuaScreen(),
-          ),
+          MaterialPageRoute<void>(builder: (_) => const DailyDuaScreen()),
         );
       },
       child: Padding(
@@ -1271,7 +1339,9 @@ class HomeScreen extends ConsumerWidget {
               isDone ? Icons.check_circle : Icons.radio_button_unchecked,
               size: 20,
               color: isDone
-                  ? (isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary)
+                  ? (isDark
+                        ? AppColors.darkGoldAccent
+                        : AppColors.forestPrimary)
                   : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
             ),
             const SizedBox(width: 10),
@@ -1280,21 +1350,27 @@ class HomeScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'دعاء اليوم (حصن المسلم)',
+                    'دعاء اليوم',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                      color: isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textDark,
                       decoration: isDone ? TextDecoration.lineThrough : null,
                     ),
                   ),
                   Text(
                     hasChosen
-                        ? (isDone ? 'ذكر #${daily.dailyDuaItemId} (مكتمل بحمد الله)' : 'ذكر #${daily.dailyDuaItemId} (بانتظار القراءة)')
-                        : 'اضغط لاختيار وقراءة دعاء اليوم من حصن المسلم',
+                        ? (isDone
+                              ? 'ذكر #${daily.dailyDuaItemId} (مكتمل بحمد الله)'
+                              : 'ذكر #${daily.dailyDuaItemId} (بانتظار القراءة)')
+                        : 'اضغط لاختيار وقراءة دعاء من الأدعية الموثقة',
                     style: TextStyle(
                       fontSize: 10,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1340,7 +1416,8 @@ class HomeScreen extends ConsumerWidget {
               constraints.maxWidth < totalNeeded || textScale > 1.15;
 
           Widget buildItem((PrayerType, PrayerEvent?) p) {
-            final isNext = p.$2 != null &&
+            final isNext =
+                p.$2 != null &&
                 nextPrayer != null &&
                 p.$2!.utcDateTime.isAtSameMomentAs(nextPrayer.utcDateTime);
             final time = p.$2 != null
@@ -1352,8 +1429,8 @@ class HomeScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: isNext
                     ? (isDark
-                        ? AppColors.darkForestPrimary.withAlpha(50)
-                        : const Color(0xFFE7F0E8))
+                          ? AppColors.darkForestPrimary.withAlpha(50)
+                          : const Color(0xFFE7F0E8))
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1367,11 +1444,11 @@ class HomeScreen extends ConsumerWidget {
                       fontWeight: isNext ? FontWeight.bold : FontWeight.normal,
                       color: isNext
                           ? (isDark
-                              ? AppColors.darkGoldAccent
-                              : AppColors.forestPrimary)
+                                ? AppColors.darkGoldAccent
+                                : AppColors.forestPrimary)
                           : (isDark
-                              ? AppColors.darkTextMuted
-                              : AppColors.textMuted),
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1382,11 +1459,11 @@ class HomeScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       color: isNext
                           ? (isDark
-                              ? AppColors.darkGoldAccent
-                              : AppColors.forestPrimary)
+                                ? AppColors.darkGoldAccent
+                                : AppColors.forestPrimary)
                           : (isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.textDark),
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textDark),
                     ),
                   ),
                 ],

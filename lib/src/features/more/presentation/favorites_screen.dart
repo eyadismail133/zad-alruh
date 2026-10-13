@@ -4,9 +4,48 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
 import '../../quran/presentation/quran_reader_screen.dart';
+import '../../quran/data/sources/quran_asset_loader.dart';
+import '../../hadith/presentation/controllers/hadith_provider.dart';
+import '../../hadith/presentation/hadith_detail_screen.dart';
+import '../../hisn/presentation/controllers/hisn_provider.dart';
+import '../../hisn/presentation/hisn_detail_screen.dart';
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
+
+  Future<void> _openReligiousFavorite(
+    BuildContext context,
+    WidgetRef ref,
+    String kind,
+    String stableId,
+  ) async {
+    try {
+      final id = int.tryParse(stableId);
+      Widget? detail;
+      if (id != null && kind == 'hadith') {
+        final repository = await ref.read(hadithRepositoryProvider.future);
+        final hadith = repository.getById(id);
+        if (hadith != null) {
+          detail = HadithDetailScreen(hadith: hadith, repository: repository);
+        }
+      } else if (id != null && kind == 'hisn') {
+        final repository = await ref.read(hisnRepositoryProvider.future);
+        final invocation = repository.getById(id);
+        if (invocation != null) detail = HisnDetailScreen(item: invocation);
+      }
+      if (!context.mounted) return;
+      if (detail == null) throw StateError('Saved content cannot be resolved');
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => detail!));
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر فتح النص المحفوظ. سجلك محفوظ.')),
+        );
+      }
+    }
+  }
 
   Future<void> _deleteBookmark(
     BuildContext context,
@@ -169,6 +208,14 @@ class FavoritesScreen extends ConsumerWidget {
                     itemCount: favorites.length,
                     itemBuilder: (ctx, index) {
                       final fav = favorites[index];
+                      final isQuran = fav.contentKind == 'quran';
+                      final coordinates = fav.stableId.split(':');
+                      final surah = coordinates.length == 2
+                          ? int.tryParse(coordinates[0])
+                          : null;
+                      final ayah = coordinates.length == 2
+                          ? int.tryParse(coordinates[1])
+                          : null;
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
@@ -177,14 +224,18 @@ class FavoritesScreen extends ConsumerWidget {
                             color: Colors.redAccent,
                           ),
                           title: Text(
-                            fav.title,
+                            isQuran
+                                ? 'سورة ${surah ?? "—"} · الآية ${ayah ?? "—"}'
+                                : fav.title,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
                           ),
                           subtitle: Text(
-                            fav.subtitle ?? 'النوع: ${fav.contentKind}',
+                            isQuran
+                                ? 'فتح الصفحة المصورة'
+                                : fav.subtitle ?? 'النوع: ${fav.contentKind}',
                             style: const TextStyle(fontSize: 11),
                           ),
                           trailing: IconButton(
@@ -196,6 +247,48 @@ class FavoritesScreen extends ConsumerWidget {
                               fav.stableId,
                             ),
                           ),
+                          onTap: !isQuran
+                              ? (fav.contentKind == 'hisn' ||
+                                        fav.contentKind == 'hadith'
+                                    ? () => _openReligiousFavorite(
+                                        context,
+                                        ref,
+                                        fav.contentKind,
+                                        fav.stableId,
+                                      )
+                                    : null)
+                              : surah == null || ayah == null
+                              ? null
+                              : () async {
+                                  try {
+                                    final repository = await ref.read(
+                                      quranRepositoryProvider.future,
+                                    );
+                                    final page = repository
+                                        .getVerse(surah, ayah)
+                                        .pageNumber;
+                                    if (!context.mounted) return;
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => QuranReaderScreen(
+                                          initialPage: page,
+                                        ),
+                                      ),
+                                    );
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'تعذر فتح الآية المحفوظة.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
                         ),
                       );
                     },

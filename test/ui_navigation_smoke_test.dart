@@ -28,13 +28,7 @@ void main() {
 
   setUpAll(() async {
     for (final entry in <String, List<String>>{
-      'IBM Plex Sans Arabic': [
-        'assets/fonts/IBM-Plex-Sans-Arabic-Regular.ttf',
-        'assets/fonts/IBM-Plex-Sans-Arabic-Medium.ttf',
-        'assets/fonts/IBM-Plex-Sans-Arabic-SemiBold.ttf',
-        'assets/fonts/IBM-Plex-Sans-Arabic-Bold.ttf',
-      ],
-      'Amiri Quran': ['assets/fonts/Amiri-Quran-Regular.ttf'],
+      'Noto Naskh Arabic': ['assets/fonts/NotoNaskhArabic-Variable.ttf'],
       'MaterialIcons': [
         '${Platform.environment['FLUTTER_ROOT'] ?? 'D:/tools/flutter'}/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
       ],
@@ -264,7 +258,7 @@ void main() {
         await tapAndSettle(tester, continueReadingBtn);
 
         // Tapping hero button opens reader at current page
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+        expect(find.text('المصحف المصوّر'), findsOneWidget);
 
         // Return to Quran index via AppBar back button
         await tapAndSettle(tester, find.byTooltip('العودة إلى الفهرس'));
@@ -312,7 +306,7 @@ void main() {
         final bucket = container.read(activeDateBucketProvider);
         await tester.ensureVisible(find.byKey(const Key('home_task_quran')));
         await tapAndSettle(tester, find.byKey(const Key('home_task_quran')));
-        expect(find.text('مصحف المدينة المنورة'), findsOneWidget);
+        expect(find.text('المصحف المصوّر'), findsOneWidget);
         final daily = (await tester.runAsync(
           () => repo.getDailyProgress(bucket),
         ))!;

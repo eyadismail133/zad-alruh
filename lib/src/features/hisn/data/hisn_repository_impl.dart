@@ -35,6 +35,9 @@ class HisnRepositoryImpl implements HisnRepository {
   final List<HisnItem> allItems;
 
   @override
+  List<HisnItem> get supplementalItems => const [];
+
+  @override
   final List<HisnChapter> allChapters;
 
   @override

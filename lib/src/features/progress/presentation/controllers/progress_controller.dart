@@ -112,17 +112,17 @@ class _ReadingIntent {
   ReadingProgress applyTo(ReadingProgress current) {
     switch (kind) {
       case _ReadingIntentKind.navigation:
-        if (current.lastPage == page) {
+        if (current.lastPage == page && current.nextResumePage == null) {
           return current;
         }
         return ReadingProgress(
           lastPage: page,
-          selectedSurah: null,
-          selectedVerse: null,
+          selectedSurah: current.lastPage == page ? current.selectedSurah : null,
+          selectedVerse: current.lastPage == page ? current.selectedVerse : null,
           updatedAt: DateTime.now(),
         );
       case _ReadingIntentKind.exactStop:
-        return current.copyWith(
+        return ReadingProgress(
           lastPage: page,
           selectedSurah: surah,
           selectedVerse: verse,
@@ -153,6 +153,21 @@ class ReadingProgressController extends AsyncNotifier<ReadingProgress> {
   bool get hasSaveError => _hasSaveError;
   bool get isResetting => _isResetting;
   ReadingProgress? get latestIntended => _latestIntended;
+
+  Future<void> reloadPersistedResume() async {
+    final generation = _generation;
+    final acceptedSeq = _acceptedSeq;
+    await drainPendingWrites();
+    final progress = await ref.read(progressRepositoryProvider).getReadingProgress();
+    if (_generation != generation ||
+        _isResetting ||
+        _acceptedSeq != acceptedSeq) {
+      return;
+    }
+    _latestIntended = progress;
+    _bootstrapFuture = Future.value(progress);
+    state = AsyncData(progress);
+  }
 
   Future<ReadingProgress> _ensureInitialized(ProgressRepository repo) {
     if (_bootstrapFuture != null) return _bootstrapFuture!;
@@ -1681,10 +1696,14 @@ class DailyQuranPagesController
     final previousSet = state.valueOrNull ?? <int>{};
     try {
       if (intent.action == _QuranPageAction.confirm) {
+        final readingController = ref.exists(readingProgressControllerProvider)
+            ? ref.read(readingProgressControllerProvider.notifier) : null;
+        await readingController?.drainPendingWrites();
         await repo.confirmQuranPage(
           dateBucket: intent.dateBucket,
           pageNumber: intent.pageNumber,
         );
+        await readingController?.reloadPersistedResume();
       } else {
         await repo.undoQuranPage(
           dateBucket: intent.dateBucket,

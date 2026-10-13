@@ -6,6 +6,7 @@ import '../models/hisn_metadata.dart';
 abstract class HisnRepository {
   /// All 267 Dhikr / Dua items in stable book order.
   List<HisnItem> get allItems;
+  List<HisnItem> get supplementalItems;
 
   /// All 132 Chapters in stable book order.
   List<HisnChapter> get allChapters;

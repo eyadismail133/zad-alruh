@@ -1,3 +1,4 @@
+import '../domain/models/hisn_invocation_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
@@ -60,9 +61,7 @@ class HisnChapterScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(chapter.title),
-        ),
+        appBar: AppBar(title: Text(chapter.title)),
         body: SafeArea(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -117,7 +116,7 @@ class HisnChapterScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                '${items.length} ${items.length == 1 ? 'ذكر' : 'أذكار'}',
+                                '${items.length} من الأدعية والأذكار',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -174,7 +173,7 @@ class HisnChapterScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'ذكر #${item.number}',
+                              '${HisnInvocationCatalog.label(item.id)} #${item.number}',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -234,7 +233,6 @@ class HisnChapterScreen extends StatelessWidget {
                         textAlign: TextAlign.justify,
                         style: TextStyle(
                           fontSize: 17,
-                          fontFamily: 'Amiri Quran',
                           height: 2.0,
                           color: isDark
                               ? AppColors.darkTextPrimary
@@ -251,7 +249,10 @@ class HisnChapterScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           TextButton.icon(
-                            icon: const Icon(Icons.format_quote_rounded, size: 16),
+                            icon: const Icon(
+                              Icons.format_quote_rounded,
+                              size: 16,
+                            ),
                             label: Text(
                               'التخريج (${item.footnotes.length})',
                               style: const TextStyle(fontSize: 11),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static const String fontFamily = 'IBM Plex Sans Arabic';
+  static const String fontFamily = 'Noto Naskh Arabic';
 
   static ThemeData get lightTheme {
     return ThemeData(

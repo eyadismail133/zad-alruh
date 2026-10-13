@@ -1,3 +1,4 @@
+import '../../hisn/domain/models/hisn_invocation_catalog.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:adhan/adhan.dart';
@@ -32,8 +33,8 @@ class ProgressRepository {
     this._database, {
     ProgressMutationBarrier? mutationBarrier,
     QuranVersePageValidator? versePageValidator,
-  })  : _barrier = mutationBarrier ?? ProgressMutationBarrier(),
-        _versePageValidator = versePageValidator;
+  }) : _barrier = mutationBarrier ?? ProgressMutationBarrier(),
+       _versePageValidator = versePageValidator;
 
   ProgressMutationBarrier get mutationBarrier => _barrier;
   bool get isResetInProgress => _barrier.isResetInProgress;
@@ -330,11 +331,9 @@ class ProgressRepository {
                   canonicalPage >= 1 &&
                   canonicalPage <= 604) {
                 _barrier.checkGeneration(gen, 'reconcileWithQuranMapping');
-                await db.update(
-                  'reading_progress',
-                  {'last_page': canonicalPage},
-                  where: 'id = 1',
-                );
+                await db.update('reading_progress', {
+                  'last_page': canonicalPage,
+                }, where: 'id = 1');
               }
             }
           }
@@ -618,7 +617,8 @@ class ProgressRepository {
 
     final shared100Rows = await db.query(
       'hisn_daily_item_progress',
-      where: 'date_bucket = ? AND period = ? AND item_id = ? AND is_completed = 1',
+      where:
+          'date_bucket = ? AND period = ? AND item_id = ? AND is_completed = 1',
       whereArgs: [
         dateBucket,
         DhikrPeriod.shared100.key,
@@ -729,7 +729,8 @@ class ProgressRepository {
           ? ((effectiveRow['evening_dhikr_completed'] as num?)?.toInt() == 1)
           : null,
       legacyPostPrayerDhikrCompleted: effectiveRow != null
-          ? ((effectiveRow['post_prayer_dhikr_completed'] as num?)?.toInt() == 1)
+          ? ((effectiveRow['post_prayer_dhikr_completed'] as num?)?.toInt() ==
+                1)
           : null,
       legacyDailyDuaCompleted: effectiveRow != null
           ? ((effectiveRow['daily_dua_completed'] as num?)?.toInt() == 1)
@@ -863,7 +864,11 @@ class ProgressRepository {
         );
       }
       if (itemId < 1 || itemId > 267) {
-        throw ArgumentError.value(itemId, 'itemId', 'Item ID must be between 1 and 267');
+        throw ArgumentError.value(
+          itemId,
+          'itemId',
+          'Item ID must be between 1 and 267',
+        );
       }
 
       final db = await _db;
@@ -923,15 +928,20 @@ class ProgressRepository {
 
       final db = await _db;
       _barrier.checkGeneration(gen, 'confirmQuranPage');
-      await db.insert(
-        'daily_quran_pages',
-        <String, dynamic>{
+      await db.transaction((txn) async {
+        _barrier.checkGeneration(gen, 'confirmQuranPage');
+        final existing = await txn.query('daily_quran_pages',
+          where: 'date_bucket = ? AND page_number = ?', whereArgs: [dateBucket, pageNumber], limit: 1);
+        if (existing.isNotEmpty) return;
+        await txn.insert('daily_quran_pages', <String, dynamic>{
           'date_bucket': dateBucket,
           'page_number': pageNumber,
           'confirmed_at': DateTime.now().toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        _barrier.checkGeneration(gen, 'confirmQuranPage');
+        await txn.update('reading_progress', {'resume_page': (pageNumber + 1).clamp(1, 604)},
+          where: 'id = 1 AND last_page = ?', whereArgs: [pageNumber]);
+      });
     });
   }
 
@@ -997,7 +1007,8 @@ class ProgressRepository {
           'Must be a valid qualified date bucket format: <IANA>|<YYYY-MM-DD>',
         );
       }
-      if (taskKey != DailySourceTasks.dailyDua && taskKey != DailySourceTasks.postPrayer) {
+      if (taskKey != DailySourceTasks.dailyDua &&
+          taskKey != DailySourceTasks.postPrayer) {
         throw ArgumentError.value(taskKey, 'taskKey', 'Invalid taskKey');
       }
 
@@ -1007,11 +1018,11 @@ class ProgressRepository {
             'Daily dua requires a valid chosen Hisn item ID (1..267) when confirmed',
           );
         }
-        if (hisnItemId != null && (hisnItemId < 1 || hisnItemId > 267)) {
+        if (hisnItemId != null && !HisnInvocationCatalog.contains(hisnItemId)) {
           throw ArgumentError.value(
             hisnItemId,
             'hisnItemId',
-            'Hisn item ID must be between 1 and 267',
+            'Daily dua requires an item from the Hisn invocation catalog',
           );
         }
       }
@@ -1144,7 +1155,8 @@ class ProgressRepository {
     bool clearActiveDhikrSession = false,
   }) async {
     return _barrier.runTrackedMutation('updatePreferencesFields', (gen) async {
-      if (quranDefaultGoal != null && (quranDefaultGoal < 1 || quranDefaultGoal > 604)) {
+      if (quranDefaultGoal != null &&
+          (quranDefaultGoal < 1 || quranDefaultGoal > 604)) {
         throw ArgumentError.value(
           quranDefaultGoal,
           'quranDefaultGoal',
@@ -1152,7 +1164,9 @@ class ProgressRepository {
         );
       }
       if (generalAdhanVoice != null &&
-          !UserPreferences.allowedGeneralAdhanVoices.contains(generalAdhanVoice)) {
+          !UserPreferences.allowedGeneralAdhanVoices.contains(
+            generalAdhanVoice,
+          )) {
         throw ArgumentError.value(
           generalAdhanVoice,
           'generalAdhanVoice',
@@ -1167,7 +1181,8 @@ class ProgressRepository {
           'Invalid Fajr adhan voice ID: must be adam, atcovi, or malmo_fajr',
         );
       }
-      if (hijriDayAdjustment != null && (hijriDayAdjustment < -2 || hijriDayAdjustment > 2)) {
+      if (hijriDayAdjustment != null &&
+          (hijriDayAdjustment < -2 || hijriDayAdjustment > 2)) {
         throw ArgumentError.value(
           hijriDayAdjustment,
           'hijriDayAdjustment',
@@ -1183,6 +1198,7 @@ class ProgressRepository {
           );
         }
       }
+
       validateOffset(fajrOffset, 'fajrOffset');
       validateOffset(sunriseOffset, 'sunriseOffset');
       validateOffset(dhuhrOffset, 'dhuhrOffset');
@@ -1190,7 +1206,8 @@ class ProgressRepository {
       validateOffset(maghribOffset, 'maghribOffset');
       validateOffset(ishaOffset, 'ishaOffset');
 
-      if (!identical(calculationMethodOverride, kPreferenceSentinel) && calculationMethodOverride != null) {
+      if (!identical(calculationMethodOverride, kPreferenceSentinel) &&
+          calculationMethodOverride != null) {
         final method = calculationMethodOverride as CalculationMethod;
         if (!PrayerSettings.supportedMethods.contains(method)) {
           throw ArgumentError.value(
@@ -1213,13 +1230,13 @@ class ProgressRepository {
           final resolvedCityId = clearSelectedCityId
               ? null
               : (!identical(selectedCityId, kPreferenceSentinel)
-                  ? selectedCityId as int?
-                  : UserPreferences.defaultSelectedCityId);
+                    ? selectedCityId as int?
+                    : UserPreferences.defaultSelectedCityId);
           final resolvedCalcMethod = clearCalculationMethodOverride
               ? null
               : (!identical(calculationMethodOverride, kPreferenceSentinel)
-                  ? calculationMethodOverride as CalculationMethod?
-                  : null);
+                    ? calculationMethodOverride as CalculationMethod?
+                    : null);
           final initial = UserPreferences(
             darkMode: darkMode ?? 'system',
             textScale: textScale ?? 1.0,
@@ -1228,9 +1245,11 @@ class ProgressRepository {
             selectedTimezone: selectedTimezone ?? 'Africa/Cairo',
             calculationMethodOverride: resolvedCalcMethod,
             asrMadhab: asrMadhab ?? Madhab.shafi,
-            highLatitudeRule: highLatitudeRule ?? HighLatitudeRule.middle_of_the_night,
+            highLatitudeRule:
+                highLatitudeRule ?? HighLatitudeRule.middle_of_the_night,
             polarResolution: polarResolution ?? PolarDayResolution.unresolved,
-            ramadanPolicy: ramadanPolicy ?? UmmAlQuraRamadanPolicy.eveningOfRamadan,
+            ramadanPolicy:
+                ramadanPolicy ?? UmmAlQuraRamadanPolicy.eveningOfRamadan,
             hijriDayAdjustment: hijriDayAdjustment ?? 0,
             fajrOffset: fajrOffset ?? 0,
             sunriseOffset: sunriseOffset ?? 0,

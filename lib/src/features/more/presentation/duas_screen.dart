@@ -1,3 +1,4 @@
+import '../../hisn/domain/models/hisn_invocation_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
@@ -15,11 +16,7 @@ class DuasScreen extends ConsumerStatefulWidget {
   final HisnRepository? repository;
   final int? initialChapterNumber;
 
-  const DuasScreen({
-    super.key,
-    this.repository,
-    this.initialChapterNumber,
-  });
+  const DuasScreen({super.key, this.repository, this.initialChapterNumber});
 
   @override
   ConsumerState<DuasScreen> createState() => _DuasScreenState();
@@ -55,10 +52,8 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute<void>(
-            builder: (_) => HisnChapterScreen(
-              chapter: chapter,
-              repository: repo,
-            ),
+            builder: (_) =>
+                HisnChapterScreen(chapter: chapter, repository: repo),
           ),
         );
       }
@@ -105,24 +100,20 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            appBar: AppBar(
-              title: const Text('الأدعية والأذكار (حصن المسلم)'),
-            ),
-            body: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            appBar: AppBar(title: const Text('الأدعية والأذكار (حصن المسلم)')),
+            body: const Center(child: CircularProgressIndicator()),
           ),
         );
       }
       return _buildContent(context, repo, isDark);
     }
 
-    ref.listen<AsyncValue<HisnRepository>>(
-      hisnRepositoryProvider,
-      (previous, next) {
-        next.whenData(_navigateToInitialChapterIfNeeded);
-      },
-    );
+    ref.listen<AsyncValue<HisnRepository>>(hisnRepositoryProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData(_navigateToInitialChapterIfNeeded);
+    });
 
     final hisnAsync = ref.watch(hisnRepositoryProvider);
 
@@ -130,9 +121,7 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
       loading: () => Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('الأدعية والأذكار (حصن المسلم)'),
-          ),
+          appBar: AppBar(title: const Text('الأدعية والأذكار (حصن المسلم)')),
           body: const Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -151,9 +140,7 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
       error: (err, stack) => Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('الأدعية والأذكار (حصن المسلم)'),
-          ),
+          appBar: AppBar(title: const Text('الأدعية والأذكار (حصن المسلم)')),
           body: SafeArea(
             child: RetryableErrorView(
               message:
@@ -173,9 +160,7 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
               appBar: AppBar(
                 title: const Text('الأدعية والأذكار (حصن المسلم)'),
               ),
-              body: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: const Center(child: CircularProgressIndicator()),
             ),
           );
         }
@@ -184,20 +169,25 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
     );
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    HisnRepository repo,
-    bool isDark,
-  ) {
+  Widget _buildContent(BuildContext context, HisnRepository repo, bool isDark) {
     final isSearching = _searchQuery.trim().isNotEmpty;
-    final searchResults = isSearching ? repo.search(_searchQuery) : const <HisnItem>[];
+    final searchResults = isSearching
+        ? repo
+              .search(_searchQuery)
+              .where(
+                (item) => switch (_selectedTabIndex) {
+                  2 => HisnInvocationCatalog.contains(item.id),
+                  3 => item.sourceHadithId != null,
+                  _ => true,
+                },
+              )
+              .toList()
+        : const <HisnItem>[];
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('الأدعية والأذكار (حصن المسلم)'),
-        ),
+        appBar: AppBar(title: const Text('الأدعية والأذكار (حصن المسلم)')),
         body: SafeArea(
           child: Column(
             children: [
@@ -209,7 +199,8 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                   onChanged: _onSearchChanged,
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: 'ابحث في نصوص الأذكار أو أسماء الأبواب أو رقم الذكر...',
+                    hintText:
+                        'ابحث في نصوص الأذكار أو أسماء الأبواب أو رقم الذكر...',
                     hintStyle: TextStyle(
                       fontSize: 12.5,
                       color: isDark
@@ -262,7 +253,10 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
               // 2. Tab selector (when not searching)
               if (!isSearching) ...[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -274,7 +268,10 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                                 'الأبواب والفصول (${repo.chaptersCount})',
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              icon: const Icon(Icons.folder_open_rounded, size: 16),
+                              icon: const Icon(
+                                Icons.folder_open_rounded,
+                                size: 16,
+                              ),
                             ),
                             ButtonSegment<int>(
                               value: 1,
@@ -282,10 +279,15 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                                 'جميع الأذكار (${repo.count})',
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              icon: const Icon(Icons.menu_book_rounded, size: 16),
+                              icon: const Icon(
+                                Icons.menu_book_rounded,
+                                size: 16,
+                              ),
                             ),
                           ],
-                          selected: {_selectedTabIndex},
+                          selected: {
+                            _selectedTabIndex < 2 ? _selectedTabIndex : 1,
+                          },
                           onSelectionChanged: (newSelection) {
                             setState(() {
                               _selectedTabIndex = newSelection.first;
@@ -296,10 +298,28 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                     ],
                   ),
                 ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: () => setState(() => _selectedTabIndex = 2),
+                      child: const Text('الأدعية'),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _selectedTabIndex = 3),
+                      child: Text(
+                        'أذكار وأدعية من السنة (${repo.supplementalItems.length})',
+                      ),
+                    ),
+                  ],
+                ),
               ] else ...[
                 // Search count header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -326,7 +346,7 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          '${searchResults.length} من ${repo.count}',
+                          '${searchResults.length} من ${repo.count + repo.supplementalItems.length}',
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.bold,
@@ -348,8 +368,8 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                 child: isSearching
                     ? _buildSearchResultsList(searchResults, repo, isDark)
                     : (_selectedTabIndex == 0
-                        ? _buildChaptersList(repo, isDark)
-                        : _buildAllItemsList(repo, isDark)),
+                          ? _buildChaptersList(repo, isDark)
+                          : _buildAllItemsList(repo, isDark)),
               ),
             ],
           ),
@@ -420,9 +440,7 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
               style: TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.bold,
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.textDark,
+                color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
               ),
             ),
             trailing: Container(
@@ -448,10 +466,8 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute<void>(
-                  builder: (_) => HisnChapterScreen(
-                    chapter: chapter,
-                    repository: repo,
-                  ),
+                  builder: (_) =>
+                      HisnChapterScreen(chapter: chapter, repository: repo),
                 ),
               );
             },
@@ -462,7 +478,19 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
   }
 
   Widget _buildAllItemsList(HisnRepository repo, bool isDark) {
-    final items = repo.allItems;
+    final items =
+        (_selectedTabIndex == 3
+                ? repo.supplementalItems
+                : [
+                    ...repo.allItems,
+                    if (_selectedTabIndex == 2) ...repo.supplementalItems,
+                  ])
+            .where(
+              (item) =>
+                  _selectedTabIndex != 2 ||
+                  HisnInvocationCatalog.contains(item.id),
+            )
+            .toList();
 
     return ListView.builder(
       itemCount: items.length,
@@ -498,7 +526,9 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      '${item.chapterNumber}. ${item.chapterTitle}',
+                      item.sourceHadithId == null
+                          ? '${item.chapterNumber}. ${item.chapterTitle}'
+                          : item.contextLabel,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -523,7 +553,7 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      'ذكر #${item.number}',
+                      '${HisnInvocationCatalog.label(item.id)} #${item.number}',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -543,7 +573,6 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 14.5,
-                  fontFamily: 'Amiri Quran',
                   height: 1.8,
                   color: isDark
                       ? AppColors.darkTextPrimary
