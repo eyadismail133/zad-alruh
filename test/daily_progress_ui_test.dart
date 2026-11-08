@@ -477,6 +477,14 @@ void main() {
         // Tap SnackBar retry action (which captured original intent for Oct 7 page 5)
         await tester.tap(find.text('إعادة المحاولة'));
         await tester.pumpAndSettle();
+        // The retry writes to real SQLite; give that I/O time to complete
+        // outside the fake-async zone before asserting on stored state.
+        for (var i = 0; i < 10; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)),
+          );
+          await tester.pump();
+        }
 
         // Verify: original bucket 'Africa/Cairo|2026-10-07' has page 5 confirmed
         await tester.runAsync(() async {
