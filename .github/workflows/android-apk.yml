@@ -43,10 +43,23 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - name: Install packages
-        run: flutter pub get
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! flutter pub get 2>&1 | tee pub-get.txt; then
+            tail -40 pub-get.txt | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}' | sed 's/^/::error title=pub get failed::/'
+            echo
+            exit 1
+          fi
 
       - name: Analyze
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee analyze.txt; then
+            grep -E "^\s*error " analyze.txt | head -40 | while IFS= read -r line; do echo "::error title=analyze::$line"; done
+            exit 1
+          fi
 
       - name: Content integrity (development gate)
         run: dart run tool/validate_content.dart --development

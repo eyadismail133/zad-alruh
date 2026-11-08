@@ -54,7 +54,7 @@ class ReminderService {
   Future<void> init() async {
     try {
       await _plugin.initialize(
-        const InitializationSettings(
+        settings: const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         ),
         onDidReceiveNotificationResponse: (response) {
@@ -110,7 +110,7 @@ class ReminderService {
       final pending = await _plugin.pendingNotificationRequests();
       for (final p in pending) {
         if (p.id >= idBase && p.id <= idMax) {
-          await _plugin.cancel(p.id);
+          await _plugin.cancel(id: p.id);
         }
       }
       if (!current.anyEnabled) return;
@@ -118,11 +118,11 @@ class ReminderService {
       for (final r in plan) {
         final channel = r.popUp ? _popupChannel : _quietChannel;
         await _plugin.zonedSchedule(
-          r.id,
-          r.title,
-          r.body,
-          tz.TZDateTime.from(r.at, tz.UTC),
-          NotificationDetails(
+          id: r.id,
+          title: r.title,
+          body: r.body,
+          scheduledDate: tz.TZDateTime.from(r.at, tz.UTC),
+          notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
               channel.id,
               channel.name,
@@ -153,10 +153,10 @@ class ReminderService {
     final channel = s.popUp ? _popupChannel : _quietChannel;
     try {
       await _plugin.show(
-        idMax,
-        'ذكر',
-        phrase.text,
-        NotificationDetails(
+        id: idMax,
+        title: 'ذكر',
+        body: phrase.text,
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             channel.id,
             channel.name,
