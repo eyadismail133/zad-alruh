@@ -31,7 +31,7 @@
 - [x] رفع الملفات كـ Artifacts، وعند عمل tag `v*` ينشئ GitHub Release فيه ملفات APK
 - [x] `docs/ANDROID-SIGNING.ar.md`: إزاي تعمل keystore وتحطه في GitHub Secrets
 - [x] keystore اتعمل (بصمة SHA-256 تبدأ بـ `39:7E:73:BA`)
-- [ ] **(على المالك)** إضافة الـ ٤ secrets في GitHub — الوكيل ممنوع من الوصول لإعدادات الـ secrets
+- [x] الـ ٤ secrets اتضافوا في GitHub (٩ نوفمبر ٢٠٢٦) — كل نسخ CI بقت بمفتاح ثابت
 - [x] رقم النسخة `0.4.0+4`
 - [ ] أول نسخة `v0.4.0` تتبني بنجاح على CI وتتجرب على موبايل حقيقي
 
