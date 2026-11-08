@@ -289,6 +289,7 @@ class _TasbihBanner extends StatelessWidget {
                         'المسبحة الإلكترونية',
                         style: TextStyle(
                           fontFamily: AppTheme.uiFont,
+                          fontFamilyFallback: AppTheme.uiFontFallback,
                           color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w700,

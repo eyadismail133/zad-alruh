@@ -1243,11 +1243,15 @@ void main() {
         await tester.pumpAndSettle();
 
         // 1. Quran row
+        await tester.ensureVisible(find.byKey(const Key('home_task_quran')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('home_task_quran')));
         await tester.pumpAndSettle();
         expect(navigatedTab, equals(1));
 
         // 2. Morning dhikr row
+        await tester.ensureVisible(find.byKey(const Key('home_task_morning_dhikr')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('home_task_morning_dhikr')));
         await tester.pumpAndSettle();
         expect(find.byType(DailyHisnChecklistScreen), findsOneWidget);
@@ -1255,6 +1259,8 @@ void main() {
         await tester.pumpAndSettle();
 
         // 3. Evening dhikr row
+        await tester.ensureVisible(find.byKey(const Key('home_task_evening_dhikr')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('home_task_evening_dhikr')));
         await tester.pumpAndSettle();
         expect(find.byType(DailyHisnChecklistScreen), findsOneWidget);
@@ -1262,6 +1268,8 @@ void main() {
         await tester.pumpAndSettle();
 
         // 4. Post prayer row
+        await tester.ensureVisible(find.byKey(const Key('home_task_post_prayer')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('home_task_post_prayer')));
         await tester.pumpAndSettle();
         expect(find.byType(PostPrayerDailyScreen), findsOneWidget);
@@ -1269,6 +1277,8 @@ void main() {
         await tester.pumpAndSettle();
 
         // 5. Daily dua row
+        await tester.ensureVisible(find.byKey(const Key('home_task_daily_dua')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('home_task_daily_dua')));
         await tester.pumpAndSettle();
         expect(find.byType(DailyDuaScreen), findsOneWidget);

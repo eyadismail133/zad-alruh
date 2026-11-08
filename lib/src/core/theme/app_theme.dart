@@ -12,6 +12,10 @@ class AppTheme {
   static const String uiFont = 'IBM Plex Sans Arabic';
   static const String quranFont = 'Amiri Quran';
 
+  /// Used when [uiFont] lacks a glyph or is unavailable (e.g. widget tests
+  /// that only load Naskh), so UI text never falls back to a square font.
+  static const List<String> uiFontFallback = [fontFamily];
+
   static const double radiusSmall = 12;
   static const double radiusMedium = 18;
   static const double radiusLarge = 24;
@@ -88,6 +92,7 @@ class AppTheme {
     TextStyle ui(double size, FontWeight weight, Color color, {double? height}) =>
         TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontSize: size,
           fontWeight: weight,
           color: color,
@@ -141,6 +146,7 @@ class AppTheme {
     const buttonPadding = EdgeInsets.symmetric(horizontal: 20, vertical: 13);
     const buttonText = TextStyle(
       fontFamily: uiFont,
+      fontFamilyFallback: uiFontFallback,
       fontWeight: FontWeight.w600,
       fontSize: 14,
     );
@@ -164,6 +170,7 @@ class AppTheme {
         actionsIconTheme: IconThemeData(color: primary),
         titleTextStyle: TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontSize: 19,
           fontWeight: FontWeight.w700,
           color: textStrong,
@@ -183,6 +190,7 @@ class AppTheme {
         iconColor: primary,
         titleTextStyle: TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontSize: 15,
           fontWeight: FontWeight.w600,
           color: textStrong,
@@ -210,6 +218,7 @@ class AppTheme {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             fontFamily: uiFont,
+            fontFamilyFallback: uiFontFallback,
             fontSize: 11.5,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             color: selected ? primary : textMuted,
@@ -231,11 +240,13 @@ class AppTheme {
         dividerColor: border,
         labelStyle: const TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),
         unselectedLabelStyle: const TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontWeight: FontWeight.w500,
           fontSize: 14,
         ),
@@ -288,6 +299,7 @@ class AppTheme {
         side: BorderSide(color: border),
         labelStyle: TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontSize: 13,
           fontWeight: FontWeight.w500,
           color: textStrong,
@@ -304,6 +316,7 @@ class AppTheme {
         ),
         titleTextStyle: TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: textStrong,
@@ -324,6 +337,7 @@ class AppTheme {
         backgroundColor: isDark ? AppColors.darkSurfaceHigh : AppColors.textDark,
         contentTextStyle: const TextStyle(
           fontFamily: uiFont,
+          fontFamilyFallback: uiFontFallback,
           fontSize: 13.5,
           color: Colors.white,
         ),

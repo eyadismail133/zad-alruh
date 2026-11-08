@@ -254,6 +254,7 @@ class HomeScreen extends ConsumerWidget {
                           'كل آية نور في يومك',
                           style: TextStyle(
                             fontFamily: AppTheme.uiFont,
+                            fontFamilyFallback: AppTheme.uiFontFallback,
                             color: Colors.white,
                             fontSize: 21,
                             fontWeight: FontWeight.w700,

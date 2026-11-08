@@ -21,6 +21,7 @@ class ReciterPicker extends ConsumerWidget {
           'القارئ: الشيخ ${selected.nameAr}',
           style: const TextStyle(
             fontFamily: AppTheme.uiFont,
+            fontFamilyFallback: AppTheme.uiFontFallback,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),

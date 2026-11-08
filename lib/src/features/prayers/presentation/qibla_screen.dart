@@ -254,7 +254,7 @@ class _QiblaBodyState extends State<_QiblaBody> {
                         ? 'أنت متجه نحو القبلة ✓'
                         : 'لِف الهاتف حتى يشير السهم لأعلى.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: AppTheme.uiFont, fontSize: 14, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontFamily: AppTheme.uiFont, fontFamilyFallback: AppTheme.uiFontFallback, fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(height: 12),
@@ -316,6 +316,7 @@ class _DialPainter extends CustomPainter {
           text: labels[i],
           style: TextStyle(
             fontFamily: AppTheme.uiFont,
+            fontFamilyFallback: AppTheme.uiFontFallback,
             color: i == 0 ? north : tick,
             fontSize: 18,
             fontWeight: FontWeight.w700,

@@ -92,6 +92,7 @@ class HomeHeader extends StatelessWidget {
                 greetingFor(current),
                 style: TextStyle(
                   fontFamily: AppTheme.uiFont,
+                  fontFamilyFallback: AppTheme.uiFontFallback,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
@@ -101,6 +102,7 @@ class HomeHeader extends StatelessWidget {
                 'زادُ الروح',
                 style: TextStyle(
                   fontFamily: AppTheme.uiFont,
+                  fontFamilyFallback: AppTheme.uiFontFallback,
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
@@ -142,6 +144,7 @@ class HomeHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontFamily: AppTheme.uiFont,
+                        fontFamilyFallback: AppTheme.uiFontFallback,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         color: isDark
@@ -236,6 +239,7 @@ class _QuickActionButton extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: AppTheme.uiFont,
+                  fontFamilyFallback: AppTheme.uiFontFallback,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
