@@ -57,7 +57,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter test --concurrency 2 --reporter github 2>&1 | tee test-output.txt
+          flutter test --concurrency 2 --reporter github --file-reporter json:test-results.json 2>&1 | tee test-output.txt
+
+      - name: Annotate failing tests
+        if: steps.tests.outcome != 'success'
+        run: python3 tool/ci_test_annotations.py test-results.json
 
       - name: Prepare release keystore
         env:
