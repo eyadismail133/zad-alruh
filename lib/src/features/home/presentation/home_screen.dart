@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/retryable_error_view.dart';
 import '../../hisn/domain/models/hisn_daily_catalog.dart';
 import '../../hisn/presentation/daily/daily_dua_screen.dart';
 import '../../hisn/presentation/daily/daily_hisn_checklist_screen.dart';
 import '../../hisn/presentation/daily/post_prayer_daily_screen.dart';
+import '../../more/presentation/hadith_screen.dart';
 import '../../more/presentation/settings_screen.dart';
 import '../../prayer/domain/models/prayer_day.dart';
 import '../../prayer/domain/models/prayer_event.dart';
@@ -14,6 +16,7 @@ import '../../progress/data/models/daily_progress.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
 import '../../quran/presentation/controllers/quran_navigation_controller.dart';
 import '../../quran/presentation/quran_reader_screen.dart';
+import 'widgets/home_header.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateTab;
@@ -187,99 +190,14 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Header & Greeting
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.darkCardBorder
-                                : AppColors.forestSoftTint,
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Image.asset(
-                            'assets/branding/logo.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.auto_stories,
-                              color: AppColors.forestPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'زادُ الروح',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark
-                                      ? AppColors.darkTextPrimary
-                                      : AppColors.textDark,
-                                ),
-                              ),
-                              Text(
-                                'خلّي يومك أقرب للسكينة',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark
-                                      ? AppColors.darkTextMuted
-                                      : AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.amber.withAlpha(40)
-                          : AppColors.goldPill,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.wb_sunny_outlined,
-                          size: 13,
-                          color: isDark
-                              ? AppColors.darkGoldAccent
-                              : AppColors.goldDark,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'نور يومي',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? AppColors.darkGoldAccent
-                                : AppColors.goldDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              HomeHeader(
+                hijriDayAdjustment: ref
+                        .watch(preferencesControllerProvider)
+                        .valueOrNull
+                        ?.hijriDayAdjustment ??
+                    0,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               // Hero Reading Card
               readingAsync.when(
@@ -289,12 +207,21 @@ class HomeScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isDark
-                            ? [const Color(0xFF1B4E3B), const Color(0xFF123528)]
-                            : [AppColors.forestPrimary, AppColors.forestMedium],
+                            ? AppColors.heroGradientDark
+                            : AppColors.heroGradientLight,
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.forestPrimary.withAlpha(
+                            isDark ? 0 : 50,
+                          ),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,9 +252,10 @@ class HomeScreen extends ConsumerWidget {
                         const Text(
                           'كل آية نور في يومك',
                           style: TextStyle(
+                            fontFamily: AppTheme.uiFont,
                             color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -396,7 +324,39 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
+
+              HomeQuickActions(
+                actions: [
+                  HomeQuickAction(
+                    icon: Icons.menu_book_rounded,
+                    label: 'المصحف',
+                    onTap: () => onNavigateTab?.call(1),
+                  ),
+                  HomeQuickAction(
+                    icon: Icons.mosque_rounded,
+                    label: 'الصلاة',
+                    onTap: () => onNavigateTab?.call(2),
+                  ),
+                  HomeQuickAction(
+                    icon: Icons.auto_awesome,
+                    label: 'الأذكار',
+                    onTap: () => onNavigateTab?.call(3),
+                  ),
+                  HomeQuickAction(
+                    icon: Icons.format_quote_rounded,
+                    label: 'الحديث',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HadithScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
 
               // Daily 5-Task Card (Truthful Source-Based Progress)
               Builder(

@@ -131,7 +131,7 @@ void main() {
         // Tab 2: Prayers (الصلاة)
         await tapAndSettle(
           tester,
-          find.byIcon(Icons.access_time_filled_outlined),
+          find.byIcon(Icons.mosque_outlined),
         );
         expect(find.text('مواقيت الصلاة'), findsOneWidget);
         expect(find.textContaining('الصلاة القادمة'), findsWidgets);
@@ -143,7 +143,7 @@ void main() {
         expect(find.textContaining('ابدأ جلسة ذكر جديدة'), findsOneWidget);
 
         // Tab 4: More (المزيد)
-        await tapAndSettle(tester, find.byIcon(Icons.more_horiz_outlined));
+        await tapAndSettle(tester, find.byIcon(Icons.grid_view_outlined));
         expect(find.text('المزيد'), findsWidgets);
         expect(find.text('الإعدادات'), findsOneWidget);
         expect(find.text('الأدعية'), findsOneWidget);
@@ -361,7 +361,7 @@ void main() {
         // Prayers Tab at 1.8+ scale
         await tapAndSettle(
           tester,
-          find.byIcon(Icons.access_time_filled_outlined),
+          find.byIcon(Icons.mosque_outlined),
         );
         expect(tester.takeException(), isNull);
 
@@ -370,7 +370,7 @@ void main() {
         expect(tester.takeException(), isNull);
 
         // More Tab at 1.8+ scale
-        await tapAndSettle(tester, find.byIcon(Icons.more_horiz_outlined));
+        await tapAndSettle(tester, find.byIcon(Icons.grid_view_outlined));
         expect(tester.takeException(), isNull);
         expect(find.byType(MoreScreen), findsOneWidget);
 

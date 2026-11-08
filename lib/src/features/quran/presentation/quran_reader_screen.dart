@@ -18,6 +18,7 @@ import '../domain/models/verse.dart';
 import 'controllers/quran_navigation_controller.dart';
 import 'utils/quran_ui_utils.dart';
 import 'widgets/add_quran_bookmark_dialog.dart';
+import 'widgets/mushaf_paper.dart';
 import 'widgets/page_jump_dialog.dart';
 
 /// Offline Holy Quran reader displaying Medina Mushaf pages.
@@ -47,6 +48,10 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
   void initState() {
     super.initState();
     _adhanAudioController = ref.read(adhanAudioControllerProvider.notifier);
+    // Always open the reader with its toolbars visible.
+    unawaited(Future.microtask(() {
+      if (mounted) ref.read(mushafImmersiveProvider.notifier).state = false;
+    }));
     if (widget.initialPage != null) {
       final initial = widget.initialPage!.clamp(1, 604);
       _currentPage = initial;
@@ -366,9 +371,15 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
   ) {
     _adhanAudioController = ref.watch(adhanAudioControllerProvider.notifier);
     final audioState = ref.watch(adhanAudioControllerProvider);
+    final immersive = ref.watch(mushafImmersiveProvider);
+    final paperMode = ref.watch(mushafPaperModeProvider);
+    final paperStyle = MushafPaperStyle.of(paperMode, isDark: isDark);
 
     return Scaffold(
-      appBar: AppBar(
+      backgroundColor: paperStyle.backdrop,
+      appBar: immersive
+          ? null
+          : AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'العودة إلى الفهرس',
@@ -376,6 +387,27 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
         ),
         title: const Text('المصحف المصوّر'),
         actions: [
+          PopupMenuButton<MushafPaperMode>(
+            key: const ValueKey('mushaf_paper_mode_button'),
+            tooltip: 'لون الصفحة',
+            icon: Icon(paperMode.icon),
+            initialValue: paperMode,
+            onSelected: (mode) =>
+                ref.read(mushafPaperModeProvider.notifier).state = mode,
+            itemBuilder: (context) => [
+              for (final mode in MushafPaperMode.values)
+                PopupMenuItem<MushafPaperMode>(
+                  value: mode,
+                  child: Row(
+                    children: [
+                      Icon(mode.icon, size: 20),
+                      const SizedBox(width: 10),
+                      Text(mode.label),
+                    ],
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             tooltip: 'اختيار آية من الصفحة',
             icon: const Icon(Icons.touch_app_outlined),
@@ -406,6 +438,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Top Slim Controls & Mode Toggle Header
+                if (!immersive)
                 Container(
                   key: const ValueKey('quran_reader_top_controls'),
                   padding: const EdgeInsets.symmetric(
@@ -604,12 +637,15 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
                         quranRepo,
                         pageNumber,
                         isDark,
+                        paperStyle,
+                        immersive,
                       );
                     },
                   ),
                 ),
 
                 // Bottom Page Navigation Controls
+                if (!immersive)
                 Container(
                   key: const ValueKey('quran_reader_bottom_controls'),
                   padding: const EdgeInsets.symmetric(
@@ -1283,6 +1319,8 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     QuranRepository repo,
     int pageNumber,
     bool isDark,
+    MushafPaperStyle paperStyle,
+    bool immersive,
   ) {
     return _MushafImageSheet(
       key: ValueKey('mushaf_image_sheet_$pageNumber'),
@@ -1290,6 +1328,12 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
       pageNumber: pageNumber,
       isActive: pageNumber == _activePage,
       isDark: isDark,
+      paperStyle: paperStyle,
+      immersive: immersive,
+      onTap: () {
+        final notifier = ref.read(mushafImmersiveProvider.notifier);
+        notifier.state = !notifier.state;
+      },
       onZoomChanged: (zoomed) {
         if (!mounted) return;
         if (pageNumber != _activePage) return;
@@ -1320,6 +1364,9 @@ class _MushafImageSheet extends StatefulWidget {
   final int pageNumber;
   final bool isActive;
   final bool isDark;
+  final MushafPaperStyle paperStyle;
+  final bool immersive;
+  final VoidCallback? onTap;
   final ValueChanged<bool>? onZoomChanged;
 
   const _MushafImageSheet({
@@ -1328,6 +1375,9 @@ class _MushafImageSheet extends StatefulWidget {
     required this.pageNumber,
     this.isActive = true,
     required this.isDark,
+    required this.paperStyle,
+    this.immersive = false,
+    this.onTap,
     this.onZoomChanged,
   });
 
@@ -1421,95 +1471,74 @@ class _MushafImageSheetState extends State<_MushafImageSheet> {
     final semanticLabel =
         'صفحة مصورة رقم ${QuranUiUtils.toArabicDigits(widget.pageNumber)} من مصحف المدينة النبوية، $primarySurahTitle، الجزء ${QuranUiUtils.toArabicDigits(juzNumber)}';
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: isDark
-              ? const [Color(0xFF17271F), Color(0xFF111A15), Color(0xFF2A281C)]
-              : const [Color(0xFFFCF8EA), Color(0xFFEDF3EB), Color(0xFFF6ECD5)],
-        ),
-      ),
+    final paper = widget.paperStyle;
+    final chipColor = isDark ? AppColors.darkSurface : AppColors.cardSurface;
+    final chipBorder = isDark ? AppColors.darkCardBorder : AppColors.cardBorder;
+    final accent = isDark ? AppColors.darkGoldAccent : AppColors.forestPrimary;
+    final muted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
+
+    return ColoredBox(
+      color: paper.backdrop,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Prominent Page Header Badge (Surah, Juz, and prominent page number)
-          // Reserved dynamic layout space outside Expanded image viewport
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 4),
-            child: Container(
-              key: ValueKey('mushaf_metadata_badge_${widget.pageNumber}'),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: (isDark ? const Color(0xFF1E2822) : Colors.white)
-                    .withAlpha(220),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isDark
-                      ? AppColors.darkCardBorder
-                      : const Color(0xFFD6C8A8),
-                  width: 0.8,
+          // Compact page header (Surah · page · Juz). Hidden in immersive mode.
+          if (!widget.immersive)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+              child: Container(
+                key: ValueKey('mushaf_metadata_badge_${widget.pageNumber}'),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: chipColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: chipBorder, width: 0.8),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(20),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Text(
-                      primarySurahTitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        primarySurahTitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: accent,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
                         color: isDark
-                            ? AppColors.darkGoldAccent
-                            : AppColors.forestPrimary,
+                            ? AppColors.darkSurfaceHigh
+                            : AppColors.forestSoftTint,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkForestPrimary
-                          : AppColors.forestSoftTint,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      'صفحة ${QuranUiUtils.toArabicDigits(widget.pageNumber)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.forestPrimary,
+                      child: Text(
+                        'صفحة ${QuranUiUtils.toArabicDigits(widget.pageNumber)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: accent,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'الجزء ${QuranUiUtils.toArabicDigits(juzNumber)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark
-                          ? AppColors.darkTextMuted
-                          : AppColors.textMuted,
+                    const SizedBox(width: 8),
+                    Text(
+                      'الجزء ${QuranUiUtils.toArabicDigits(juzNumber)}',
+                      style: TextStyle(fontSize: 12, color: muted),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
 
           // Main Interactive Image Viewer inside clipped Expanded viewport
           Expanded(
@@ -1520,6 +1549,7 @@ class _MushafImageSheetState extends State<_MushafImageSheet> {
                 children: [
                   Center(
                     child: GestureDetector(
+                      onTap: widget.onTap,
                       onDoubleTap: _toggleZoom,
                       child: InteractiveViewer(
                         key: ValueKey(
@@ -1535,35 +1565,36 @@ class _MushafImageSheetState extends State<_MushafImageSheet> {
                           label: semanticLabel,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors
-                                  .white, // Genuine white sheet paper; no color inversion in dark mode
-                              borderRadius: BorderRadius.circular(4),
+                              color: paper.paper,
+                              borderRadius: BorderRadius.circular(6),
                               boxShadow: [
                                 BoxShadow(
-                                  color: isDark
-                                      ? Colors.black.withAlpha(120)
-                                      : Colors.brown.withAlpha(30),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  color: Colors.black.withAlpha(isDark ? 90 : 28),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                            margin: EdgeInsets.symmetric(
+                              horizontal: widget.immersive ? 2 : 4,
+                              vertical: widget.immersive ? 2 : 4,
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 8,
+                            ),
+                            child: ColorFiltered(
+                              colorFilter: paper.colorFilter,
                               child: Image.asset(
                                 assetPath,
                                 key: ValueKey('${assetPath}_$_retryKey'),
                                 fit: BoxFit.contain,
                                 alignment: Alignment.center,
+                                filterQuality: FilterQuality.high,
+                                isAntiAlias: true,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
-                                    color: isDark
-                                        ? AppColors.darkSurface
-                                        : AppColors.cardSurface,
+                                    color: chipColor,
                                     padding: const EdgeInsets.all(24),
                                     child: Center(
                                       child: Column(
@@ -1588,9 +1619,7 @@ class _MushafImageSheetState extends State<_MushafImageSheet> {
                                             'يرجى إعادة المحاولة لتحميل صورة الصفحة.',
                                             style: TextStyle(
                                               fontSize: 11,
-                                              color: isDark
-                                                  ? AppColors.darkTextMuted
-                                                  : AppColors.textMuted,
+                                              color: muted,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -1619,6 +1648,36 @@ class _MushafImageSheetState extends State<_MushafImageSheet> {
                       ),
                     ),
                   ),
+
+                  // Floating page number while reading full-screen
+                  if (widget.immersive)
+                    Positioned(
+                      bottom: 10,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: chipColor.withAlpha(220),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              QuranUiUtils.toArabicDigits(widget.pageNumber),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: accent,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // Floating Reset Zoom Button when zoomed
                   if (_isZoomed)

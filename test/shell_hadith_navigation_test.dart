@@ -40,7 +40,7 @@ void main() {
 
   for (final scale in [1.0, 1.8]) {
     testWidgets(
-      'bottom hadith tab opens the list and preserves existing tabs at scale $scale',
+      'five bottom tabs stay readable and hadith opens from More at scale $scale',
       (tester) async {
         tester.view.physicalSize = const Size(360, 800);
         tester.view.devicePixelRatio = 1;
@@ -82,7 +82,7 @@ void main() {
           of: find.byType(NavigationBar),
           matching: find.text(label),
         );
-        expect(tab('الحديث').hitTestable(), findsOneWidget);
+        expect(tab('الحديث'), findsNothing);
         final navigationBounds = tester.getRect(find.byType(NavigationBar));
         for (final label in [
           'الرئيسية',
@@ -90,7 +90,6 @@ void main() {
           'الصلاة',
           'الأذكار',
           'المزيد',
-          'الحديث',
         ]) {
           final paragraph = tester.renderObject<RenderParagraph>(tab(label));
           expect(paragraph.didExceedMaxLines, isFalse, reason: label);
@@ -103,12 +102,15 @@ void main() {
           expect(navigationBounds.contains(labelBounds.topLeft), isTrue);
           expect(navigationBounds.contains(labelBounds.bottomRight), isTrue);
         }
-        await tester.tap(tab('الحديث'));
+        await tester.tap(tab('المزيد'));
+        await _pumpFrames(tester);
+        await tester.tap(find.text('الأحاديث النبوية'));
         await _pumpFrames(tester);
         expect(find.text('الأحاديث النبوية الشريفة'), findsOneWidget);
         expect(find.text(hadiths.allHadiths.first.title), findsOneWidget);
-        expect(find.byType(BackButton), findsNothing);
         expect(tester.takeException(), isNull);
+        await tester.pageBack();
+        await _pumpFrames(tester);
 
         for (final destination in {
           'المزيد': 'الإعدادات',

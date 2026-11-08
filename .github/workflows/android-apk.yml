@@ -1,0 +1,133 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.5'
+
+jobs:
+  build:
+    name: Analyze, test and build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Read app version
+        id: ver
+        run: |
+          v=$(grep -E '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*//; s/\+.*//')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Install packages
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Content integrity (development gate)
+        run: dart run tool/validate_content.dart --development
+
+      - name: Unit & widget tests
+        id: tests
+        continue-on-error: true
+        run: flutter test --concurrency 2 --reporter github 2>&1 | tee test-output.txt
+
+      - name: Prepare release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/zad-release.jks"
+            echo "ZAD_KEYSTORE_PATH=$RUNNER_TEMP/zad-release.jks" >> "$GITHUB_ENV"
+            echo "Release keystore configured."
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 secret not set — APK will be signed with a throwaway debug key. See docs/ANDROID-SIGNING.ar.md"
+          fi
+
+      - name: Build split APKs (per CPU)
+        env:
+          ZAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ZAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ZAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: flutter build apk --release --split-per-abi
+
+      - name: Collect split APKs
+        run: |
+          mkdir -p out
+          v=${{ steps.ver.outputs.version }}
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            cp "build/app/outputs/flutter-apk/app-$abi-release.apk" "out/zad-alruh-$v-$abi.apk"
+          done
+
+      - name: Build universal APK
+        env:
+          ZAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ZAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ZAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk "out/zad-alruh-${{ steps.ver.outputs.version }}-universal.apk"
+
+      - name: Checksums & summary
+        run: |
+          cd out
+          sha256sum *.apk > SHA256SUMS.txt
+          {
+            echo "## زادُ الروح ${{ steps.ver.outputs.version }}"
+            echo
+            echo "| الملف | الحجم |"
+            echo "|---|---|"
+            for f in *.apk; do echo "| $f | $(du -h "$f" | cut -f1) |"; done
+            echo
+            echo "Tests: **${{ steps.tests.outcome }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.tests.outcome }}" != "success" ]; then
+            echo '### Failing tests (tail)' >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            grep -E "FAILED|\[E\]|Error:" ../test-output.txt | tail -60 >> "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zad-alruh-${{ steps.ver.outputs.version }}-apk
+          path: out/*
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: زادُ الروح ${{ github.ref_name }}
+          files: out/*
+          body: |
+            ### التحميل
+            - **أغلب الموبايلات:** `zad-alruh-${{ steps.ver.outputs.version }}-arm64-v8a.apk`
+            - **موبايل قديم:** `armeabi-v7a`
+            - **مش متأكد؟** نزّل `universal` (أكبر حجمًا ويشتغل على أي جهاز)
+
+            فعّل "التثبيت من مصادر غير معروفة" لو الموبايل طلب ده.

@@ -23,3 +23,7 @@ android/.kotlin/
 __pycache__/
 *.pyc
 dist/android/*.apk
+
+# Release signing (never commit)
+android/key.properties
+android/*.jks

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../dhikr/presentation/dhikr_screen.dart';
 import '../../home/presentation/home_screen.dart';
-import '../../more/presentation/hadith_screen.dart';
 import '../../more/presentation/more_screen.dart';
 import '../../prayer/domain/services/prayer_notification_coordinator.dart';
 import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
@@ -67,8 +66,8 @@ class _AppShellState extends ConsumerState<AppShell>
       const PrayersScreen(),
       const DhikrScreen(),
       const MoreScreen(),
-      const HadithScreen(),
     ];
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: Center(
@@ -77,45 +76,49 @@ class _AppShellState extends ConsumerState<AppShell>
           child: IndexedStack(index: _currentIndex, children: pages),
         ),
       ),
-      bottomNavigationBar: Center(
-        heightFactor: 1.0,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: _onSelectTab,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'الرئيسية',
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          border: Border(top: BorderSide(color: scheme.outlineVariant)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Center(
+            heightFactor: 1.0,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: NavigationBar(
+                selectedIndex: _currentIndex,
+                onDestinationSelected: _onSelectTab,
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: 'الرئيسية',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.menu_book_outlined),
+                    selectedIcon: Icon(Icons.menu_book_rounded),
+                    label: 'القرآن',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.mosque_outlined),
+                    selectedIcon: Icon(Icons.mosque_rounded),
+                    label: 'الصلاة',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.auto_awesome_outlined),
+                    selectedIcon: Icon(Icons.auto_awesome),
+                    label: 'الأذكار',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.grid_view_outlined),
+                    selectedIcon: Icon(Icons.grid_view_rounded),
+                    label: 'المزيد',
+                  ),
+                ],
               ),
-              NavigationDestination(
-                icon: Icon(Icons.menu_book_outlined),
-                selectedIcon: Icon(Icons.menu_book),
-                label: 'القرآن',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.access_time_filled_outlined),
-                selectedIcon: Icon(Icons.access_time_filled),
-                label: 'الصلاة',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.auto_awesome_outlined),
-                selectedIcon: Icon(Icons.auto_awesome),
-                label: 'الأذكار',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.more_horiz_outlined),
-                selectedIcon: Icon(Icons.more_horiz),
-                label: 'المزيد',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.library_books_outlined),
-                selectedIcon: Icon(Icons.library_books),
-                label: 'الحديث',
-              ),
-            ],
+            ),
           ),
         ),
       ),
