@@ -31,7 +31,7 @@ flutter build apk --release --split-per-abi
 
 ## تحميل النسخة
 - **كل push على main:** افتح تبويب **Actions** → آخر تشغيل لـ "Android APK" → قسم **Artifacts** تحت.
-- **نسخة رسمية:** اعمل tag:
+- **نسخة رسمية:** أي push على main بيحدّث Release برقم النسخة اللي في `pubspec.yaml` تلقائيًا. لنسخة جديدة غيّر الرقم (مثلاً `0.5.0+5`). وتقدر كمان تعمل tag:
   ```bash
   git tag v0.4.0 && git push origin v0.4.0
   ```

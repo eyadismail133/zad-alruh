@@ -123,10 +123,17 @@ jobs:
           retention-days: 30
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Every push to main (and every v* tag) publishes/updates the release
+        # for the version in pubspec.yaml, so there is always a stable
+        # download link: /releases/latest
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          name: زادُ الروح ${{ github.ref_name }}
+          tag_name: v${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: زادُ الروح v${{ steps.ver.outputs.version }}
+          make_latest: true
+          overwrite_files: true
           files: out/*
           body: |
             ### التحميل
