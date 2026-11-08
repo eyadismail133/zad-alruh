@@ -8,6 +8,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import dev.zadalruh.zad_alruh.alarm.PrayerAlarmCoordinator
+import dev.zadalruh.zad_alruh.adhan.CustomAdhanFiles
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -60,6 +61,14 @@ class MainActivity : AudioServiceActivity() {
                         val res = coordinator.replacePlan(arguments)
                         result.success(res)
                     }
+                }
+                "setCustomAdhanFiles" -> {
+                    CustomAdhanFiles.save(
+                        applicationContext,
+                        general = call.argument<String>("general"),
+                        fajr = call.argument<String>("fajr")
+                    )
+                    result.success(true)
                 }
                 "disableAlarms" -> {
                     val res = coordinator.disableAlarms()

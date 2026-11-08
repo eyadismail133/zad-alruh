@@ -381,6 +381,60 @@ class AdhanAudioController extends StateNotifier<AdhanAudioState> {
     }
   }
 
+  /// Plays a muezzin recording from a URL (https or file://) as an adhan
+  /// preview. Stops like other adhan previews when leaving the screen.
+  Future<void> playAdhanPreview({
+    required String voiceId,
+    required String url,
+    required String title,
+  }) async {
+    final String token = 'adhan_url_${++_tokenCounter}';
+    _currentToken = token;
+    state = state.copyWith(
+      status: AdhanAudioStatus.loading,
+      activeVoiceId: voiceId,
+      clearActiveSurah: true,
+      sourceType: AudioPlaybackSource.adhan,
+      position: Duration.zero,
+      totalDuration: Duration.zero,
+      clearError: true,
+    );
+    try {
+      if (_client is! OnlineAudioPlayerClient) {
+        throw StateError('online playback unsupported');
+      }
+      final onlineClient = _client as OnlineAudioPlayerClient;
+      if (onlineClient is JustAudioPlayerClient) {
+        onlineClient.setNextMediaInfo(title: title, artist: 'الأذان');
+      }
+      final result = await onlineClient.playUrl(url, requestToken: token);
+      if (_currentToken == token && mounted) {
+        if (result == PlaybackStartupResult.started) {
+          if (state.status != AdhanAudioStatus.completed &&
+              state.status != AdhanAudioStatus.error) {
+            state = state.copyWith(
+              status: AdhanAudioStatus.playing,
+              activeVoiceId: voiceId,
+            );
+          }
+        } else {
+          state = state.copyWith(
+            status: AdhanAudioStatus.idle,
+            clearActiveVoice: true,
+            position: Duration.zero,
+          );
+        }
+      }
+    } catch (_) {
+      if (_currentToken == token && mounted) {
+        state = state.copyWith(
+          status: AdhanAudioStatus.error,
+          errorMessage: 'تعذر تشغيل الأذان. تأكد من الاتصال بالإنترنت.',
+        );
+      }
+    }
+  }
+
   Future<void> pause() async {
     final String? opToken = _currentToken;
     if (opToken == null || !mounted) return;

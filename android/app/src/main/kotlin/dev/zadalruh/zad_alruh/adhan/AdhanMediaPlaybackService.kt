@@ -203,7 +203,11 @@ class AdhanMediaPlaybackService : Service() {
         val assetPath = AdhanVoiceRegistry.FULL_AUDIO_ASSET_PATHS[event.voiceId]
             ?: AdhanVoiceRegistry.FULL_AUDIO_ASSET_PATHS[AdhanVoiceRegistry.VOICE_ADAM]!!
 
-        val preparedPlayer = prepareMediaPlayer(assetPath)
+        // A muezzin downloaded by the user (if any) replaces the bundled
+        // voice; if that file cannot be prepared we fall back to the bundle.
+        val customPath = CustomAdhanFiles.resolve(this, event.prayerKey)
+        val preparedPlayer = customPath?.let { prepareMediaPlayer(it) }
+            ?: prepareMediaPlayer(assetPath)
         if (preparedPlayer == null) {
             coordinator.handleServicePrestartFailure(token, eventKey, "media_player_prepare_failed")
             stopPlaybackAndFinish("media_player_prepare_failed")
@@ -389,6 +393,24 @@ class AndroidMediaPlayerAdapter(val realPlayer: MediaPlayer) : MediaPlayerLifecy
         onError: () -> Unit
     ) {
         if (context == null) throw IllegalArgumentException("Context required for AndroidMediaPlayerAdapter")
+        if (assetPath.startsWith(CustomAdhanFiles.FILE_PREFIX)) {
+            // Downloaded muezzin stored in the app's private files.
+            realPlayer.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+            realPlayer.setDataSource(assetPath.removePrefix(CustomAdhanFiles.FILE_PREFIX))
+            realPlayer.isLooping = false
+            realPlayer.setOnCompletionListener { onCompletion() }
+            realPlayer.setOnErrorListener { _, _, _ ->
+                onError()
+                true
+            }
+            realPlayer.prepare()
+            return
+        }
         var afd: AssetFileDescriptor? = null
         try {
             val flutterLoader = FlutterInjector.instance().flutterLoader()

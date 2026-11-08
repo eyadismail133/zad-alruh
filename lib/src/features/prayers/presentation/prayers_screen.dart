@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import 'adhan_voices_screen.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../../../core/widgets/retryable_error_view.dart';
 import '../../more/presentation/settings_screen.dart';
@@ -53,6 +54,18 @@ class _PrayersScreenState extends ConsumerState<PrayersScreen> {
       appBar: AppBar(
         title: const Text('مواقيت الصلاة'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.record_voice_over_outlined),
+            tooltip: 'اختيار المؤذن',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const AdhanVoicesScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.volume_up_outlined),
             tooltip: 'أصوات الأذان وتجربة الاستماع',

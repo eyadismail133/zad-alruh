@@ -74,3 +74,26 @@ ffmpeg -i [input.mp3] -t 27 -af "afade=t=out:st=25:d=2" -ac 1 -ar 22050 -c:a pcm
 >
 > **هذه قياسات رقمية حاسوبية بحتة ضمن حدود رقمية محددة، ولا يثبت التحقق البرمجي الآلي للبصمات والترويسات ومستويات الإشارة الرقمية أن المقطع مسموع بشرياً بجودة ملائمة، أو أنه أذان كامل أو صحيح شرعاً، ولا يغني عن الاستماع البشري والإجازة الشرعية.**
 > تبقى المراجعة السمعية البشرية الدقيقة من قِبل مدقق شرعي مؤهل شرطاً قائماً ومسجلاً قبل الاعتماد النهائي للإطلاق العام.
+
+## Downloadable muezzins (added 2026-11-08, v0.6.0)
+
+Users can download additional adhan recordings inside the app ("المؤذنون"). Files are fetched
+once from the Islamic Network / AlAdhan.com CDN, stored in the app's private storage and played
+offline by the native prayer alarm (full-adhan mode). They are **not** bundled in the APK.
+
+- Catalog page: https://aladhan.com/download-adhans
+- Permission: Islamic Network answered on their community forum that the adhans from that page
+  may be bundled/played offline in apps, with no attribution or redistribution restriction
+  required (https://community.islamic.network/d/255-permission-to-bundle-an-adhan-audio-file-in-our-android-app-nurafiq).
+  We credit the source on the screen anyway.
+- The "Karl Jenkins – Mass for Peace" recording on that page is intentionally excluded
+  (part of a copyrighted musical work).
+
+| id | Muezzin | URL |
+|---|---|---|
+| alafasy_1 | مشاري راشد العفاسي | https://cdn.aladhan.com/audio/adhans/a9.mp3 |
+| alafasy_2 | مشاري راشد العفاسي | https://cdn.aladhan.com/audio/adhans/a7.mp3 |
+| alafasy_dubai | مشاري راشد العفاسي (Dubai One TV) | https://cdn.aladhan.com/audio/adhans/a4.mp3 |
+| nafees | أحمد النفيس | https://cdn.aladhan.com/audio/adhans/a1.mp3 |
+| ozcan | الحافظ مصطفى أوزجان | https://cdn.aladhan.com/audio/adhans/a2.mp3 |
+| zahrani | منصور الزهراني | https://cdn.aladhan.com/audio/adhans/a11-mansour-al-zahrani.mp3 |

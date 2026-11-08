@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../prayers/presentation/adhan_voices_screen.dart';
 import '../../prayers/presentation/qibla_screen.dart';
 import '../../reminders/presentation/reminders_screen.dart';
 import 'duas_screen.dart';
@@ -108,6 +109,14 @@ class MoreScreen extends StatelessWidget {
                     title: 'الأحاديث النبوية',
                     subtitle: 'مختارات من صحيح الأحاديث النبوية',
                     destination: const HadithScreen(),
+                  ),
+                  const Divider(height: 1),
+                  _buildNavTile(
+                    context,
+                    icon: Icons.record_voice_over_outlined,
+                    title: 'المؤذنون',
+                    subtitle: 'العفاسي، الزهراني، النفيس وغيرهم — يُحمَّل مرة ويعمل بدون إنترنت',
+                    destination: const AdhanVoicesScreen(),
                   ),
                   const Divider(height: 1),
                   _buildNavTile(
