@@ -8,24 +8,24 @@ import '../../hadith/domain/repositories/hadith_repository.dart';
 import '../../hadith/presentation/controllers/hadith_provider.dart';
 import '../../hadith/presentation/hadith_detail_screen.dart';
 
-/// Search shortcuts shown as chips above the list. They are plain text
-/// searches (topic words and takhrij phrases), not editorial categories.
-const List<String> _kHadithQuickFilters = [
-  'الصلاة',
-  'الجنة',
-  'القرآن',
-  'الصدقة',
-  'رمضان',
-  'الحج',
-  'الوضوء',
-  'الصدق',
-  'العلم',
-  'الدعاء',
-  'متفق عليه',
-  'رواه البخاري',
-  'رواه مسلم',
+/// Search shortcuts shown as chips above the list: (label, search text).
+/// They are plain text searches (topic words and takhrij phrases), not
+/// editorial categories.
+const List<(String, String)> _kHadithQuickFilters = [
+  ('الصلاة', 'الصلاة'),
+  ('الجنة', 'الجنة'),
+  ('القرآن', 'القرآن'),
+  ('الصدقة', 'الصدقة'),
+  ('رمضان', 'رمضان'),
+  ('الحج', 'الحج'),
+  ('الوضوء', 'الوضوء'),
+  ('الصدق', 'الصدق'),
+  ('العلم', 'العلم'),
+  ('الدعاء', 'الدعاء'),
+  ('البخاري ومسلم', 'متفق عليه'),
+  ('البخاري', 'رواه البخاري'),
+  ('مسلم', 'رواه مسلم'),
 ];
-
 class HadithScreen extends ConsumerStatefulWidget {
   final HadithRepository? repository;
 
@@ -189,10 +189,10 @@ class _HadithScreenState extends ConsumerState<HadithScreen> {
                   itemCount: _kHadithQuickFilters.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
-                    final filter = _kHadithQuickFilters[index];
+                    final (label, filter) = _kHadithQuickFilters[index];
                     final selected = _searchQuery.trim() == filter;
                     return ChoiceChip(
-                      label: Text(filter),
+                      label: Text(label),
                       selected: selected,
                       visualDensity: VisualDensity.compact,
                       onSelected: (on) {

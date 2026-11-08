@@ -109,7 +109,9 @@ void main() {
         expect(find.text('الأحاديث النبوية الشريفة'), findsOneWidget);
         expect(find.text(hadiths.allHadiths.first.title), findsOneWidget);
         expect(tester.takeException(), isNull);
-        await tester.pageBack();
+        Navigator.of(
+          tester.element(find.text('الأحاديث النبوية الشريفة')),
+        ).pop();
         await _pumpFrames(tester);
 
         for (final destination in {

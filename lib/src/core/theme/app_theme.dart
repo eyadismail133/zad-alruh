@@ -117,7 +117,7 @@ class AppTheme {
       bodyLarge: text(16, body),
       bodyMedium: text(14, body),
       bodySmall: text(12, muted),
-      labelLarge: ui(14, FontWeight.w600, strong),
+      labelLarge: ui(14, FontWeight.w500, strong),
       labelMedium: ui(12, FontWeight.w500, muted),
       labelSmall: ui(11, FontWeight.w500, muted),
     );
@@ -333,7 +333,6 @@ class AppTheme {
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
         backgroundColor: isDark ? AppColors.darkSurfaceHigh : AppColors.textDark,
         contentTextStyle: const TextStyle(
           fontFamily: uiFont,

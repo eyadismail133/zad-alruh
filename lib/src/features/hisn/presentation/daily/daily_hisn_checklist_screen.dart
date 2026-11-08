@@ -616,7 +616,8 @@ class _DailyHisnChecklistScreenState
             Row(
               children: [
                 if (item.footnotes.isNotEmpty)
-                  TextButton.icon(
+                  Flexible(
+                    child: TextButton.icon(
                     key: Key('hisn_checklist_footnotes_toggle_${item.id}'),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -630,6 +631,8 @@ class _DailyHisnChecklistScreenState
                     ),
                     label: Text(
                       'التخريج (${item.footnotes.length})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 11),
                     ),
                     onPressed: () {
@@ -641,6 +644,7 @@ class _DailyHisnChecklistScreenState
                         }
                       });
                     },
+                  ),
                   ),
                 const Spacer(),
                 IconButton(
