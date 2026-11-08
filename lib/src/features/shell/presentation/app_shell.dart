@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../dhikr/presentation/adhkar_hub_screen.dart';
@@ -7,6 +9,8 @@ import '../../prayer/domain/services/prayer_notification_coordinator.dart';
 import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
 import '../../prayers/presentation/prayers_screen.dart';
 import '../../quran/presentation/quran_screen.dart';
+import '../../reminders/data/reminder_service.dart';
+import '../../reminders/presentation/reminder_tap_handler.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -28,8 +32,21 @@ class _AppShellState extends ConsumerState<AppShell>
         ref
             .read(prayerNotificationCoordinatorProvider)
             .reconcile(passive: true);
+        _initReminders();
       }
     });
+  }
+
+  void _initReminders() {
+    final service = ReminderService.instance;
+    service.onTap = handleReminderPayload;
+    final pending = service.pendingLaunchPayload;
+    if (pending != null) {
+      service.pendingLaunchPayload = null;
+      handleReminderPayload(pending);
+    }
+    // Keep the rolling schedule (next 3 days) topped up.
+    unawaited(service.reschedule());
   }
 
   @override

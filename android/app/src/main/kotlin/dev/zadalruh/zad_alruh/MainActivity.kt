@@ -8,11 +8,11 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import dev.zadalruh.zad_alruh.alarm.PrayerAlarmCoordinator
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
 
     companion object {
         const val CHANNEL_PRAYER_ALARM = "dev.zadalruh.zad_alruh/prayer_alarm"

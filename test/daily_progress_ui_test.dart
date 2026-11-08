@@ -449,7 +449,9 @@ void main() {
       await runWithAppDatabase(tester, (db) async {
         final failingRepo = _FailingProgressRepository(db);
         failingRepo.failConfirmQuran = true;
-        var currentClock = DateTime(2026, 10, 7, 23, 59, 0);
+        // Use absolute UTC instants: 20:59Z is 23:59 in Cairo (UTC+3 on this
+        // date). A local DateTime would depend on the CI machine's timezone.
+        var currentClock = DateTime.utc(2026, 10, 7, 20, 59, 0);
 
         await tester.pumpWidget(
           buildTestApp(
@@ -469,7 +471,7 @@ void main() {
         expect(find.text('تعذر حفظ تأكيد الصفحة. يرجى إعادة المحاولة.'), findsOneWidget);
 
         // Midnight strikes: advance clock to Oct 8
-        currentClock = DateTime(2026, 10, 8, 0, 5, 0);
+        currentClock = DateTime.utc(2026, 10, 7, 21, 5, 0); // 00:05 Oct 8 Cairo
 
         // Resolve failure
         failingRepo.failConfirmQuran = false;
@@ -496,12 +498,7 @@ void main() {
           expect(oct8Pages.contains(5), isFalse, reason: 'Retry must not bleed into newly active midnight bucket');
         });
       });
-    },
-        // Known pre-existing bug (fails on the original code too, verified on
-        // branch ci-baseline): retrying a failed page confirmation after
-        // midnight does not write to the original day. Tracked in
-        // docs/PLAN.ar.md.
-        skip: true);
+    });
 
     testWidgets('failed page 5 on bucket A then navigate to page 6 in-place retries ONLY original page 5', (tester) async {
       await runWithAppDatabase(tester, (db) async {

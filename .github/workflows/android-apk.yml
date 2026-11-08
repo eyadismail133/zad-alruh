@@ -80,13 +80,13 @@ jobs:
           ZAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ZAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ZAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
 
       - name: Collect split APKs
         run: |
           mkdir -p out
           v=${{ steps.ver.outputs.version }}
-          for abi in arm64-v8a armeabi-v7a x86_64; do
+          for abi in arm64-v8a armeabi-v7a; do
             cp "build/app/outputs/flutter-apk/app-$abi-release.apk" "out/zad-alruh-$v-$abi.apk"
           done
 
@@ -96,7 +96,7 @@ jobs:
           ZAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ZAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          flutter build apk --release
+          flutter build apk --release --target-platform android-arm,android-arm64
           cp build/app/outputs/flutter-apk/app-release.apk "out/zad-alruh-${{ steps.ver.outputs.version }}-universal.apk"
 
       - name: Checksums & summary
@@ -143,6 +143,6 @@ jobs:
             ### التحميل
             - **أغلب الموبايلات:** `zad-alruh-${{ steps.ver.outputs.version }}-arm64-v8a.apk`
             - **موبايل قديم:** `armeabi-v7a`
-            - **مش متأكد؟** نزّل `universal` (أكبر حجمًا ويشتغل على أي جهاز)
+            - **مش متأكد؟** نزّل `universal` (أكبر شوية ويشتغل على أي موبايل)
 
             فعّل "التثبيت من مصادر غير معروفة" لو الموبايل طلب ده.

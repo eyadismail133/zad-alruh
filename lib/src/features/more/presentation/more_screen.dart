@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../prayers/presentation/qibla_screen.dart';
+import '../../reminders/presentation/reminders_screen.dart';
 import 'duas_screen.dart';
 import 'favorites_screen.dart';
 import 'hadith_screen.dart';
@@ -107,6 +108,14 @@ class MoreScreen extends StatelessWidget {
                     title: 'الأحاديث النبوية',
                     subtitle: 'مختارات من صحيح الأحاديث النبوية',
                     destination: const HadithScreen(),
+                  ),
+                  const Divider(height: 1),
+                  _buildNavTile(
+                    context,
+                    icon: Icons.notifications_active_outlined,
+                    title: 'التذكيرات',
+                    subtitle: 'تذكير بالذكر وأذكار الصباح والمساء والجمعة',
+                    destination: const RemindersScreen(),
                   ),
                   const Divider(height: 1),
                   _buildNavTile(

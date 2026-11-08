@@ -332,6 +332,12 @@ class AdhanAudioController extends StateNotifier<AdhanAudioState> {
     try {
       if (_client is OnlineAudioPlayerClient) {
         final onlineClient = _client as OnlineAudioPlayerClient;
+        if (onlineClient is JustAudioPlayerClient) {
+          onlineClient.setNextMediaInfo(
+            title: 'سورة $surahName',
+            artist: reciterName,
+          );
+        }
         final startupResult = await onlineClient.playUrl(
           url,
           requestToken: token,

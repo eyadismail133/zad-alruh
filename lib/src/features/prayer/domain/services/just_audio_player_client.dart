@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'adhan_audio_player_client.dart';
 import 'adhan_audio_session.dart';
 import 'native_prayer_audio_control.dart';
@@ -86,6 +87,27 @@ class JustAudioPlayerClient implements AdhanAudioPlayerClient, OnlineAudioPlayer
   /// Orphan native lease token awaiting retryable confirmed release.
   /// Retained without allocating any SDK player if late cancellation occurs after acquire.
   String? _orphanLeaseToken;
+
+  /// Metadata shown in the media notification for the next [playUrl].
+  MediaItem? _nextMediaItem;
+
+  /// Sets the title/artist shown in the system media notification for the
+  /// next online playback (e.g. the surah and reciter).
+  void setNextMediaInfo({required String title, String? artist}) {
+    _nextMediaItem = MediaItem(
+      id: 'quran_${DateTime.now().microsecondsSinceEpoch}',
+      title: title,
+      artist: artist,
+      album: 'زادُ الروح',
+    );
+  }
+
+  MediaItem _takeMediaItem(String url) {
+    final item = _nextMediaItem ??
+        MediaItem(id: url, title: 'تلاوة القرآن الكريم', album: 'زادُ الروح');
+    _nextMediaItem = null;
+    return item;
+  }
 
   /// Exposes current orphan lease token for testing and verification.
   String? get orphanLeaseToken => _orphanLeaseToken;
@@ -457,7 +479,16 @@ class JustAudioPlayerClient implements AdhanAudioPlayerClient, OnlineAudioPlayer
 
       // 7. Bounded asset load
       try {
-        await freshPlayer.setAsset(assetPath).timeout(_loadTimeout);
+        await freshPlayer
+            .setAsset(
+              assetPath,
+              tag: MediaItem(
+                id: assetPath,
+                title: 'الأذان',
+                album: 'زادُ الروح',
+              ),
+            )
+            .timeout(_loadTimeout);
       } catch (e) {
         await _retireOp(op, deactivateSession: false);
         if (_intentGeneration == opGen && !_isDisposed && !_isResetCancelled(initialResetGen)) {
@@ -782,7 +813,9 @@ class JustAudioPlayerClient implements AdhanAudioPlayerClient, OnlineAudioPlayer
 
       // 7. Bounded remote URL load
       try {
-        await freshPlayer.setUrl(url).timeout(_remoteLoadTimeout);
+        await freshPlayer
+            .setUrl(url, tag: _takeMediaItem(url))
+            .timeout(_remoteLoadTimeout);
       } catch (e) {
         await _retireOp(op, deactivateSession: false);
         if (_intentGeneration == opGen && !_isDisposed && !_isResetCancelled(initialResetGen)) {

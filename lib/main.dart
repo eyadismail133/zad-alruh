@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'src/core/services/local_settings.dart';
 import 'src/core/theme/app_theme.dart';
+import 'src/features/reminders/data/reminder_service.dart';
 import 'src/core/widgets/retryable_error_view.dart';
 import 'src/features/progress/presentation/controllers/progress_controller.dart';
 import 'src/features/shell/presentation/app_shell.dart';
@@ -11,6 +13,19 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   ensureTimeZonesInitialized();
   await LocalSettings.init();
+  try {
+    // Media notification (play/pause) and background playback for Quran
+    // recitation. Prayer-time adhan alarms are native and unaffected.
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'dev.zadalruh.zad_alruh.recitation',
+      androidNotificationChannelName: 'تلاوة القرآن',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+    );
+  } catch (_) {
+    // Playback still works in the foreground without the service.
+  }
+  await ReminderService.instance.init();
   runApp(
     const ProviderScope(
       child: ZadAlruhApp(),
@@ -36,6 +51,7 @@ class ZadAlruhApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'زادُ الروح',
+      navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],
