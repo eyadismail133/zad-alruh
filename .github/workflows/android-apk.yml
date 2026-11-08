@@ -108,6 +108,7 @@ jobs:
             echo
             echo "Tests: **${{ steps.tests.outcome }}**"
           } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Tests::outcome=${{ steps.tests.outcome }}"
           if [ "${{ steps.tests.outcome }}" != "success" ]; then
             echo '### Failing tests (tail)' >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
