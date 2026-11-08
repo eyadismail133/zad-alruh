@@ -1,0 +1,24 @@
+name: Baseline test check
+on:
+  push:
+    branches: [ci-baseline]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.5'
+          cache: true
+      - run: flutter pub get
+      - id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test test/daily_progress_ui_test.dart --plain-name "midnight to bucket B" --file-reporter json:test-results.json 2>&1 | tee out.txt
+      - run: |
+          echo "::notice title=Baseline::outcome=${{ steps.tests.outcome }}"
+          python3 tool/ci_test_annotations.py test-results.json
