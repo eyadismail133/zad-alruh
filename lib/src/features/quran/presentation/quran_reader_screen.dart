@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/retryable_error_view.dart';
 import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
@@ -17,6 +18,8 @@ import '../domain/models/quran_audio_source.dart';
 import '../domain/models/verse.dart';
 import 'controllers/quran_navigation_controller.dart';
 import 'utils/quran_ui_utils.dart';
+import 'widgets/reciter_picker.dart';
+import 'controllers/quran_reader_settings.dart';
 import 'widgets/add_quran_bookmark_dialog.dart';
 import 'widgets/mushaf_paper.dart';
 import 'widgets/page_jump_dialog.dart';
@@ -50,7 +53,11 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
     _adhanAudioController = ref.read(adhanAudioControllerProvider.notifier);
     // Always open the reader with its toolbars visible.
     unawaited(Future.microtask(() {
-      if (mounted) ref.read(mushafImmersiveProvider.notifier).state = false;
+      if (!mounted) return;
+      ref.read(mushafImmersiveProvider.notifier).state = false;
+      if (ref.read(keepScreenOnProvider)) {
+        _setWakelock(true);
+      }
     }));
     if (widget.initialPage != null) {
       final initial = widget.initialPage!.clamp(1, 604);
@@ -63,9 +70,20 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
 
   @override
   void dispose() {
+    _setWakelock(false);
     _pageController?.dispose();
     _adhanAudioController?.stop().catchError((_) {});
     super.dispose();
+  }
+
+  /// Best effort: the wakelock is a convenience and must never break reading.
+  static void _setWakelock(bool on) {
+    try {
+      unawaited(
+        (on ? WakelockPlus.enable() : WakelockPlus.disable())
+            .catchError((Object _) {}),
+      );
+    } catch (_) {}
   }
 
   void _handleBack() {
@@ -393,7 +411,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
             icon: Icon(paperMode.icon),
             initialValue: paperMode,
             onSelected: (mode) =>
-                ref.read(mushafPaperModeProvider.notifier).state = mode,
+                ref.read(mushafPaperModeProvider.notifier).set(mode),
             itemBuilder: (context) => [
               for (final mode in MushafPaperMode.values)
                 PopupMenuItem<MushafPaperMode>(
@@ -854,6 +872,8 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
                               controller.playSurah(
                                 surahNumber: audioState.activeSurahNumber!,
                                 surahName: audioState.activeSurahName ?? '',
+                                reciterName: ref.read(selectedReciterProvider).nameAr,
+                                serverBaseUrl: ref.read(selectedReciterProvider).serverBaseUrl,
                               );
                             }
                           },
@@ -1028,13 +1048,7 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'القارئ: الشيخ ${QuranAudioSource.reciterName}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        const ReciterPicker(),
                         const SizedBox(height: 2),
                         Text(
                           'الرواية: ${QuranAudioSource.riwayahName}',
@@ -1165,6 +1179,8 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
                                 .playSurah(
                                   surahNumber: surah.number,
                                   surahName: surah.name,
+                                  reciterName: ref.read(selectedReciterProvider).nameAr,
+                                  serverBaseUrl: ref.read(selectedReciterProvider).serverBaseUrl,
                                 );
                           },
                         ),
@@ -1222,6 +1238,8 @@ class _QuranReaderScreenState extends ConsumerState<QuranReaderScreen> {
                                         .playSurah(
                                           surahNumber: s.number,
                                           surahName: s.name,
+                                          reciterName: ref.read(selectedReciterProvider).nameAr,
+                                          serverBaseUrl: ref.read(selectedReciterProvider).serverBaseUrl,
                                         );
                                   },
                                 ),

@@ -298,6 +298,7 @@ class AdhanAudioController extends StateNotifier<AdhanAudioState> {
     required String surahName,
     String reciterName = 'مشاري العفاسي',
     String riwayahName = 'حفص عن عاصم - مرتل',
+    String serverBaseUrl = QuranAudioSource.serverBaseUrl,
   }) async {
     if (surahNumber < 1 || surahNumber > 114) {
       state = state.copyWith(
@@ -310,7 +311,10 @@ class AdhanAudioController extends StateNotifier<AdhanAudioState> {
     final String token = 'quran_${++_tokenCounter}';
     _currentToken = token;
 
-    final String url = QuranAudioSource.getSurahAudioUrl(surahNumber);
+    final String url = QuranAudioSource.getSurahAudioUrl(
+      surahNumber,
+      baseUrl: serverBaseUrl,
+    );
 
     state = state.copyWith(
       status: AdhanAudioStatus.loading,

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'src/core/services/local_settings.dart';
 import 'src/core/theme/app_theme.dart';
 import 'src/core/widgets/retryable_error_view.dart';
 import 'src/features/progress/presentation/controllers/progress_controller.dart';
 import 'src/features/shell/presentation/app_shell.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   ensureTimeZonesInitialized();
+  await LocalSettings.init();
   runApp(
     const ProviderScope(
       child: ZadAlruhApp(),

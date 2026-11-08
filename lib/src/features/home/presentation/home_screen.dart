@@ -12,6 +12,7 @@ import '../../more/presentation/settings_screen.dart';
 import '../../prayer/domain/models/prayer_day.dart';
 import '../../prayer/domain/models/prayer_event.dart';
 import '../../prayers/presentation/controllers/prayers_controller.dart';
+import '../../prayers/presentation/qibla_screen.dart';
 import '../../progress/data/models/daily_progress.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
 import '../../quran/presentation/controllers/quran_navigation_controller.dart';
@@ -342,6 +343,16 @@ class HomeScreen extends ConsumerWidget {
                     icon: Icons.auto_awesome,
                     label: 'الأذكار',
                     onTap: () => onNavigateTab?.call(3),
+                  ),
+                  HomeQuickAction(
+                    icon: Icons.explore_outlined,
+                    label: 'القبلة',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const QiblaScreen(),
+                      ),
+                    ),
                   ),
                   HomeQuickAction(
                     icon: Icons.format_quote_rounded,

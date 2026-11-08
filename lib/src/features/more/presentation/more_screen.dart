@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../prayers/presentation/qibla_screen.dart';
 import 'duas_screen.dart';
 import 'favorites_screen.dart';
 import 'hadith_screen.dart';
@@ -106,6 +107,14 @@ class MoreScreen extends StatelessWidget {
                     title: 'الأحاديث النبوية',
                     subtitle: 'مختارات من صحيح الأحاديث النبوية',
                     destination: const HadithScreen(),
+                  ),
+                  const Divider(height: 1),
+                  _buildNavTile(
+                    context,
+                    icon: Icons.explore_outlined,
+                    title: 'اتجاه القبلة',
+                    subtitle: 'بوصلة القبلة حسب مدينتك المختارة',
+                    destination: const QiblaScreen(),
                   ),
                   const Divider(height: 1),
                   _buildNavTile(

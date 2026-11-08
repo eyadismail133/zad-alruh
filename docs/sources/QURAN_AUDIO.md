@@ -77,3 +77,23 @@
      - While held, native prayer alarms that trigger are durably marked as `MANUAL_SUPPRESSED` and post a single dedicated silent notification (`zad_alruh_prayer_manual_silent`), preventing dual playback. Releasing the lease does not replay past prayer audio.
      - **Confirmed Pause UX:** When manual playback is paused in the foreground, the manual playback lease is confirmed released and audio focus is surrendered so subsequent scheduled prayer times are not silenced indefinitely while paused. On resume, a fresh lease is re-acquired atomically.
      - **Platform Boundary:** Applies on Android via native coordinator channel `dev.zadalruh.zad_alruh/prayer_alarm`. Non-Android platforms treat lease operations as honest no-ops. Zero claim or assumption of iOS full background audio execution is made.
+
+## Additional reciters (added 2026-11-08)
+
+All are complete 114-surah "حفص عن عاصم - مرتل" recitations on the same MP3Quran CDN, verified
+against https://mp3quran.net/api/v3/reciters?language=ar. Defined in
+`lib/src/features/quran/domain/models/quran_reciter.dart`.
+
+| Reciter | reciter_id | moshaf_id | server |
+|---|---|---|---|
+| مشاري العفاسي | 123 | 123 | https://cdn.mp3quran.net/audio/mishary-alafasy/r1/ |
+| عبد الباسط عبد الصمد | 51 | 53 | https://cdn.mp3quran.net/audio/abdulbasit-abdulsamad/r3/ |
+| محمود خليل الحصري | 118 | 118 | https://cdn.mp3quran.net/audio/mahmoud-husary/r1/ |
+| محمد صديق المنشاوي | 112 | 112 | https://cdn.mp3quran.net/audio/muhammad-minshawi/r1/ |
+| عبد الرحمن السديس | 54 | 54 | https://cdn.mp3quran.net/audio/abdulrahman-sudais/r1/ |
+| سعود الشريم | 31 | 31 | https://cdn.mp3quran.net/audio/saud-shuraim/r1/ |
+| ماهر المعيقلي | 102 | 102 | https://cdn.mp3quran.net/audio/maher-muaiqly/r1/ |
+| سعد الغامدي | 30 | 30 | https://cdn.mp3quran.net/audio/saad-ghamdi/r1/ |
+| ياسر الدوسري | 92 | 92 | https://cdn.mp3quran.net/audio/yasser-dosari/r1/ |
+| ناصر القطامي | 86 | 86 | https://cdn.mp3quran.net/audio/nasser-qatami/r1/ |
+| أحمد بن علي العجمي | 5 | 5 | https://cdn.mp3quran.net/audio/ahmad-ajmi/r1/ |

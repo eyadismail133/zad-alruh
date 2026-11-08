@@ -26,7 +26,10 @@ class QuranAudioSource {
   /// Builds the validated HTTPS padded 3-digit URL for surah (1..114).
   ///
   /// Throws [ArgumentError] if [surahNumber] is outside the 1..114 range.
-  static String getSurahAudioUrl(int surahNumber) {
+  static String getSurahAudioUrl(
+    int surahNumber, {
+    String baseUrl = serverBaseUrl,
+  }) {
     if (surahNumber < 1 || surahNumber > surahTotal) {
       throw ArgumentError.value(
         surahNumber,
@@ -35,6 +38,6 @@ class QuranAudioSource {
       );
     }
     final padded = surahNumber.toString().padLeft(3, '0');
-    return '$serverBaseUrl$padded.mp3';
+    return '$baseUrl$padded.mp3';
   }
 }

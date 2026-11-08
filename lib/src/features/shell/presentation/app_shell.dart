@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../dhikr/presentation/dhikr_screen.dart';
+import '../../dhikr/presentation/adhkar_hub_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../more/presentation/more_screen.dart';
 import '../../prayer/domain/services/prayer_notification_coordinator.dart';
@@ -37,7 +37,7 @@ class _AppShellState extends ConsumerState<AppShell>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden) {
-      ref.read(adhanAudioControllerProvider.notifier).stop().catchError((_) {});
+      _stopAdhanPreview();
     } else if (state == AppLifecycleState.resumed) {
       ref.read(prayerNotificationCoordinatorProvider).reconcile(passive: true);
     }
@@ -49,9 +49,17 @@ class _AppShellState extends ConsumerState<AppShell>
     super.dispose();
   }
 
+  /// Adhan previews stop when leaving the screen; Quran recitation keeps
+  /// playing across tabs and while the app is in the background.
+  void _stopAdhanPreview() {
+    final audio = ref.read(adhanAudioControllerProvider);
+    if (audio.sourceType == AudioPlaybackSource.quran) return;
+    ref.read(adhanAudioControllerProvider.notifier).stop().catchError((_) {});
+  }
+
   void _onSelectTab(int index) {
     if (_currentIndex != index) {
-      ref.read(adhanAudioControllerProvider.notifier).stop().catchError((_) {});
+      _stopAdhanPreview();
       setState(() {
         _currentIndex = index;
       });
@@ -64,7 +72,7 @@ class _AppShellState extends ConsumerState<AppShell>
       HomeScreen(onNavigateTab: _onSelectTab),
       const QuranScreen(),
       const PrayersScreen(),
-      const DhikrScreen(),
+      const AdhkarHubScreen(),
       const MoreScreen(),
     ];
     final scheme = Theme.of(context).colorScheme;

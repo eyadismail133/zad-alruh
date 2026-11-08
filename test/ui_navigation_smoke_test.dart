@@ -139,8 +139,8 @@ void main() {
 
         // Tab 3: Dhikr (الأذكار)
         await tapAndSettle(tester, find.byIcon(Icons.auto_awesome_outlined));
-        expect(find.text('التسبيح والذكر'), findsOneWidget);
-        expect(find.textContaining('ابدأ جلسة ذكر جديدة'), findsOneWidget);
+        expect(find.text('الأذكار والأدعية'), findsOneWidget);
+        expect(find.text('المسبحة الإلكترونية'), findsOneWidget);
 
         // Tab 4: More (المزيد)
         await tapAndSettle(tester, find.byIcon(Icons.grid_view_outlined));

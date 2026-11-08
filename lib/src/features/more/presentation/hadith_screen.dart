@@ -8,6 +8,24 @@ import '../../hadith/domain/repositories/hadith_repository.dart';
 import '../../hadith/presentation/controllers/hadith_provider.dart';
 import '../../hadith/presentation/hadith_detail_screen.dart';
 
+/// Search shortcuts shown as chips above the list. They are plain text
+/// searches (topic words and takhrij phrases), not editorial categories.
+const List<String> _kHadithQuickFilters = [
+  'الصلاة',
+  'الجنة',
+  'القرآن',
+  'الصدقة',
+  'رمضان',
+  'الحج',
+  'الوضوء',
+  'الصدق',
+  'العلم',
+  'الدعاء',
+  'متفق عليه',
+  'رواه البخاري',
+  'رواه مسلم',
+];
+
 class HadithScreen extends ConsumerStatefulWidget {
   final HadithRepository? repository;
 
@@ -160,6 +178,36 @@ class _HadithScreenState extends ConsumerState<HadithScreen> {
                   ),
                 ),
               ),
+
+              // 1b. Quick topic / source filters (search shortcuts)
+              SizedBox(
+                height: 40,
+                child: ListView.separated(
+                  key: const ValueKey('hadith_topic_chips'),
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _kHadithQuickFilters.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final filter = _kHadithQuickFilters[index];
+                    final selected = _searchQuery.trim() == filter;
+                    return ChoiceChip(
+                      label: Text(filter),
+                      selected: selected,
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (on) {
+                        if (on) {
+                          _searchController.text = filter;
+                          _onSearchChanged(filter);
+                        } else {
+                          _clearSearch();
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 4),
 
               // 2. Info / Results Count Header
               Padding(

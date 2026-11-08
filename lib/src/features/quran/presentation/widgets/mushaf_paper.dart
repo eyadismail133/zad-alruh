@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/services/local_settings.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// How a Mushaf page image is painted.
@@ -37,10 +38,30 @@ enum MushafPaperMode {
   }
 }
 
-/// Session-wide selected paper mode (shared by every reader page).
-final mushafPaperModeProvider = StateProvider<MushafPaperMode>(
-  (ref) => MushafPaperMode.auto,
+/// Selected paper mode (shared by every reader page, persisted across launches).
+final mushafPaperModeProvider =
+    StateNotifierProvider<MushafPaperModeNotifier, MushafPaperMode>(
+  (ref) => MushafPaperModeNotifier(),
 );
+
+class MushafPaperModeNotifier extends StateNotifier<MushafPaperMode> {
+  static const _key = 'quran.paper_mode';
+
+  MushafPaperModeNotifier() : super(_load());
+
+  static MushafPaperMode _load() {
+    final raw = LocalSettings.getString(_key);
+    for (final m in MushafPaperMode.values) {
+      if (m.name == raw) return m;
+    }
+    return MushafPaperMode.auto;
+  }
+
+  void set(MushafPaperMode mode) {
+    state = mode;
+    LocalSettings.setString(_key, mode.name);
+  }
+}
 
 /// Whether reader chrome (app bar, toolbars) is hidden for full-screen reading.
 final mushafImmersiveProvider = StateProvider<bool>((ref) => false);

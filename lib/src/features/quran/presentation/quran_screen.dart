@@ -15,6 +15,8 @@ import '../domain/models/verse.dart';
 import 'controllers/quran_navigation_controller.dart';
 import 'quran_reader_screen.dart';
 import 'utils/quran_ui_utils.dart';
+import 'widgets/reciter_picker.dart';
+import 'controllers/quran_reader_settings.dart';
 import 'widgets/add_quran_bookmark_dialog.dart';
 import 'widgets/page_jump_dialog.dart';
 
@@ -1037,6 +1039,8 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                               controller.playSurah(
                                 surahNumber: audioState.activeSurahNumber!,
                                 surahName: audioState.activeSurahName ?? '',
+                                reciterName: ref.read(selectedReciterProvider).nameAr,
+                                serverBaseUrl: ref.read(selectedReciterProvider).serverBaseUrl,
                               );
                             }
                           },
@@ -1194,13 +1198,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'القارئ: الشيخ ${QuranAudioSource.reciterName}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        const ReciterPicker(),
                         const SizedBox(height: 2),
                         Text(
                           'الرواية: ${QuranAudioSource.riwayahName}',
@@ -1280,6 +1278,8 @@ class _QuranScreenState extends ConsumerState<QuranScreen>
                           .playSurah(
                             surahNumber: surah.number,
                             surahName: surah.name,
+                            reciterName: ref.read(selectedReciterProvider).nameAr,
+                            serverBaseUrl: ref.read(selectedReciterProvider).serverBaseUrl,
                           );
                     },
                   ),
