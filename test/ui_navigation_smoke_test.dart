@@ -255,6 +255,8 @@ void main() {
         // Body content is visible and hit-testable
         final continueReadingBtn = find.text('كمّل وِردك  ←');
         expect(continueReadingBtn, findsOneWidget);
+        await tester.ensureVisible(continueReadingBtn);
+        await pumpBounded(tester);
         await tapAndSettle(tester, continueReadingBtn);
 
         // Tapping hero button opens reader at current page
@@ -554,6 +556,8 @@ void main() {
         final rawDb = await db.database;
 
         // Confirm an actual reader page; the database rejects the real write.
+        await tester.ensureVisible(find.text('كمّل وِردك  ←'));
+        await pumpBounded(tester);
         await tapAndSettle(tester, find.text('كمّل وِردك  ←'));
         final container = ProviderScope.containerOf(
           tester.element(find.byType(ZadAlruhApp)),

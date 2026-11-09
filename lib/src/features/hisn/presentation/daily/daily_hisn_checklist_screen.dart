@@ -547,7 +547,7 @@ class _DailyHisnChecklistScreenState
 
             // Verbatim Text (Preserving Item 75 preface and all paragraphs)
             SelectableText(
-              item.text,
+              HisnTextFormatter.clean(item.text),
               textAlign: TextAlign.justify,
               style: TextStyle(
                 fontSize: 16.5,
@@ -879,7 +879,7 @@ class _DailyHisnChecklistScreenState
             ),
             const SizedBox(height: 10),
             SelectableText(
-              item.text,
+              HisnTextFormatter.clean(item.text),
               textAlign: TextAlign.justify,
               style: TextStyle(
                 fontSize: 16.5,

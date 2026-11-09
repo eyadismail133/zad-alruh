@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -42,6 +42,14 @@ double distanceToKaabaKm(double latitude, double longitude) {
   return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 }
 
+/// Signed smallest difference a-b in degrees (-180..180].
+double angleDiff(double a, double b) {
+  var d = (a - b) % 360;
+  if (d > 180) d -= 360;
+  if (d <= -180) d += 360;
+  return d;
+}
+
 class QiblaScreen extends ConsumerWidget {
   const QiblaScreen({super.key});
 
@@ -58,7 +66,7 @@ class QiblaScreen extends ConsumerWidget {
             child: Padding(
               padding: EdgeInsets.all(24),
               child: Text(
-                'اختر مدينتك أولاً من شاشة الصلاة لحساب اتجاه القبلة.',
+                'اختر مدينتك أولاً من الإعدادات لحساب اتجاه القبلة.',
                 textAlign: TextAlign.center,
               ),
             ),
@@ -78,158 +86,147 @@ class _QiblaBody extends StatefulWidget {
 }
 
 class _QiblaBodyState extends State<_QiblaBody> {
-  StreamSubscription<MagnetometerEvent>? _magSub;
-  StreamSubscription<AccelerometerEvent>? _accSub;
-  List<double>? _gravity;
-  double? _heading; // degrees clockwise from magnetic north
-  bool _sensorError = false;
+  static const EventChannel _compass =
+      EventChannel('dev.zadalruh.zad_alruh/compass');
+
+  StreamSubscription<dynamic>? _sub;
+  double? _heading; // degrees clockwise from TRUE north (native fused sensor)
+  int _accuracy = 3;
+  bool _noSensor = false;
+  bool _wasAligned = false;
 
   @override
   void initState() {
     super.initState();
     try {
-      _accSub = accelerometerEventStream().listen(
-        (e) => _gravity = [e.x, e.y, e.z],
-        onError: (Object _) => _markError(),
-        cancelOnError: true,
-      );
-      _magSub = magnetometerEventStream().listen(
-        _onMagnetometer,
-        onError: (Object _) => _markError(),
-        cancelOnError: true,
+      _sub = _compass.receiveBroadcastStream({
+        'lat': widget.city.latitude,
+        'lng': widget.city.longitude,
+      }).listen(
+        (dynamic e) {
+          if (e is! Map) return;
+          final h = (e['heading'] as num?)?.toDouble();
+          if (h == null) return;
+          final prev = _heading;
+          // Light smoothing across the 0/360 seam.
+          final next = prev == null ? h : (prev + angleDiff(h, prev) * 0.35 + 360) % 360;
+          if (!mounted) return;
+          setState(() {
+            _heading = next;
+            _accuracy = (e['accuracy'] as num?)?.toInt() ?? 3;
+          });
+        },
+        onError: (Object _) {
+          if (mounted) setState(() => _noSensor = true);
+        },
       );
     } catch (_) {
-      _sensorError = true;
+      _noSensor = true;
     }
-  }
-
-  void _markError() {
-    if (mounted) setState(() => _sensorError = true);
-  }
-
-  /// Tilt-compensated heading using the gravity vector (Android rotation
-  /// matrix method), low-pass filtered to keep the needle steady.
-  void _onMagnetometer(MagnetometerEvent m) {
-    final g = _gravity;
-    if (g == null) return;
-    final ax = g[0], ay = g[1], az = g[2];
-    final ex = m.x, ey = m.y, ez = m.z;
-    var hx = ey * az - ez * ay;
-    var hy = ez * ax - ex * az;
-    final hz = ex * ay - ey * ax;
-    final normH = math.sqrt(hx * hx + hy * hy + hz * hz);
-    if (normH < 0.1) return;
-    hx /= normH;
-    hy /= normH;
-    final normA = math.sqrt(ax * ax + ay * ay + az * az);
-    if (normA == 0) return;
-    final my = (az * hx - ax * (hz / normH)) / normA;
-    final azimuth = math.atan2(hy, my) * 180 / math.pi;
-    final heading = (azimuth + 360) % 360;
-
-    final prev = _heading;
-    double next;
-    if (prev == null) {
-      next = heading;
-    } else {
-      var delta = heading - prev;
-      if (delta > 180) delta -= 360;
-      if (delta < -180) delta += 360;
-      next = (prev + delta * 0.15 + 360) % 360;
-    }
-    if (mounted) setState(() => _heading = next);
   }
 
   @override
   void dispose() {
-    _magSub?.cancel();
-    _accSub?.cancel();
+    _sub?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     final city = widget.city;
     final bearing = qiblaBearing(city.latitude, city.longitude);
     final distance = distanceToKaabaKm(city.latitude, city.longitude);
     final heading = _heading;
-    final relative = heading == null ? bearing : (bearing - heading + 360) % 360;
-    final aligned = heading != null && (relative < 4 || relative > 356);
-    final accent = isDark ? AppColors.darkGoldAccent : AppColors.goldDark;
-    final primary = isDark ? AppColors.darkForestPrimary : AppColors.forestPrimary;
+
+    // How far the phone must turn: positive = turn right (clockwise).
+    final turn = heading == null ? null : angleDiff(bearing, heading);
+    final aligned = turn != null && turn.abs() <= 5;
+    if (aligned && !_wasAligned) HapticFeedback.mediumImpact();
+    _wasAligned = aligned;
+
+    final good = isDark ? AppColors.darkForestPrimary : AppColors.forestPrimary;
+    final gold = isDark ? AppColors.darkGoldAccent : AppColors.goldDark;
+
+    String status;
+    if (_noSensor) {
+      status = 'الموبايل ده مفيهوش بوصلة. وجّه نفسك على زاوية '
+          '${QuranUiUtils.toArabicDigits(bearing.round())}° من الشمال.';
+    } else if (turn == null) {
+      status = 'جارٍ تشغيل البوصلة…';
+    } else if (aligned) {
+      status = 'أنت متجه للقبلة ✓';
+    } else {
+      final deg = QuranUiUtils.toArabicDigits(turn.abs().round());
+      status = turn > 0 ? 'لِف يمين $deg°' : 'لِف شمال $deg°';
+    }
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
         Text(
           city.arabicName ?? city.name,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleLarge,
+          style: text.titleLarge,
         ),
         const SizedBox(height: 4),
         Text(
-          'القبلة على ${QuranUiUtils.toArabicDigits(bearing.round())}° من الشمال · '
-          'المسافة إلى مكة ${QuranUiUtils.toArabicDigits(distance.round())} كم',
+          'القبلة ${QuranUiUtils.toArabicDigits(bearing.round())}° من الشمال · '
+          '${QuranUiUtils.toArabicDigits(distance.round())} كم إلى مكة',
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
+          style: text.bodySmall,
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         AspectRatio(
           aspectRatio: 1,
           child: LayoutBuilder(
             builder: (context, c) {
               final size = c.maxWidth;
+              final dialAngle = -(heading ?? 0) * math.pi / 180;
               return Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Dial rotates so that "N" points to real north.
+                  // Dial: N points to true north, Kaaba marker at the bearing.
                   Transform.rotate(
-                    angle: -(heading ?? 0) * math.pi / 180,
+                    angle: dialAngle,
                     child: CustomPaint(
                       size: Size.square(size),
                       painter: _DialPainter(
-                        ring: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
                         face: isDark ? AppColors.darkSurface : AppColors.cardSurface,
+                        ring: aligned ? good : (isDark ? AppColors.darkCardBorder : AppColors.cardBorder),
                         tick: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                        north: accent,
+                        north: isDark ? AppColors.darkTextPrimary : AppColors.textDark,
+                        kaaba: aligned ? good : gold,
+                        bearing: bearing,
                       ),
                     ),
                   ),
-                  // Qibla needle (relative to the phone's top).
-                  Transform.rotate(
-                    angle: relative * math.pi / 180,
-                    child: SizedBox(
-                      width: size,
-                      height: size,
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: Padding(
-                          padding: EdgeInsets.only(top: size * 0.08),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.mosque_rounded,
-                                  size: size * 0.11,
-                                  color: aligned ? primary : accent),
-                              Container(
-                                width: 4,
-                                height: size * 0.3,
-                                decoration: BoxDecoration(
-                                  color: aligned ? primary : accent,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                  // Fixed pointer = where the top of the phone points.
+                  Positioned(
+                    top: 0,
+                    child: Icon(
+                      Icons.arrow_drop_down_rounded,
+                      size: size * 0.16,
+                      color: aligned ? good : scheme.onSurface,
                     ),
                   ),
                   Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
+                    width: size * 0.36,
+                    height: size * 0.36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: aligned
+                          ? good
+                          : (isDark ? AppColors.darkSurfaceHigh : AppColors.forestSoftTint),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.mosque_rounded,
+                      size: size * 0.16,
+                      color: aligned ? Colors.white : good,
+                    ),
                   ),
                 ],
               );
@@ -237,54 +234,66 @@ class _QiblaBodyState extends State<_QiblaBody> {
           ),
         ),
         const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(14),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             color: aligned
-                ? (isDark ? AppColors.darkSurfaceHigh : AppColors.forestSoftTint)
+                ? good
                 : (isDark ? AppColors.darkSurface : AppColors.goldSoftTint),
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           ),
           child: Text(
-            _sensorError
-                ? 'البوصلة غير متاحة على هذا الجهاز. استخدم الزاوية المكتوبة أعلاه مع بوصلة خارجية.'
-                : heading == null
-                    ? 'جارٍ تشغيل البوصلة… أمسك الهاتف بشكل أفقي.'
-                    : aligned
-                        ? 'أنت متجه نحو القبلة ✓'
-                        : 'لِف الهاتف حتى يشير السهم لأعلى.',
+            status,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: AppTheme.uiFont, fontFamilyFallback: AppTheme.uiFontFallback, fontSize: 14, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontFamily: AppTheme.uiFont,
+              fontFamilyFallback: AppTheme.uiFontFallback,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: aligned ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.textDark),
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'لدقة أفضل: ابعد عن المعادن والأجهزة الكهربائية، وحرّك الهاتف على شكل ٨ لمعايرة البوصلة.',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        const SizedBox(height: 14),
+        if (!_noSensor && _accuracy < 2)
+          Text(
+            'البوصلة محتاجة معايرة: حرّك الموبايل في الهوا على شكل رقم ٨ كذا مرة.',
+            textAlign: TextAlign.center,
+            style: text.bodySmall?.copyWith(color: gold),
+          )
+        else
+          Text(
+            'امسك الموبايل مفرود قدامك وبعيد عن المعادن والمغناطيس، ولِف لحد ما العلامة الذهبية توصل للسهم اللي فوق.',
+            textAlign: TextAlign.center,
+            style: text.bodySmall,
+          ),
       ],
     );
   }
 }
 
 class _DialPainter extends CustomPainter {
-  final Color ring;
   final Color face;
+  final Color ring;
   final Color tick;
   final Color north;
+  final Color kaaba;
+  final double bearing;
 
   _DialPainter({
-    required this.ring,
     required this.face,
+    required this.ring,
     required this.tick,
     required this.north,
+    required this.kaaba,
+    required this.bearing,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
-    final r = size.width / 2 - 4;
+    final r = size.width / 2 - 10;
     canvas.drawCircle(c, r, Paint()..color = face);
     canvas.drawCircle(
       c,
@@ -292,44 +301,65 @@ class _DialPainter extends CustomPainter {
       Paint()
         ..color = ring
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
+        ..strokeWidth = 4,
     );
-    for (var i = 0; i < 72; i++) {
-      final a = i * 5 * math.pi / 180;
-      final major = i % 18 == 0;
-      final len = major ? 16.0 : (i % 6 == 0 ? 10.0 : 5.0);
-      final p1 = c + Offset(math.sin(a), -math.cos(a)) * (r - 6);
-      final p2 = c + Offset(math.sin(a), -math.cos(a)) * (r - 6 - len);
+    Offset at(double deg, double radius) {
+      final a = deg * math.pi / 180;
+      return c + Offset(math.sin(a), -math.cos(a)) * radius;
+    }
+
+    for (var d = 0; d < 360; d += 10) {
+      final major = d % 90 == 0;
       canvas.drawLine(
-        p1,
-        p2,
+        at(d.toDouble(), r - 8),
+        at(d.toDouble(), r - (major ? 22 : 14)),
         Paint()
-          ..color = i == 0 ? north : tick
-          ..strokeWidth = major ? 3 : 1.4,
+          ..color = tick.withAlpha(major ? 255 : 140)
+          ..strokeWidth = major ? 3 : 1.5
+          ..strokeCap = StrokeCap.round,
       );
     }
-    const labels = ['ش', 'ق', 'ج', 'غ'];
-    for (var i = 0; i < 4; i++) {
-      final a = i * math.pi / 2;
+    const labels = {0: 'ش', 90: 'ق', 180: 'ج', 270: 'غ'};
+    labels.forEach((deg, label) {
       final tp = TextPainter(
         text: TextSpan(
-          text: labels[i],
+          text: label,
           style: TextStyle(
             fontFamily: AppTheme.uiFont,
             fontFamilyFallback: AppTheme.uiFontFallback,
-            color: i == 0 ? north : tick,
+            color: deg == 0 ? north : tick,
             fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
         ),
         textDirection: TextDirection.rtl,
       )..layout();
-      final pos = c + Offset(math.sin(a), -math.cos(a)) * (r - 40);
+      final pos = at(deg.toDouble(), r - 42);
       tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
-    }
+    });
+
+    // Kaaba marker on the rim at the qibla bearing.
+    final k = at(bearing, r - 2);
+    canvas.drawCircle(k, 16, Paint()..color = kaaba);
+    canvas.drawRect(
+      Rect.fromCenter(center: k, width: 14, height: 14),
+      Paint()..color = AppColors.kaabaBlack,
+    );
+    canvas.drawLine(
+      k + const Offset(-7, -3),
+      k + const Offset(7, -3),
+      Paint()
+        ..color = kaaba
+        ..strokeWidth = 2,
+    );
   }
 
   @override
   bool shouldRepaint(covariant _DialPainter old) =>
-      old.ring != ring || old.face != face || old.tick != tick || old.north != north;
+      old.face != face ||
+      old.ring != ring ||
+      old.tick != tick ||
+      old.north != north ||
+      old.kaaba != kaaba ||
+      old.bearing != bearing;
 }

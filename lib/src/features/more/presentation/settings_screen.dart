@@ -6,10 +6,20 @@ import '../../prayer/domain/models/adhan_voice.dart';
 import '../../prayer/presentation/controllers/prayer_notification_controller.dart';
 import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
+import '../../prayer/data/online_adhan_store.dart';
+import '../../prayer/domain/models/online_adhan.dart';
+import '../../prayers/presentation/adhan_voices_screen.dart';
+import '../../reminders/presentation/reminders_screen.dart';
 import 'widgets/prayer_calculation_settings_section.dart';
+import 'widgets/quran_settings_card.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+  /// Optional section to scroll to on open (e.g. [sectionAdhan]).
+  final String? initialSection;
+
+  const SettingsScreen({super.key, this.initialSection});
+
+  static const String sectionAdhan = 'adhan';
 
   /// Canonical legacy reference list preserved for API compatibility.
   static const List<Map<String, String>> supportedCities = [
@@ -29,6 +39,42 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late AdhanAudioController _audioController;
+  final GlobalKey _adhanSectionKey = GlobalKey();
+  bool _didScrollToSection = false;
+
+  void _maybeScrollToSection() {
+    if (_didScrollToSection ||
+        widget.initialSection != SettingsScreen.sectionAdhan) {
+      return;
+    }
+    _didScrollToSection = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _adhanSectionKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
+  /// Bundled voices plus downloaded muezzins (value `online:<id>`).
+  List<DropdownMenuItem<String>> _withOnline(
+    List<DropdownMenuItem<String>> bundled,
+    OnlineAdhanSelection online,
+  ) {
+    return [
+      ...bundled,
+      for (final a in OnlineAdhan.all)
+        if (online.downloaded.contains(a.id))
+          DropdownMenuItem(
+            value: 'online:${a.id}',
+            child: Text('${a.nameAr} · ${a.noteAr} (محمّل)'),
+          ),
+    ];
+  }
 
   @override
   void didChangeDependencies() {
@@ -292,6 +338,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final prefsAsync = ref.watch(preferencesControllerProvider);
     final audioState = ref.watch(adhanAudioControllerProvider);
     final notifState = ref.watch(prayerNotificationStateProvider);
+    final online = ref.watch(onlineAdhanStoreProvider);
     final isResetInProgress = ref.watch(isResetInProgressProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -302,6 +349,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: SafeArea(
         child: prefsAsync.when(
           data: (prefs) {
+            _maybeScrollToSection();
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
@@ -384,6 +432,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                 const SizedBox(height: 16),
 
+                _buildSectionHeader('المصحف والتلاوة', isDark),
+                const QuranSettingsCard(),
+
+                const SizedBox(height: 16),
+
                 // Location & Prayer Calculation Settings Section
                 _buildSectionHeader('الموقع وحساب مواقيت الصلاة', isDark),
                 PrayerCalculationSettingsSection(
@@ -395,7 +448,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 16),
 
                 // Notifications
-                _buildSectionHeader('التنبيهات والأذان', isDark),
+                KeyedSubtree(
+                  key: _adhanSectionKey,
+                  child: _buildSectionHeader('التنبيهات والأذان', isDark),
+                ),
                 Card(
                   child: Column(
                     children: [
@@ -625,8 +681,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: 'صوت أذان الصلوات العامة',
                         subtitle:
                             'للصلوات الأربع (الظهر، العصر، المغرب، العشاء). التسجيل مقتصر على الصيغ العامة منعاً لخلط ألفاظ أذان الفجر.',
-                        value: prefs.generalAdhanVoice,
-                        items: const [
+                        value: online.generalId != null &&
+                                online.downloaded.contains(online.generalId)
+                            ? 'online:${online.generalId}'
+                            : prefs.generalAdhanVoice,
+                        items: _withOnline(const [
                           DropdownMenuItem(
                             value: 'adam',
                             child: Text('أذان (تسجيل عام) · Adam-synagda (CC0)'),
@@ -635,11 +694,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             value: 'atcovi',
                             child: Text('أذان (المصدر: Atcovi) · CC BY-SA 4.0'),
                           ),
-                        ],
+                        ], online),
                         onChanged: isResetInProgress
                             ? null
                             : (val) {
-                                if (val != null) {
+                                if (val == null) return;
+                                final store =
+                                    ref.read(onlineAdhanStoreProvider.notifier);
+                                if (val.startsWith('online:')) {
+                                  store.selectGeneral(val.substring(7));
+                                } else {
+                                  store.selectGeneral(null);
                                   _updateGeneralVoice(context, val);
                                 }
                               },
@@ -651,8 +716,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: 'صوت أذان الفجر',
                         subtitle:
                             'مخصص لصلاة الفجر (الافتراضي: تسجيل المركز الإسلامي في مالمو)',
-                        value: prefs.fajrAdhanVoice,
-                        items: const [
+                        value: online.fajrId != null &&
+                                online.downloaded.contains(online.fajrId)
+                            ? 'online:${online.fajrId}'
+                            : prefs.fajrAdhanVoice,
+                        items: _withOnline(const [
                           DropdownMenuItem(
                             value: 'malmo_fajr',
                             child: Text(
@@ -667,14 +735,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             value: 'atcovi',
                             child: Text('أذان (المصدر: Atcovi) · CC BY-SA 4.0'),
                           ),
-                        ],
+                        ], online),
                         onChanged: isResetInProgress
                             ? null
                             : (val) {
-                                if (val != null) {
+                                if (val == null) return;
+                                final store =
+                                    ref.read(onlineAdhanStoreProvider.notifier);
+                                if (val.startsWith('online:')) {
+                                  store.selectFajr(val.substring(7));
+                                } else {
+                                  store.selectFajr(null);
                                   _updateFajrVoice(context, val);
                                 }
                               },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        key: const ValueKey('settings_download_muezzins'),
+                        leading: const Icon(Icons.download_for_offline_outlined),
+                        title: const Text('مؤذنون آخرون'),
+                        subtitle: const Text(
+                          'العفاسي، الزهراني، النفيس… حمّل مرة واشتغل بدون إنترنت',
+                        ),
+                        trailing: const Icon(Icons.chevron_left_rounded),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const AdhanVoicesScreen(),
+                          ),
+                        ),
                       ),
                       const Divider(height: 1),
 
@@ -908,6 +998,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 16),
 
                 // Quran Daily Goal Section
+                _buildSectionHeader('التذكيرات', isDark),
+                Card(
+                  child: ListTile(
+                    key: const ValueKey('settings_reminders'),
+                    leading: const Icon(Icons.notifications_active_outlined),
+                    title: const Text('تذكيرات الذكر والأوقات'),
+                    subtitle: const Text(
+                      'سبحان الله، الله أكبر، أذكار الصباح والمساء والجمعة',
+                    ),
+                    trailing: const Icon(Icons.chevron_left_rounded),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const RemindersScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
                 _buildSectionHeader('أهداف القراءة والأوراد', isDark),
                 Card(
                   child: Column(

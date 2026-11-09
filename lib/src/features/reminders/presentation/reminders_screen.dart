@@ -14,13 +14,37 @@ class RemindersScreen extends StatefulWidget {
   State<RemindersScreen> createState() => _RemindersScreenState();
 }
 
-class _RemindersScreenState extends State<RemindersScreen> {
+class _RemindersScreenState extends State<RemindersScreen>
+    with WidgetsBindingObserver {
   late ReminderSettings _s;
+  bool _overlayAllowed = true;
 
   @override
   void initState() {
     super.initState();
     _s = ReminderService.instance.settings;
+    WidgetsBinding.instance.addObserver(this);
+    _checkOverlay();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back from the system permission screen.
+    if (state == AppLifecycleState.resumed) {
+      _checkOverlay();
+      ReminderService.instance.reschedule(_s);
+    }
+  }
+
+  Future<void> _checkOverlay() async {
+    final ok = await ReminderService.instance.canShowOverlay();
+    if (mounted) setState(() => _overlayAllowed = ok);
   }
 
   Future<void> _update(ReminderSettings next) async {
@@ -175,19 +199,116 @@ class _RemindersScreenState extends State<RemindersScreen> {
             const SizedBox(height: 12),
 
             // ---------------- Display style ----------------
-            Card(
-              child: SwitchListTile(
-                key: const ValueKey('reminders_popup_switch'),
-                secondary: const Icon(Icons.open_in_full_rounded),
-                title: const Text('تظهر قدامي على الشاشة'),
-                subtitle: const Text(
-                  'إشعار منبثق أعلى الشاشة بصوت خفيف. لو قفلتها هتظهر بهدوء في شريط الإشعارات.',
+            Text('طريقة الظهور', style: text.titleSmall),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _StyleOption(
+                    key: const ValueKey('reminders_style_overlay'),
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: 'بطاقة لطيفة',
+                    subtitle: 'تظهر على الشاشة وتختفي لوحدها',
+                    selected: _s.useOverlay,
+                    onTap: () => _update(_s.copyWith(displayStyle: 'overlay')),
+                  ),
                 ),
-                isThreeLine: true,
-                value: _s.popUp,
-                onChanged: (v) => _update(_s.copyWith(popUp: v)),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _StyleOption(
+                    key: const ValueKey('reminders_style_notification'),
+                    icon: Icons.notifications_none_rounded,
+                    title: 'إشعار عادي',
+                    subtitle: 'في شريط الإشعارات',
+                    selected: !_s.useOverlay,
+                    onTap: () =>
+                        _update(_s.copyWith(displayStyle: 'notification')),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 10),
+            if (_s.useOverlay)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!_overlayAllowed) ...[
+                        Text(
+                          'عشان البطاقة تظهر فوق أي تطبيق، اسمح لـ "زاد الروح" بالظهور فوق التطبيقات الأخرى. '
+                          'لحد ما تسمح، التذكير هيوصلك كإشعار عادي.',
+                          style: text.bodySmall,
+                        ),
+                        const SizedBox(height: 8),
+                        FilledButton.icon(
+                          icon: const Icon(Icons.verified_user_outlined, size: 18),
+                          label: const Text('السماح بالظهور على الشاشة'),
+                          onPressed: () async {
+                            await ReminderService.instance
+                                .requestOverlayPermission();
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Text('مكانها في الشاشة', style: text.titleSmall),
+                      const SizedBox(height: 8),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: 'top',
+                            icon: Icon(Icons.vertical_align_top_rounded),
+                            label: Text('فوق'),
+                          ),
+                          ButtonSegment(
+                            value: 'center',
+                            icon: Icon(Icons.vertical_align_center_rounded),
+                            label: Text('النص'),
+                          ),
+                          ButtonSegment(
+                            value: 'bottom',
+                            icon: Icon(Icons.vertical_align_bottom_rounded),
+                            label: Text('تحت'),
+                          ),
+                        ],
+                        selected: {_s.overlayPosition},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (v) =>
+                            _update(_s.copyWith(overlayPosition: v.first)),
+                      ),
+                      const SizedBox(height: 14),
+                      Text('تفضل ظاهرة قد إيه', style: text.titleSmall),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (final sec in const [5, 8, 15, 30])
+                            ChoiceChip(
+                              label: Text(
+                                '${QuranUiUtils.toArabicDigits(sec)} ثانية',
+                              ),
+                              selected: _s.overlaySeconds == sec,
+                              onSelected: (_) =>
+                                  _update(_s.copyWith(overlaySeconds: sec)),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Card(
+                child: SwitchListTile(
+                  key: const ValueKey('reminders_popup_switch'),
+                  secondary: const Icon(Icons.open_in_full_rounded),
+                  title: const Text('إشعار منبثق بصوت خفيف'),
+                  subtitle: const Text('لو قفلتها هيظهر بهدوء في شريط الإشعارات'),
+                  value: _s.popUp,
+                  onChanged: (v) => _update(_s.copyWith(popUp: v)),
+                ),
+              ),
             const SizedBox(height: 12),
 
             // ---------------- Fixed reminders ----------------
@@ -241,6 +362,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
               icon: Icon(Icons.play_arrow_rounded, color: scheme.primary),
               label: const Text('جرّب تذكير دلوقتي'),
               onPressed: () async {
+                if (_s.useOverlay) {
+                  final shown =
+                      await ReminderService.instance.previewOverlay(_s);
+                  if (shown) return;
+                }
                 await ReminderService.instance.requestPermission();
                 await ReminderService.instance.showTest(_s);
               },
@@ -252,6 +378,56 @@ class _RemindersScreenState extends State<RemindersScreen> {
               style: text.bodySmall,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StyleOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _StyleOption({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Material(
+      color: selected ? scheme.primaryContainer : scheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        side: BorderSide(
+          color: selected ? scheme.primary : scheme.outlineVariant,
+          width: selected ? 1.6 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: scheme.primary),
+              const SizedBox(height: 8),
+              Text(title, style: text.titleSmall),
+              const SizedBox(height: 2),
+              Text(subtitle, style: text.bodySmall),
+            ],
+          ),
         ),
       ),
     );

@@ -44,6 +44,18 @@ class ReminderSettings {
   /// instead of a quiet notification in the shade.
   final bool popUp;
 
+  /// 'overlay' = gentle floating card on screen; 'notification' = regular
+  /// notification (heads-up when [popUp]).
+  final String displayStyle;
+
+  /// Where the floating card appears: 'top' | 'center' | 'bottom'.
+  final String overlayPosition;
+
+  /// Seconds the floating card stays before fading out.
+  final int overlaySeconds;
+
+  bool get useOverlay => displayStyle == 'overlay';
+
   /// Fixed daily/weekly reminders.
   final bool morningAdhkar;
   final bool eveningAdhkar;
@@ -58,6 +70,9 @@ class ReminderSettings {
     this.endHour = 22,
     this.phraseIds = const ['subhan', 'hamd', 'tahlil', 'takbir', 'istighfar', 'salawat'],
     this.popUp = true,
+    this.displayStyle = 'overlay',
+    this.overlayPosition = 'top',
+    this.overlaySeconds = 8,
     this.morningAdhkar = false,
     this.eveningAdhkar = false,
     this.sleepAdhkar = false,
@@ -87,6 +102,9 @@ class ReminderSettings {
     int? endHour,
     List<String>? phraseIds,
     bool? popUp,
+    String? displayStyle,
+    String? overlayPosition,
+    int? overlaySeconds,
     bool? morningAdhkar,
     bool? eveningAdhkar,
     bool? sleepAdhkar,
@@ -100,6 +118,9 @@ class ReminderSettings {
       endHour: endHour ?? this.endHour,
       phraseIds: phraseIds ?? this.phraseIds,
       popUp: popUp ?? this.popUp,
+      displayStyle: displayStyle ?? this.displayStyle,
+      overlayPosition: overlayPosition ?? this.overlayPosition,
+      overlaySeconds: overlaySeconds ?? this.overlaySeconds,
       morningAdhkar: morningAdhkar ?? this.morningAdhkar,
       eveningAdhkar: eveningAdhkar ?? this.eveningAdhkar,
       sleepAdhkar: sleepAdhkar ?? this.sleepAdhkar,
@@ -115,6 +136,9 @@ class ReminderSettings {
         'endHour': endHour,
         'phraseIds': phraseIds,
         'popUp': popUp,
+        'displayStyle': displayStyle,
+        'overlayPosition': overlayPosition,
+        'overlaySeconds': overlaySeconds,
         'morningAdhkar': morningAdhkar,
         'eveningAdhkar': eveningAdhkar,
         'sleepAdhkar': sleepAdhkar,
@@ -143,6 +167,11 @@ class ReminderSettings {
         endHour: i('endHour', d.endHour).clamp(1, 24),
         phraseIds: ids,
         popUp: b('popUp', d.popUp),
+        displayStyle: m['displayStyle'] == 'notification' ? 'notification' : 'overlay',
+        overlayPosition: const ['top', 'center', 'bottom'].contains(m['overlayPosition'])
+            ? m['overlayPosition'] as String
+            : 'top',
+        overlaySeconds: i('overlaySeconds', 8).clamp(3, 60),
         morningAdhkar: b('morningAdhkar', d.morningAdhkar),
         eveningAdhkar: b('eveningAdhkar', d.eveningAdhkar),
         sleepAdhkar: b('sleepAdhkar', d.sleepAdhkar),

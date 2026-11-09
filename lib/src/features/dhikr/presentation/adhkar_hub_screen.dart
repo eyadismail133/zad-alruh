@@ -11,7 +11,6 @@ import '../../more/presentation/duas_screen.dart';
 import '../../more/presentation/favorites_screen.dart';
 import '../../more/presentation/hadith_screen.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
-import '../../reminders/presentation/reminders_screen.dart';
 import 'dhikr_screen.dart';
 
 /// "الأذكار" tab: one organized place for daily adhkar, the tasbih counter,
@@ -104,23 +103,6 @@ class AdhkarHubScreen extends ConsumerWidget {
             _TasbihBanner(
               isDark: isDark,
               onTap: () => _push(context, const DhikrScreen()),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                key: const ValueKey('adhkar_hub_reminders'),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                leading: const Icon(Icons.notifications_active_outlined),
-                title: const Text('تذكيرات الذكر'),
-                subtitle: const Text(
-                  'سبحان الله، الله أكبر… تظهر على الشاشة بدون إنترنت',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: const Icon(Icons.chevron_left_rounded),
-                onTap: () => _push(context, const RemindersScreen()),
-              ),
             ),
             const SizedBox(height: 20),
 

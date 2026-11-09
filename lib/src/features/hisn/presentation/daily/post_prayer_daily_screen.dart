@@ -510,7 +510,7 @@ class _PostPrayerDailyScreenState extends ConsumerState<PostPrayerDailyScreen> {
                             const SizedBox(height: 12),
 
                             SelectableText(
-                              item.text,
+                              HisnTextFormatter.clean(item.text),
                               textAlign: TextAlign.justify,
                               style: TextStyle(
                                 fontSize: 16.5,

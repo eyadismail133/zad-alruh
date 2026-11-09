@@ -1158,6 +1158,8 @@ void main() {
 
         expect(find.text('آخر صفحة مسجلة: صفحة 50 من ٦٠٤'), findsOneWidget);
 
+        await tester.ensureVisible(find.text('كمّل وِردك  ←'));
+        await tester.pump();
         await tester.tap(find.text('كمّل وِردك  ←'));
         for (int i = 0; i < 8; i++) {
           await tester.pump(const Duration(milliseconds: 50));

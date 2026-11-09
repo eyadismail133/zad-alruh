@@ -4,6 +4,33 @@ import '../../domain/models/hisn_invocation_catalog.dart';
 /// Shared formatter for Hisn al-Muslim items to ensure uniform clipboard copying
 /// and sharing across all Hisn screens (both chapter list and item detail views).
 class HisnTextFormatter {
+  /// Display-only cleanup of the book's typesetting artefacts. The stored
+  /// source text is never changed (copy/share still use it verbatim):
+  /// - empty footnote markers "()" and the "(( … ))" quote brackets
+  /// - item numbering such as "77-(3) "
+  /// - the basmala ornament glyphs "ﭑ ﭒ ﭓ" → written basmala
+  /// - Quran quotes "{ … }" → ﴿ … ﴾
+  /// - hard line breaks from the printed layout
+  static String clean(String raw) {
+    const basmala = 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ';
+    var t = raw.replaceAll('ﭑ ﭒ ﭓ', basmala);
+    t = t.replaceAll(RegExp(r'\(\s*\)'), '');
+    t = t.replaceAll('((', '').replaceAll('))', '');
+    t = t.replaceAllMapped(
+      RegExp(r'(^|\n)[ \t]*\d+[ \t]*-[ \t]*(\(\d+\)[ \t]*)?'),
+      (m) => m.group(1) ?? '',
+    );
+    t = t.replaceAll('{', '﴿').replaceAll('}', '﴾');
+    t = t.replaceAll(RegExp(r'\*\s*'), ' ۝ ');
+    const para = '\u0000';
+    t = t.replaceAll(RegExp(r'\n[ \t]*\n'), para);
+    t = t.replaceAll(RegExp(r'[ \t]*\n[ \t]*'), ' ');
+    t = t.replaceAll(para, '\n\n');
+    t = t.replaceAll(RegExp(r'[ \t]{2,}'), ' ');
+    t = t.replaceAllMapped(RegExp(r'[ \t]+([،.:؛])'), (m) => m.group(1)!);
+    return t.trim();
+  }
+
   static const String islamHouseBookUrl =
       'https://islamhouse.com/ar/books/2522';
 

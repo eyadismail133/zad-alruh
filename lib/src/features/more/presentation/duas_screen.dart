@@ -1,4 +1,5 @@
 import '../../hisn/domain/models/hisn_invocation_catalog.dart';
+import '../../hisn/presentation/utils/hisn_text_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
@@ -568,7 +569,7 @@ class _DuasScreenState extends ConsumerState<DuasScreen> {
               const SizedBox(height: 8),
               // Body preview
               Text(
-                item.text,
+                HisnTextFormatter.clean(item.text),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

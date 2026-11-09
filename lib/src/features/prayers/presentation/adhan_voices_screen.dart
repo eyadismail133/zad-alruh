@@ -41,6 +41,16 @@ class _AdhanVoicesScreenState extends ConsumerState<AdhanVoicesScreen> {
               if (mounted) setState(() => _progress[a.id] = p);
             },
           );
+      // First download becomes the adhan right away; it can be changed in
+      // the adhan settings or with the chips below.
+      final store = ref.read(onlineAdhanStoreProvider.notifier);
+      final sel = ref.read(onlineAdhanStoreProvider);
+      if (sel.generalId == null) await store.selectGeneral(a.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تم تحميل أذان ${a.nameAr} وهتلاقيه في إعدادات الأذان')),
+        );
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -91,7 +101,7 @@ class _AdhanVoicesScreenState extends ConsumerState<AdhanVoicesScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('المؤذنون')),
+      appBar: AppBar(title: const Text('تحميل المؤذنين')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),

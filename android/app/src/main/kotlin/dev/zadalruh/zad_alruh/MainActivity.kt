@@ -11,7 +11,10 @@ import dev.zadalruh.zad_alruh.alarm.PrayerAlarmCoordinator
 import dev.zadalruh.zad_alruh.adhan.CustomAdhanFiles
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import dev.zadalruh.zad_alruh.qibla.CompassStreamHandler
+import dev.zadalruh.zad_alruh.reminders.DhikrOverlayBridge
 
 class MainActivity : AudioServiceActivity() {
 
@@ -27,6 +30,18 @@ class MainActivity : AudioServiceActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         val coordinator = PrayerAlarmCoordinator.initialize(applicationContext)
+
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "dev.zadalruh.zad_alruh/compass"
+        ).setStreamHandler(CompassStreamHandler(this))
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "dev.zadalruh.zad_alruh/dhikr_overlay"
+        ).setMethodCallHandler { call, result ->
+            DhikrOverlayBridge.handle(this, call, result)
+        }
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,

@@ -503,7 +503,7 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                 const SizedBox(height: 14),
 
                 SelectableText(
-                  item.text,
+                  HisnTextFormatter.clean(item.text),
                   textAlign: TextAlign.justify,
                   style: TextStyle(
                     fontSize: 17,
@@ -821,7 +821,7 @@ class _DailyDuaScreenState extends ConsumerState<DailyDuaScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              item.text,
+                              HisnTextFormatter.clean(item.text),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

@@ -229,7 +229,7 @@ class HisnChapterScreen extends StatelessWidget {
 
                       // Verbatim Text
                       SelectableText(
-                        item.text,
+                        HisnTextFormatter.clean(item.text),
                         textAlign: TextAlign.justify,
                         style: TextStyle(
                           fontSize: 17,

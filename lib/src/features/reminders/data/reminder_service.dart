@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -37,6 +38,40 @@ class ReminderService {
     importance: Importance.low,
     playSound: false,
   );
+
+  static const MethodChannel _overlay =
+      MethodChannel('dev.zadalruh.zad_alruh/dhikr_overlay');
+
+  /// Whether the "display over other apps" permission is granted.
+  Future<bool> canShowOverlay() async {
+    if (!_ready) return false;
+    try {
+      return await _overlay.invokeMethod<bool>('canDrawOverlays') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> requestOverlayPermission() async {
+    try {
+      await _overlay.invokeMethod<void>('requestPermission');
+    } catch (_) {}
+  }
+
+  /// Shows the floating card now. Returns false if permission is missing.
+  Future<bool> previewOverlay(ReminderSettings s) async {
+    try {
+      return await _overlay.invokeMethod<bool>('preview', {
+            'title': 'ذكر',
+            'body': s.phrases.first.text,
+            'position': s.overlayPosition,
+            'duration': s.overlaySeconds,
+          }) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -113,7 +148,32 @@ class ReminderService {
           await _plugin.cancel(id: p.id);
         }
       }
+      try {
+        await _overlay.invokeMethod<void>('cancelAll');
+      } catch (_) {}
       if (!current.anyEnabled) return;
+
+      if (current.useOverlay) {
+        // Native alarms show the floating card (or a plain notification when
+        // the overlay permission is missing).
+        final plan = planReminders(current, DateTime.now(),
+            days: 2, maxCount: 150, idBase: idBase);
+        await _overlay.invokeMethod<void>('schedule', {
+          'items': [
+            for (final r in plan)
+              {
+                'id': r.id,
+                'at': r.at.millisecondsSinceEpoch,
+                'title': r.title,
+                'body': r.body,
+              },
+          ],
+          'position': current.overlayPosition,
+          'duration': current.overlaySeconds,
+        });
+        return;
+      }
+
       final plan = planReminders(current, DateTime.now(), idBase: idBase);
       for (final r in plan) {
         final channel = r.popUp ? _popupChannel : _quietChannel;

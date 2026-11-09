@@ -246,7 +246,7 @@ class HisnDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SelectableText(
-                        item.text,
+                        HisnTextFormatter.clean(item.text),
                         textAlign: TextAlign.justify,
                         style: TextStyle(
                           fontSize: 19,

@@ -224,7 +224,7 @@ void main() {
         await tester.tap(find.text(prayer.chapterTitle));
         await tester.pumpAndSettle();
         expect(find.byType(HisnDetailScreen), findsOneWidget);
-        expect(find.text(prayer.text), findsOneWidget);
+        expect(find.text(HisnTextFormatter.clean(prayer.text)), findsOneWidget);
         await tester.tap(find.byTooltip('إزالة من المفضلة'));
         await tester.pumpAndSettle();
         await tester.runAsync(

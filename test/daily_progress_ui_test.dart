@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:zad_alruh/src/features/hisn/presentation/utils/hisn_text_formatter.dart';
 import 'package:zad_alruh/src/core/database/app_database.dart';
 import 'package:zad_alruh/src/core/theme/app_theme.dart';
 import 'package:zad_alruh/src/core/widgets/retryable_error_view.dart';
@@ -752,7 +753,7 @@ void main() {
 
         // Verify preface text from actual item 75 first paragraph from real HisnRepo
         final prefaceText = item75.paragraphs.isNotEmpty ? item75.paragraphs.first.trim() : item75.text.trim();
-        expect(find.textContaining(prefaceText), findsWidgets);
+        expect(find.textContaining(HisnTextFormatter.clean(prefaceText)), findsWidgets);
 
         // Expand item 75 footnote control and verify actual footnote 101 full text
         final toggle75Finder = find.byKey(const Key('hisn_checklist_footnotes_toggle_75'));
