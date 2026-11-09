@@ -367,7 +367,9 @@ object PrayerNotificationHelper {
 
     fun isDndOrSilentActive(context: Context): Boolean {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-        if (audioManager != null) {
+        // The user can let the adhan play while the phone is on silent/vibrate
+        // (on by default). Full Do-Not-Disturb is still respected below.
+        if (audioManager != null && !dev.zadalruh.zad_alruh.adhan.AdhanOptions.playWhenSilent(context)) {
             if (audioManager.ringerMode == android.media.AudioManager.RINGER_MODE_SILENT ||
                 audioManager.ringerMode == android.media.AudioManager.RINGER_MODE_VIBRATE
             ) {

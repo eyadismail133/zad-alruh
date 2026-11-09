@@ -6,6 +6,7 @@ import '../../prayer/domain/models/adhan_voice.dart';
 import '../../prayer/presentation/controllers/prayer_notification_controller.dart';
 import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
 import '../../progress/presentation/controllers/progress_controller.dart';
+import '../../prayer/data/adhan_options.dart';
 import '../../prayer/data/online_adhan_store.dart';
 import '../../prayer/domain/models/online_adhan.dart';
 import '../../prayers/presentation/adhan_voices_screen.dart';
@@ -749,6 +750,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   _updateFajrVoice(context, val);
                                 }
                               },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        key: const ValueKey('settings_adhan_when_silent'),
+                        leading: const Icon(Icons.volume_off_outlined),
+                        title: const Text('الأذان يشتغل والموبايل صامت أو هزاز'),
+                        subtitle: const Text(
+                          'وضع "عدم الإزعاج" الكامل بيوقفه دايمًا',
+                        ),
+                        trailing: Switch(
+                          value: ref.watch(adhanPlayWhenSilentProvider),
+                          onChanged: (v) => ref
+                              .read(adhanPlayWhenSilentProvider.notifier)
+                              .set(v),
+                        ),
                       ),
                       const Divider(height: 1),
                       ListTile(

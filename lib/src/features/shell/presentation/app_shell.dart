@@ -9,6 +9,7 @@ import '../../prayer/domain/services/prayer_notification_coordinator.dart';
 import '../../prayers/presentation/controllers/adhan_audio_controller.dart';
 import '../../prayers/presentation/prayers_screen.dart';
 import '../../quran/presentation/quran_screen.dart';
+import '../../prayer/data/adhan_options.dart';
 import '../../reminders/data/reminder_service.dart';
 import '../../reminders/presentation/reminder_tap_handler.dart';
 
@@ -47,6 +48,11 @@ class _AppShellState extends ConsumerState<AppShell>
     }
     // Keep the rolling schedule (next 3 days) topped up.
     unawaited(service.reschedule());
+    unawaited(
+      AdhanPlayWhenSilentNotifier.syncNative(
+        ref.read(adhanPlayWhenSilentProvider),
+      ),
+    );
   }
 
   @override

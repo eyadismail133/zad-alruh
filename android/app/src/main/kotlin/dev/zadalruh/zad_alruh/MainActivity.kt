@@ -77,6 +77,12 @@ class MainActivity : AudioServiceActivity() {
                         result.success(res)
                     }
                 }
+                "setAdhanOptions" -> {
+                    call.argument<Boolean>("playWhenSilent")?.let {
+                        dev.zadalruh.zad_alruh.adhan.AdhanOptions.setPlayWhenSilent(applicationContext, it)
+                    }
+                    result.success(true)
+                }
                 "setCustomAdhanFiles" -> {
                     CustomAdhanFiles.save(
                         applicationContext,
