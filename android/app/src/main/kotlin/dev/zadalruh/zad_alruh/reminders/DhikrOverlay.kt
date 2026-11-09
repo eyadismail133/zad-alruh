@@ -305,6 +305,16 @@ object DhikrOverlayBridge {
                     }
                     result.success(true)
                 }
+                "openAppInfo" -> {
+                    // Android 13+/15: sideloaded apps must first "Allow restricted
+                    // settings" from App info's ⋮ menu before the overlay toggle works.
+                    val intent = Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:${context.packageName}")
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    result.success(true)
+                }
                 "schedule" -> {
                     val raw = call.argument<List<Map<String, Any?>>>("items") ?: emptyList()
                     val arr = JSONArray()

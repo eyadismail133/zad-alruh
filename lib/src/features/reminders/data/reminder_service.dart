@@ -52,6 +52,12 @@ class ReminderService {
     }
   }
 
+  Future<void> openAppInfo() async {
+    try {
+      await _overlay.invokeMethod<void>('openAppInfo');
+    } catch (_) {}
+  }
+
   Future<void> requestOverlayPermission() async {
     try {
       await _overlay.invokeMethod<void>('requestPermission');

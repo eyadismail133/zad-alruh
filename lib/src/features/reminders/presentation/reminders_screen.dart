@@ -236,21 +236,8 @@ class _RemindersScreenState extends State<RemindersScreen>
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (!_overlayAllowed) ...[
-                        Text(
-                          'عشان البطاقة تظهر فوق أي تطبيق، اسمح لـ "زاد الروح" بالظهور فوق التطبيقات الأخرى. '
-                          'لحد ما تسمح، التذكير هيوصلك كإشعار عادي.',
-                          style: text.bodySmall,
-                        ),
-                        const SizedBox(height: 8),
-                        FilledButton.icon(
-                          icon: const Icon(Icons.verified_user_outlined, size: 18),
-                          label: const Text('السماح بالظهور على الشاشة'),
-                          onPressed: () async {
-                            await ReminderService.instance
-                                .requestOverlayPermission();
-                          },
-                        ),
-                        const SizedBox(height: 12),
+                        const _OverlayPermissionGuide(),
+                        const SizedBox(height: 14),
                       ],
                       Text('مكانها في الشاشة', style: text.titleSmall),
                       const SizedBox(height: 8),
@@ -429,6 +416,95 @@ class _StyleOption extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Step-by-step help for the "display over other apps" permission. On
+/// Android 13+ (strictly on 15+) apps installed from an APK file get this
+/// toggle greyed out until "Allow restricted settings" is enabled in App info.
+class _OverlayPermissionGuide extends StatelessWidget {
+  const _OverlayPermissionGuide();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget step(String n, String body) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: scheme.primaryContainer,
+                child: Text(
+                  n,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(body, style: text.bodyMedium)),
+            ],
+          ),
+        );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('محتاج تسمح بالظهور على الشاشة', style: text.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            'لو الزرار مقفول (رمادي) ده طبيعي في التطبيقات اللي اتثبتت من ملف APK. اتبع الخطوات دي مرة واحدة:',
+            style: text.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          step('١', 'اضغط "فتح إذن الظهور" وحاول تفعّله مرة (هيقولك إنه مقيّد — عادي).'),
+          step('٢', 'ارجع واضغط "معلومات التطبيق".'),
+          step('٣', 'اضغط على الثلاث نقط ⋮ فوق، واختار "السماح بالإعدادات المقيّدة" وأكّد بالبصمة أو الرقم السري.'),
+          step('٤', 'ارجع لـ "فتح إذن الظهور" وفعّل "الظهور فوق التطبيقات الأخرى".'),
+          const SizedBox(height: 4),
+          Text(
+            'شاومي/ريدمي/بوكو: معلومات التطبيق ← أذونات أخرى ← فعّل "عرض النوافذ المنبثقة" و"عرض النوافذ المنبثقة أثناء التشغيل في الخلفية".',
+            style: text.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: () =>
+                      ReminderService.instance.requestOverlayPermission(),
+                  child: const Text('فتح إذن الظهور'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => ReminderService.instance.openAppInfo(),
+                  child: const Text('معلومات التطبيق'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'لحد ما تسمح، التذكير هيوصلك كإشعار عادي.',
+            style: text.bodySmall,
+          ),
+        ],
       ),
     );
   }
