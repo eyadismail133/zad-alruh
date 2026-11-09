@@ -1956,7 +1956,11 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
 
         // Drag to bring notification card into view with bounded loop
-        final switchFinder = find.byType(Switch);
+        // (the settings page now also has a reading switch above it).
+        final switchFinder = find.descendant(
+          of: find.widgetWithText(SwitchListTile, 'تنبيهات الأذان'),
+          matching: find.byType(Switch),
+        );
         for (int i = 0; i < 15 && switchFinder.evaluate().isEmpty; i++) {
           await tester.drag(find.byType(ListView), const Offset(0, -250));
           await tester.pump(const Duration(milliseconds: 100));
