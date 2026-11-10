@@ -14,6 +14,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_PRAYER_ALARM = "dev.zadalruh.zad_alruh.action.PRAYER_ALARM"
         const val ACTION_STOP_ACTIVE_ADHAN = "dev.zadalruh.zad_alruh.action.STOP_ACTIVE_ADHAN"
+        const val ACTION_TEST_ADHAN = "dev.zadalruh.zad_alruh.action.TEST_ADHAN_ALARM"
 
         const val EXTRA_EVENT_KEY = "extra_event_key"
         const val EXTRA_GENERATION_TOKEN = "extra_generation_token"
@@ -27,6 +28,19 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_STOP_ACTIVE_ADHAN -> {
                 AdhanMediaPlaybackService.stopActiveInstance()
+            }
+            ACTION_TEST_ADHAN -> {
+                dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.record(context, "test", "test alarm fired")
+                try {
+                    val svc = Intent(context, AdhanMediaPlaybackService::class.java).apply {
+                        action = AdhanMediaPlaybackService.ACTION_TEST_ADHAN
+                    }
+                    androidx.core.content.ContextCompat.startForegroundService(context, svc)
+                } catch (e: Exception) {
+                    dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.record(
+                        context, "test", "service_start_failed: ${e.javaClass.simpleName}"
+                    )
+                }
             }
             ACTION_PRAYER_ALARM -> {
                 val eventKey = intent.getStringExtra(EXTRA_EVENT_KEY) ?: return

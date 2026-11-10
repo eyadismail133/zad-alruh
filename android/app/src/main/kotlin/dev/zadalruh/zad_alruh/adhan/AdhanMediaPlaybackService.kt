@@ -33,6 +33,7 @@ class AdhanMediaPlaybackService : Service() {
     companion object {
         const val ACTION_START_ADHAN = "dev.zadalruh.zad_alruh.action.START_ADHAN"
         const val ACTION_STOP = "dev.zadalruh.zad_alruh.action.STOP"
+        const val ACTION_TEST_ADHAN = "dev.zadalruh.zad_alruh.action.TEST_ADHAN"
 
         const val EXTRA_EVENT_KEY = "extra_event_key"
         const val EXTRA_GENERATION_TOKEN = "extra_generation_token"
@@ -93,9 +94,12 @@ class AdhanMediaPlaybackService : Service() {
 
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
-            AudioManager.AUDIOFOCUS_LOSS,
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // A notification sound or similar: the system ducks us
+                // briefly. Keep the adhan playing.
+            }
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 // Focus lost to manual Quran playback, call, or other media: stop immediately, no resume!
                 stopPlaybackAndFinish("audio_focus_lost")
             }
@@ -122,6 +126,10 @@ class AdhanMediaPlaybackService : Service() {
         if (intent == null || intent.action == ACTION_STOP) {
             stopPlaybackAndFinish("action_stop")
             return START_NOT_STICKY
+        }
+
+        if (intent.action == ACTION_TEST_ADHAN) {
+            return startTestAdhan()
         }
 
         val eventKey = intent.getStringExtra(EXTRA_EVENT_KEY)
@@ -209,6 +217,7 @@ class AdhanMediaPlaybackService : Service() {
         val preparedPlayer = customPath?.let { prepareMediaPlayer(it) }
             ?: prepareMediaPlayer(assetPath)
         if (preparedPlayer == null) {
+            AdhanDiagnostics.record(this, eventKey, "prepare_failed path=$assetPath custom=$customPath")
             coordinator.handleServicePrestartFailure(token, eventKey, "media_player_prepare_failed")
             stopPlaybackAndFinish("media_player_prepare_failed")
             return START_NOT_STICKY
@@ -229,6 +238,9 @@ class AdhanMediaPlaybackService : Service() {
             }
         )
 
+        if (startResult.isStarted) {
+            AdhanDiagnostics.record(this, eventKey, "playing (custom=${customPath != null})")
+        }
         if (!startResult.isFullyDurable) {
             if (startResult.isStarted) {
                 // Audio physically started, but FULL_CONSUMED persistence failed in durable ledger.
@@ -249,6 +261,62 @@ class AdhanMediaPlaybackService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * User-triggered test from Settings: goes through the same alarm →
+     * foreground service → audio path as a real prayer, without touching the
+     * prayer plan or delivery ledger.
+     */
+    private fun startTestAdhan(): Int {
+        currentEventKey = "test"
+        AdhanDiagnostics.record(this, "test", "test service started")
+        val notification = PrayerNotificationHelper.buildMediaPlaybackStatusNotification(
+            context = this,
+            cityNameAr = "تجربة الأذان",
+            prayerKey = "dhuhr"
+        )
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    PrayerNotificationHelper.NOTIFICATION_ID_MEDIA_PLAYBACK,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                )
+            } else {
+                startForeground(PrayerNotificationHelper.NOTIFICATION_ID_MEDIA_PLAYBACK, notification)
+            }
+        } catch (e: Exception) {
+            AdhanDiagnostics.record(this, "test", "start_foreground_failed: ${e.javaClass.simpleName}")
+            stopPlaybackAndFinish("test_start_foreground_failed")
+            return START_NOT_STICKY
+        }
+        if (isSuppressedBySilentOrDnd()) {
+            AdhanDiagnostics.record(this, "test", "would be suppressed: silent/DND")
+        }
+        if (!requestSystemAudioFocus()) {
+            AdhanDiagnostics.record(this, "test", "audio_focus_denied")
+            stopPlaybackAndFinish("test_audio_focus_denied")
+            return START_NOT_STICKY
+        }
+        val bundled = AdhanVoiceRegistry.FULL_AUDIO_ASSET_PATHS[AdhanVoiceRegistry.VOICE_ADAM]!!
+        val customPath = CustomAdhanFiles.resolve(this, "dhuhr")
+        val player = customPath?.let { prepareMediaPlayer(it) } ?: prepareMediaPlayer(bundled)
+        if (player == null) {
+            AdhanDiagnostics.record(this, "test", "prepare_failed")
+            stopPlaybackAndFinish("test_prepare_failed")
+            return START_NOT_STICKY
+        }
+        return try {
+            player.start()
+            session.setActivePlayer(player)
+            AdhanDiagnostics.record(this, "test", "playing (custom=${customPath != null})")
+            START_NOT_STICKY
+        } catch (e: Exception) {
+            AdhanDiagnostics.record(this, "test", "start_failed: ${e.javaClass.simpleName}")
+            stopPlaybackAndFinish("test_start_failed")
+            START_NOT_STICKY
+        }
+    }
+
     private fun isSuppressedBySilentOrDnd(): Boolean {
         return PrayerNotificationHelper.isDndOrSilentActive(this)
     }
@@ -257,8 +325,8 @@ class AdhanMediaPlaybackService : Service() {
         val am = audioManager ?: return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
 
             val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -273,7 +341,7 @@ class AdhanMediaPlaybackService : Service() {
             @Suppress("DEPRECATION")
             am.requestAudioFocus(
                 audioFocusChangeListener,
-                AudioManager.STREAM_MUSIC,
+                AudioManager.STREAM_ALARM,
                 AudioManager.AUDIOFOCUS_GAIN
             ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         }
@@ -309,6 +377,7 @@ class AdhanMediaPlaybackService : Service() {
     }
 
     fun stopPlaybackAndFinish(reason: String): Boolean {
+        AdhanDiagnostics.record(this, currentEventKey ?: "-", "service_stop: $reason")
         var clean = true
         try {
             val playerClean = stopAndReleasePlayer()
@@ -397,8 +466,8 @@ class AndroidMediaPlayerAdapter(val realPlayer: MediaPlayer) : MediaPlayerLifecy
             // Downloaded muezzin stored in the app's private files.
             realPlayer.setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )
             realPlayer.setDataSource(assetPath.removePrefix(CustomAdhanFiles.FILE_PREFIX))
@@ -413,14 +482,25 @@ class AndroidMediaPlayerAdapter(val realPlayer: MediaPlayer) : MediaPlayerLifecy
         }
         var afd: AssetFileDescriptor? = null
         try {
-            val flutterLoader = FlutterInjector.instance().flutterLoader()
-            val lookupKey = flutterLoader.getLookupKeyForAsset(assetPath)
+            // When the alarm wakes a cold process the Flutter engine (and its
+            // loader) is not initialised; Flutter assets live under
+            // "flutter_assets/" inside the APK, so fall back to that path.
+            val lookupKey = try {
+                val flutterLoader = FlutterInjector.instance().flutterLoader()
+                if (flutterLoader.initialized()) {
+                    flutterLoader.getLookupKeyForAsset(assetPath)
+                } else {
+                    "flutter_assets/$assetPath"
+                }
+            } catch (_: Exception) {
+                "flutter_assets/$assetPath"
+            }
             afd = context.assets.openFd(lookupKey)
 
             realPlayer.setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )
             realPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)

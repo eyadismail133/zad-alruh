@@ -77,6 +77,49 @@ class MainActivity : AudioServiceActivity() {
                         result.success(res)
                     }
                 }
+                "scheduleTestAdhan" -> {
+                    val seconds = call.argument<Int>("seconds") ?: 30
+                    val am = getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+                    val pi = android.app.PendingIntent.getBroadcast(
+                        applicationContext,
+                        991_001,
+                        Intent(applicationContext, dev.zadalruh.zad_alruh.alarm.PrayerAlarmReceiver::class.java)
+                            .setAction(dev.zadalruh.zad_alruh.alarm.PrayerAlarmReceiver.ACTION_TEST_ADHAN),
+                        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                    val at = System.currentTimeMillis() + seconds * 1000L
+                    try {
+                        am.setAlarmClock(android.app.AlarmManager.AlarmClockInfo(at, null), pi)
+                        dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.record(applicationContext, "test", "test scheduled in ${seconds}s")
+                        result.success(true)
+                    } catch (e: Exception) {
+                        dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.record(applicationContext, "test", "schedule_failed: ${e.javaClass.simpleName}")
+                        result.success(false)
+                    }
+                }
+                "getAdhanDiagnostics" -> {
+                    val pm = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+                    val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                    result.success(
+                        mapOf(
+                            "log" to dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.read(applicationContext),
+                            "ignoringBattery" to pm.isIgnoringBatteryOptimizations(packageName),
+                            "alarmVolume" to am.getStreamVolume(android.media.AudioManager.STREAM_ALARM),
+                            "alarmVolumeMax" to am.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM)
+                        )
+                    )
+                }
+                "requestIgnoreBatteryOptimizations" -> {
+                    try {
+                        startActivity(
+                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                .setData(Uri.parse("package:$packageName"))
+                        )
+                    } catch (_: Exception) {
+                        startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                    }
+                    result.success(true)
+                }
                 "setAdhanOptions" -> {
                     call.argument<Boolean>("playWhenSilent")?.let {
                         dev.zadalruh.zad_alruh.adhan.AdhanOptions.setPlayWhenSilent(applicationContext, it)

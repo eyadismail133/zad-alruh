@@ -94,11 +94,20 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmSchedulerGatewa
         )
 
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerEpochMillis, pendingIntent)
-            } else {
-                am.setExact(AlarmManager.RTC_WAKEUP, triggerEpochMillis, pendingIntent)
-            }
+            // Alarm-clock alarms are the most reliable class: exempt from
+            // Doze and OEM battery killers, and they allow the foreground
+            // adhan service to start from the background on Android 12+.
+            val showIntent = context.packageManager
+                .getLaunchIntentForPackage(context.packageName)
+                ?.let {
+                    PendingIntent.getActivity(
+                        context,
+                        requestCode,
+                        it,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                }
+            am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerEpochMillis, showIntent), pendingIntent)
             true
         } catch (_: SecurityException) {
             try {
@@ -507,6 +516,7 @@ class PrayerAlarmCoordinator(
                 if (doubleCheck != null) return doubleCheck
 
                 PrayerNotificationHelper.ensureChannelsCreated(context)
+                dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.appContext = context.applicationContext
 
                 val file = File(context.filesDir, "zad_alruh_prayer_alarm_store.json")
                 val driver = FileStorageDriver(file)
@@ -816,6 +826,12 @@ class PrayerAlarmCoordinator(
                 isServiceCurrentlyActive = isServiceRunning
             )
 
+            dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.record(
+                null,
+                eventKey,
+                "trigger ${alarmType.key}: ${outcome::class.simpleName} " +
+                    "(exact=$canExact notif=$notifAllowed dnd=$dndSuppressed statusBlocked=$statusBlocked)"
+            )
             when (outcome) {
                 is AlarmProcessingOutcome.StartFullAdhan -> {
                     val started = serviceGateway.startAdhanPlaybackService(eventKey, token)
@@ -951,6 +967,7 @@ class PrayerAlarmCoordinator(
         reason: String,
         nowEpochMillis: Long = timeProvider.now()
     ): Boolean = coordinatorLock.withLock {
+        dev.zadalruh.zad_alruh.adhan.AdhanDiagnostics.record(null, eventKey, "prestart_failure: $reason")
         // 1. Re-validate enabled state and exact generation token under lock
         if (!store.isEnabled() || store.getGenerationToken() != token) {
             return@withLock false

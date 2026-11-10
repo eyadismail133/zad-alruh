@@ -12,6 +12,7 @@ import '../../prayer/domain/models/online_adhan.dart';
 import '../../prayers/presentation/adhan_voices_screen.dart';
 import '../../reminders/presentation/reminders_screen.dart';
 import 'widgets/prayer_calculation_settings_section.dart';
+import 'widgets/adhan_health_card.dart';
 import 'widgets/quran_settings_card.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -766,6 +767,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               .set(v),
                         ),
                       ),
+                      const Divider(height: 1),
+                      const AdhanHealthCard(),
                       const Divider(height: 1),
                       ListTile(
                         key: const ValueKey('settings_download_muezzins'),
