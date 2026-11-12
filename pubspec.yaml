@@ -1,7 +1,7 @@
 name: zad_alruh
 description: "Zad Alruh - Islamic Spiritual Companion"
 publish_to: "none"
-version: 0.7.2+9
+version: 0.7.3+10
 
 environment:
   sdk: ">=3.11.0 <4.0.0"

@@ -199,11 +199,12 @@ class AdhanMediaPlaybackService : Service() {
             return START_NOT_STICKY
         }
 
-        // Request Audio Focus
-        val focusGranted = requestSystemAudioFocus()
-        if (!focusGranted) {
-            coordinator.handleServicePrestartFailure(token, eventKey, "audio_focus_denied")
-            stopPlaybackAndFinish("audio_focus_denied")
+        // Never talk over a phone call; otherwise play even if the system
+        // refuses audio focus (alarm-stream audio plays without it, and some
+        // devices deny focus to background services).
+        if (!acquireAudioForAdhan(eventKey)) {
+            coordinator.handleServicePrestartFailure(token, eventKey, "in_call")
+            stopPlaybackAndFinish("in_call")
             return START_NOT_STICKY
         }
 
@@ -292,9 +293,8 @@ class AdhanMediaPlaybackService : Service() {
         if (isSuppressedBySilentOrDnd()) {
             AdhanDiagnostics.record(this, "test", "would be suppressed: silent/DND")
         }
-        if (!requestSystemAudioFocus()) {
-            AdhanDiagnostics.record(this, "test", "audio_focus_denied")
-            stopPlaybackAndFinish("test_audio_focus_denied")
+        if (!acquireAudioForAdhan("test")) {
+            stopPlaybackAndFinish("test_in_call")
             return START_NOT_STICKY
         }
         val bundled = AdhanVoiceRegistry.FULL_AUDIO_ASSET_PATHS[AdhanVoiceRegistry.VOICE_ADAM]!!
@@ -319,6 +319,22 @@ class AdhanMediaPlaybackService : Service() {
 
     private fun isSuppressedBySilentOrDnd(): Boolean {
         return PrayerNotificationHelper.isDndOrSilentActive(this)
+    }
+
+    /** False only during a phone/VoIP call. Focus denial is logged, not fatal. */
+    private fun acquireAudioForAdhan(eventKey: String): Boolean {
+        val am = audioManager
+        if (am != null && (am.mode == AudioManager.MODE_IN_CALL ||
+                am.mode == AudioManager.MODE_IN_COMMUNICATION ||
+                am.mode == AudioManager.MODE_RINGTONE)
+        ) {
+            AdhanDiagnostics.record(this, eventKey, "in_call mode=${am.mode}")
+            return false
+        }
+        if (!requestSystemAudioFocus()) {
+            AdhanDiagnostics.record(this, eventKey, "audio_focus_denied -> playing anyway")
+        }
+        return true
     }
 
     private fun requestSystemAudioFocus(): Boolean {

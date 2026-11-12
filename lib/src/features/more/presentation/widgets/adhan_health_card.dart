@@ -92,6 +92,8 @@ class _AdhanHealthCardState extends State<AdhanHealthCard>
 
   String _describe(String m) {
     if (m.startsWith('playing')) return 'اشتغل الأذان ✓';
+    if (m.contains('playing anyway')) return 'النظام رفض التركيز الصوتي — اتكمل التشغيل';
+    if (m.startsWith('in_call') || m.contains('in_call')) return 'كان فيه مكالمة، الأذان اتلغى';
     if (m.contains('StartFullAdhan')) return 'وقت الصلاة: بدء تشغيل الأذان';
     if (m.contains('DeliverShortFallback')) return 'وقت الصلاة: اتبعت إشعار قصير بدل الأذان';
     if (m.contains('exact=false')) return 'التنبيه الدقيق مش مسموح';
