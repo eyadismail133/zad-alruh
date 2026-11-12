@@ -102,6 +102,9 @@ jobs:
           for abi in arm64-v8a armeabi-v7a; do
             cp "build/app/outputs/flutter-apk/app-$abi-release.apk" "out/zad-alruh-$v-$abi.apk"
           done
+          # Version-less copies give the landing page permanent links:
+          # /releases/latest/download/zad-alruh-arm64-v8a.apk
+          cp "out/zad-alruh-$v-arm64-v8a.apk" out/zad-alruh-arm64-v8a.apk
 
       - name: Build universal APK
         env:
@@ -111,6 +114,7 @@ jobs:
         run: |
           flutter build apk --release --target-platform android-arm,android-arm64
           cp build/app/outputs/flutter-apk/app-release.apk "out/zad-alruh-${{ steps.ver.outputs.version }}-universal.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk out/zad-alruh-universal.apk
 
       - name: Checksums & summary
         run: |

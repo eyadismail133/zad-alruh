@@ -1,0 +1,66 @@
+name: Landing page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'screenshot_test/**'
+      - 'lib/**'
+      - 'tool/make_demo_video.sh'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.5'
+          cache: true
+
+      - name: Install packages
+        run: flutter pub get
+
+      - name: Capture real app screenshots
+        continue-on-error: true
+        run: flutter test screenshot_test --update-goldens --reporter github
+
+      - name: Assemble site
+        run: |
+          mkdir -p out
+          cp -r site/. out/
+          mkdir -p out/assets/screens
+          if ls screenshot_test/out/*.png >/dev/null 2>&1; then
+            for f in screenshot_test/out/*.png; do
+              # 1170x2532 -> 780px wide keeps text crisp and files light
+              ffmpeg -loglevel error -y -i "$f" -vf scale=780:-2 "out/assets/screens/$(basename "$f")"
+            done
+          fi
+          ls -la out/assets/screens
+
+      - name: Build demo video
+        continue-on-error: true
+        run: tool/make_demo_video.sh out/assets/screens out/assets/demo.mp4
+
+      - name: Publish to GitHub Pages (gh-pages branch)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./out
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
