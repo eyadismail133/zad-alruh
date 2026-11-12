@@ -32,7 +32,10 @@ jobs:
           cache: true
 
       - name: Install packages
-        run: flutter pub get
+        run: |
+          flutter pub get
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg bc >/dev/null
 
       - name: Capture real app screenshots
         continue-on-error: true
@@ -50,6 +53,7 @@ jobs:
             done
           fi
           ls -la out/assets/screens
+          echo "::notice title=Screenshots::$(ls out/assets/screens | wc -l) captured: $(ls out/assets/screens | tr '\n' ' ')"
 
       - name: Build demo video
         continue-on-error: true
