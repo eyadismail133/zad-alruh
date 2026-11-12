@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>زادُ الروح: مصحف وأذان وأذكار بدون إنترنت</title>
+<meta name="description" content="تطبيق أندرويد مجاني بدون إعلانات: مصحف المدينة كامل، مواقيت الصلاة والأذان، الأذكار والتذكيرات، واتجاه القبلة، ويعمل بدون إنترنت.">
+<meta property="og:title" content="زادُ الروح">
+<meta property="og:description" content="مصحف المدينة كامل، الأذان في وقته، الأذكار والتذكيرات، والقبلة، بدون إنترنت وبدون إعلانات.">
+<meta property="og:image" content="assets/screens/home.png">
+<meta name="theme-color" content="#0F5E55">
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F6F4;
+  --mist:#DDE8E3;
+  --ink:#10201D;
+  --ink-soft:#4C5E59;
+  --teal:#0F5E55;
+  --teal-deep:#0A3F39;
+  --night:#0A1A17;
+  --brass:#C9A35E;
+  --white:#FFFFFF;
+  --radius-l:28px;
+  --radius-s:12px;
+  --max:1120px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;font-size:18px;line-height:1.75;-webkit-font-smoothing:antialiased}
+img,video{max-width:100%;display:block}
+a{color:var(--teal)}
+:focus-visible{outline:3px solid var(--brass);outline-offset:3px;border-radius:6px}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+
+/* ---------- top bar ---------- */
+.bar{position:sticky;top:0;z-index:20;background:rgba(243,246,244,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--mist)}
+.bar .wrap{display:flex;align-items:center;gap:24px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:700}
+.brand img{width:34px;height:34px;border-radius:9px}
+.bar nav{display:flex;gap:22px;margin-inline-start:auto}
+.bar nav a{color:var(--ink-soft);text-decoration:none;font-size:16px}
+.bar nav a:hover{color:var(--teal)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;padding:14px 26px;font:600 17px/1 "IBM Plex Sans Arabic",sans-serif;text-decoration:none;border:0;cursor:pointer;transition:transform .15s ease,background .15s ease}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--teal);color:var(--white)}
+.btn-primary:hover{background:var(--teal-deep)}
+.btn-ghost{background:transparent;color:var(--teal);box-shadow:inset 0 0 0 1.5px var(--teal)}
+.btn-ghost:hover{background:rgba(15,94,85,.06)}
+.btn svg{width:20px;height:20px;flex:none}
+.bar .btn{padding:10px 18px;font-size:15px}
+@media (max-width:760px){.bar nav{display:none}.bar .btn{margin-inline-start:auto}}
+
+/* ---------- hero ---------- */
+.hero{padding:56px 0 40px;overflow:hidden}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+.hero h1{font-family:"Amiri",serif;font-weight:700;font-size:clamp(64px,10vw,124px);line-height:1.05;margin:0;color:var(--teal-deep)}
+.hero .lead{font-size:clamp(19px,2.2vw,23px);color:var(--ink);max-width:36ch;margin:18px 0 28px}
+.hero .actions{display:flex;flex-wrap:wrap;gap:12px}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;margin:26px 0 0;padding:0;list-style:none;color:var(--ink-soft);font-size:15.5px}
+.facts li{display:flex;align-items:center;gap:8px}
+.facts li::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--brass);transform:rotate(45deg)}
+.stage{position:relative;display:grid;place-items:center;min-height:560px}
+.star{position:absolute;width:min(560px,100%);aspect-ratio:1;color:var(--brass);opacity:.55;animation:turn 120s linear infinite}
+@keyframes turn{to{transform:rotate(360deg)}}
+.phone{position:relative;width:min(300px,78vw);aspect-ratio:390/844;border-radius:44px;background:#000;padding:10px;box-shadow:0 30px 60px -20px rgba(10,63,57,.45),0 0 0 1px rgba(0,0,0,.08)}
+.phone img,.phone video{width:100%;height:100%;object-fit:cover;border-radius:35px;background:var(--mist)}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}.stage{min-height:auto;padding:20px 0}}
+
+/* ---------- sections ---------- */
+section{padding:72px 0}
+h2{font-family:"Amiri",serif;font-weight:700;font-size:clamp(36px,5vw,54px);line-height:1.2;margin:0 0 12px;color:var(--teal-deep)}
+.intro{color:var(--ink-soft);max-width:60ch;margin:0 0 36px}
+
+.demo .wrap{display:grid;grid-template-columns:auto 1fr;gap:56px;align-items:center}
+.demo .phone{width:260px}
+@media (max-width:760px){.demo .wrap{grid-template-columns:1fr}.demo .phone{margin:0 auto}}
+
+.feature{display:grid;grid-template-columns:1fr 280px;gap:56px;align-items:center;padding:44px 0;border-top:1px solid var(--mist)}
+.feature:nth-of-type(even){grid-template-columns:280px 1fr}
+.feature:nth-of-type(even) .shot{order:-1}
+.feature h3{font-family:"Amiri",serif;font-size:36px;line-height:1.25;margin:0 0 10px;color:var(--ink)}
+.feature p{margin:0 0 14px;max-width:56ch}
+.feature ul{margin:0;padding:0;list-style:none;display:grid;gap:6px;color:var(--ink-soft);font-size:16.5px}
+.feature li{padding-inline-start:20px;position:relative}
+.feature li::before{content:"";position:absolute;inset-inline-start:0;top:.75em;width:8px;height:8px;border-radius:50%;background:var(--teal)}
+.shot{width:280px;aspect-ratio:390/844;border-radius:30px;overflow:hidden;background:var(--mist);box-shadow:0 18px 40px -18px rgba(10,63,57,.35);justify-self:center}
+.shot img{width:100%;height:100%;object-fit:cover}
+.pair{display:flex;gap:14px;justify-self:center}
+.pair .shot{width:200px}
+@media (max-width:860px){.feature,.feature:nth-of-type(even){grid-template-columns:1fr;gap:24px}.feature:nth-of-type(even) .shot{order:0}.pair .shot{width:calc((100vw - 54px) / 2);max-width:200px}}
+
+/* ---------- night band: reminder card demo ---------- */
+.night{background:var(--night);color:#E6EFEC}
+.night h2{color:#F1E6CC}
+.night .intro{color:#9FB5AE}
+.night .wrap{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.screen-mock{position:relative;width:min(320px,80vw);aspect-ratio:390/700;border-radius:36px;background:linear-gradient(160deg,#20302c,#0f1b18);margin:0 auto;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.screen-mock .apps{position:absolute;inset:70px 26px auto;display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+.screen-mock .apps i{aspect-ratio:1;border-radius:16px;background:rgba(255,255,255,.08)}
+.toast{position:absolute;inset-inline:16px;top:28px;padding:16px 20px 14px;border-radius:24px;background:linear-gradient(135deg,#0E5A52,#1D7A6D);color:#fff;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,.4);animation:drop 6s ease-in-out infinite}
+.toast small{display:block;color:#E3C27E;font-size:13px;text-align:start}
+.toast b{display:block;font-family:"Amiri",serif;font-size:26px;line-height:1.5;margin:4px 0}
+.toast span{font-size:11.5px;color:rgba(255,255,255,.7)}
+@keyframes drop{0%,8%{opacity:0;transform:translateY(-20px)}16%,70%{opacity:1;transform:none}80%,100%{opacity:0;transform:translateY(-20px)}}
+.night ul{padding:0;margin:0;list-style:none;display:grid;gap:10px}
+.night li{display:flex;gap:12px}
+.night li::before{content:"";flex:none;margin-top:.7em;width:7px;height:7px;transform:rotate(45deg);background:var(--brass)}
+@media (max-width:860px){.night .wrap{grid-template-columns:1fr}}
+
+/* ---------- download ---------- */
+.download{background:var(--white);border-block:1px solid var(--mist)}
+.dl-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:48px}
+.dl-choices{display:grid;gap:14px}
+.choice{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:var(--radius-s);border:1.5px solid var(--mist);text-decoration:none;color:var(--ink);transition:border-color .15s ease,background .15s ease}
+.choice:hover{border-color:var(--teal);background:rgba(15,94,85,.04)}
+.choice.main{border-color:var(--teal);background:rgba(15,94,85,.05)}
+.choice svg{width:30px;height:30px;color:var(--teal);flex:none}
+.choice strong{display:block;font-size:18px}
+.choice span{display:block;font-size:14.5px;color:var(--ink-soft)}
+.meta{color:var(--ink-soft);font-size:15px;margin:16px 0 0}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:16px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start}
+.steps li::before{content:counter(s,arabic-indic);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--teal);color:#fff;font-weight:700}
+.steps b{display:block}
+.steps span{color:var(--ink-soft);font-size:16px}
+@media (max-width:860px){.dl-grid{grid-template-columns:1fr}}
+
+/* ---------- faq ---------- */
+.faq details{border-top:1px solid var(--mist);padding:6px 0}
+.faq details:last-child{border-bottom:1px solid var(--mist)}
+.faq summary{cursor:pointer;list-style:none;padding:16px 0;font-weight:600;font-size:19px;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--teal);font-size:26px;line-height:1}
+.faq details[open] summary::after{content:"−"}
+.faq details p{margin:0 0 16px;color:var(--ink-soft);max-width:68ch}
+
+footer{padding:40px 0 60px;color:var(--ink-soft);font-size:15px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between}
+footer p{margin:0;max-width:70ch}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="assets/logo.png" alt="" width="34" height="34">زادُ الروح</a>
+    <nav aria-label="أقسام الصفحة">
+      <a href="#features">المميزات</a>
+      <a href="#reminders">التذكيرات</a>
+      <a href="#download">التحميل</a>
+      <a href="#faq">أسئلة شائعة</a>
+    </nav>
+    <a class="btn btn-primary" href="#download">تحميل مجاني</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <h1>زادُ الروح</h1>
+        <p class="lead">المصحف كامل، والأذان في وقته، والأذكار وتذكيراتها، في تطبيق واحد يشتغل من غير إنترنت.</p>
+        <div class="actions">
+          <a class="btn btn-primary" data-dl="arm64" href="https://github.com/eyadismail133/zad-alruh/releases/latest/download/zad-alruh-arm64-v8a.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+            حمّل للأندرويد
+          </a>
+          <a class="btn btn-ghost" href="#demo">شوف التطبيق</a>
+        </div>
+        <ul class="facts">
+          <li>مجاني بالكامل</li>
+          <li>بدون إعلانات أو حسابات</li>
+          <li>أندرويد ٨ وأحدث</li>
+          <li data-version>آخر نسخة</li>
+        </ul>
+      </div>
+      <div class="stage">
+        <svg class="star" viewBox="0 0 200 200" aria-hidden="true" fill="none" stroke="currentColor" stroke-width=".6">
+          <rect x="40" y="40" width="120" height="120"/>
+          <rect x="40" y="40" width="120" height="120" transform="rotate(45 100 100)"/>
+          <circle cx="100" cy="100" r="85"/>
+          <circle cx="100" cy="100" r="98"/>
+          <rect x="58" y="58" width="84" height="84"/>
+          <rect x="58" y="58" width="84" height="84" transform="rotate(45 100 100)"/>
+        </svg>
+        <div class="phone"><img src="assets/screens/mushaf_sepia.png" alt="صفحة من مصحف المدينة داخل التطبيق" width="390" height="844"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="demo" id="demo">
+    <div class="wrap">
+      <div class="phone">
+        <video src="assets/demo.mp4" poster="assets/screens/home.png" autoplay muted loop playsinline controls aria-label="جولة سريعة في شاشات التطبيق"></video>
+      </div>
+      <div>
+        <h2>جولة في دقيقة</h2>
+        <p class="intro">من أول ما تفتح التطبيق: الصلاة الجاية ووقتها، وردك من القرآن، وأذكار اليوم بعلامة ✓ لما تخلّصها. كل حاجة قدامك من غير ما تدوّر.</p>
+        <a class="btn btn-ghost" href="#features">اعرف المميزات بالتفصيل</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>إيه اللي جوه التطبيق</h2>
+      <p class="intro">كل اللي هنا شغال من غير إنترنت، ما عدا الاستماع للتلاوة وتحميل أصوات المؤذنين أول مرة.</p>
+
+      <article class="feature">
+        <div>
+          <h3>مصحف المدينة كامل بصوره</h3>
+          <p>الـ٦٠٤ صفحة من مصحف المدينة النبوية (رواية حفص) بنفس شكل المطبوع، مع تكبير ولون صفحة يريّح عينك بالليل.</p>
+          <ul>
+            <li>لون الصفحة: أبيض أو كريمي أو ليلي</li>
+            <li>لمسة واحدة تخفي كل الأزرار وتقرأ بملء الشاشة</li>
+            <li>بحث في الآيات، علامات مرجعية، والانتقال لأي صفحة أو جزء</li>
+            <li>تلاوة كاملة لكل سورة بصوت ١١ قارئ، وتكمل والشاشة مقفولة</li>
+          </ul>
+        </div>
+        <div class="pair">
+          <div class="shot"><img loading="lazy" src="assets/screens/mushaf_sepia.png" alt="صفحة المصحف بلون كريمي" width="390" height="844"></div>
+          <div class="shot"><img loading="lazy" src="assets/screens/mushaf_night.png" alt="صفحة المصحف بالوضع الليلي" width="390" height="844"></div>
+        </div>
+      </article>
+
+      <article class="feature">
+        <div>
+          <h3>مواقيت الصلاة والأذان في وقته</h3>
+          <p>مواقيت دقيقة لأكتر من ٣٤ ألف مدينة حول العالم محسوبة على الموبايل نفسه. الأذان بيشتغل في وقت الصلاة حتى لو التطبيق مقفول.</p>
+          <ul>
+            <li>أذان كامل بصوت تختاره، وأذان مختلف للفجر</li>
+            <li>مؤذنون تحمّلهم مرة: العفاسي، منصور الزهراني، أحمد النفيس وغيرهم</li>
+            <li>زر "جرّب الأذان" عشان تتأكد إنه شغال على موبايلك</li>
+            <li>طرق الحساب والمذهب والتعديل بالدقايق</li>
+          </ul>
+        </div>
+        <div class="shot"><img loading="lazy" src="assets/screens/prayers.png" alt="شاشة مواقيت الصلاة" width="390" height="844"></div>
+      </article>
+
+      <article class="feature">
+        <div>
+          <h3>الأذكار والأدعية في مكان واحد</h3>
+          <p>أذكار الصباح والمساء وبعد الصلاة ودعاء اليوم من حصن المسلم، بنص واضح من غير رموز الكتاب، وبتعلّم على اللي خلّصته.</p>
+          <ul>
+            <li>حصن المسلم كامل بأبوابه</li>
+            <li>أكتر من ٣٢٠٠ حديث صحيح بالشرح، مع بحث ومواضيع</li>
+            <li>مسبحة إلكترونية بتحفظ جلساتك</li>
+          </ul>
+        </div>
+        <div class="shot"><img loading="lazy" src="assets/screens/adhkar.png" alt="شاشة الأذكار والأدعية" width="390" height="844"></div>
+      </article>
+
+      <article class="feature">
+        <div>
+          <h3>كل الإعدادات في صفحة واحدة</h3>
+          <p>المظهر، المصحف والتلاوة، المدينة والمواقيت، الأذان، والتذكيرات، مرتبين في صفحة واحدة واضحة. وفيه وضع ليلي للتطبيق كله.</p>
+          <ul>
+            <li>اتجاه القبلة ببوصلة الموبايل، وبيقولك تلف يمين ولا شمال</li>
+            <li>التاريخ الهجري على الرئيسية</li>
+            <li>بياناتك على موبايلك بس، مفيش تسجيل ولا تتبّع</li>
+          </ul>
+        </div>
+        <div class="pair">
+          <div class="shot"><img loading="lazy" src="assets/screens/settings.png" alt="صفحة الإعدادات" width="390" height="844"></div>
+          <div class="shot"><img loading="lazy" src="assets/screens/home_dark.png" alt="الرئيسية بالوضع الليلي" width="390" height="844"></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="night" id="reminders">
+    <div class="wrap">
+      <div>
+        <h2>تذكير لطيف، مش إشعار مزعج</h2>
+        <p class="intro">"سبحان الله"، "الله أكبر"، "أستغفر الله"… تظهر كبطاقة هادية فوق أي حاجة مفتوحة، وتختفي لوحدها.</p>
+        <ul>
+          <li>تختار كل قد إيه: من ربع ساعة لـ٣ ساعات، وفي أي ساعات من اليوم</li>
+          <li>تختار مكانها في الشاشة: فوق أو في النص أو تحت</li>
+          <li>تذكير بأذكار الصباح والمساء والنوم، وسورة الكهف يوم الجمعة</li>
+          <li>أو خليها إشعار عادي لو تحب</li>
+        </ul>
+      </div>
+      <div class="screen-mock" role="img" aria-label="مثال لبطاقة التذكير وهي تظهر فوق الشاشة الرئيسية للموبايل">
+        <div class="apps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="toast" aria-hidden="true">
+          <small>ذكر · زادُ الروح</small>
+          <b>سبحان الله وبحمده</b>
+          <span>اضغط للإغلاق</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="wrap dl-grid">
+      <div>
+        <h2>حمّل التطبيق</h2>
+        <p class="intro">التطبيق لأندرويد. اختار النسخة المناسبة. لو مش متأكد، الأولى بتنفع لأغلب الموبايلات.</p>
+        <div class="dl-choices">
+          <a class="choice main" data-dl="arm64" href="https://github.com/eyadismail133/zad-alruh/releases/latest/download/zad-alruh-arm64-v8a.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+            <div><strong>لأغلب الموبايلات</strong><span data-size="arm64">نسخة arm64، حوالي ١٣٠ ميجا</span></div>
+          </a>
+          <a class="choice" data-dl="universal" href="https://github.com/eyadismail133/zad-alruh/releases/latest/download/zad-alruh-universal.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+            <div><strong>لو الأولى ما اتثبتتش</strong><span data-size="universal">نسخة شاملة بتشتغل على أي موبايل، أكبر شوية</span></div>
+          </a>
+        </div>
+        <p class="meta" data-version-long>كل النسخ موجودة على <a href="https://github.com/eyadismail133/zad-alruh/releases">صفحة الإصدارات</a>.</p>
+      </div>
+      <div>
+        <h3 style="font-family:Amiri,serif;font-size:30px;margin:6px 0 18px">إزاي تثبّته</h3>
+        <ol class="steps">
+          <li><div><b>حمّل الملف</b><span>اضغط زرار التحميل واستنى لحد ما يخلص.</span></div></li>
+          <li><div><b>افتح الملف</b><span>من الإشعارات أو من فولدر التنزيلات.</span></div></li>
+          <li><div><b>اسمح بالتثبيت</b><span>لو الموبايل سألك، فعّل "السماح من هذا المصدر" وارجع.</span></div></li>
+          <li><div><b>افتح التطبيق واختار مدينتك</b><span>ومن الإعدادات جرّب الأذان مرة عشان تطمن.</span></div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq" id="faq">
+    <div class="wrap">
+      <h2>أسئلة شائعة</h2>
+      <details>
+        <summary>ليه مش على جوجل بلاي؟</summary>
+        <p>التطبيق لسه في أول إصداراته وبيتوزع مباشرة من هنا. الملف موقّع بنفس المفتاح في كل نسخة، فالتحديثات بتتثبت فوق القديمة وبياناتك بتفضل زي ما هي.</p>
+      </details>
+      <details>
+        <summary>الأذان بيوصل كإشعار بس ومفيش صوت؟</summary>
+        <p>افتح الإعدادات ← التنبيهات والأذان واضغط "جرّب الأذان". لو ظهر تحذير إن صوت المنبه صفر علّيه، ولو فيه تحذير توفير البطارية اضغط "السماح". الأذان بيشتغل على صوت المنبه.</p>
+      </details>
+      <details>
+        <summary>زرار "الظهور فوق التطبيقات" مقفول ومش بيتفعّل</summary>
+        <p>ده من أندرويد للتطبيقات اللي اتثبتت من ملف. حاول تفعّله مرة، بعدين افتح معلومات التطبيق ← الثلاث نقط فوق ← "السماح بالإعدادات المقيّدة"، وارجع فعّله. في شاومي: معلومات التطبيق ← أذونات أخرى ← "عرض النوافذ المنبثقة".</p>
+      </details>
+      <details>
+        <summary>محتاج إنترنت؟</summary>
+        <p>لأ. المصحف والمواقيت والأذان والأذكار والأحاديث كلها جوه التطبيق. الإنترنت بس للاستماع للتلاوة وتحميل أصوات المؤذنين أول مرة.</p>
+      </details>
+      <details>
+        <summary>التطبيق بياخد أي بيانات مني؟</summary>
+        <p>لأ. مفيش حسابات ولا إعلانات ولا تتبّع. اختياراتك وتقدّمك محفوظين على موبايلك بس.</p>
+      </details>
+      <details>
+        <summary>حجمه كبير ليه؟</summary>
+        <p>لأن صور المصحف الـ٦٠٤ جوه التطبيق عشان يشتغل من غير إنترنت، ودي لوحدها حوالي ٩٠ ميجا.</p>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>صفحات المصحف: مجمع الملك فهد لطباعة المصحف الشريف. نص القرآن: Tanzil. الأذكار: حصن المسلم. الأحاديث: موسوعة الأحاديث النبوية HadeethEnc. التلاوات: MP3Quran. أصوات المؤذنين: AlAdhan.com. المدن: GeoNames.</p>
+    <p><a href="https://github.com/eyadismail133/zad-alruh">الكود على GitHub</a></p>
+  </div>
+</footer>
+
+<script>
+// Show the current version and real file sizes from the latest GitHub release.
+(function () {
+  var ar = function (n) { return String(n).replace(/[0-9]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'[d]; }); };
+  fetch('https://api.github.com/repos/eyadismail133/zad-alruh/releases/latest')
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (rel) {
+      if (!rel) return;
+      var v = (rel.tag_name || '').replace(/^v/, '');
+      document.querySelectorAll('[data-version]').forEach(function (el) { el.textContent = 'الإصدار ' + ar(v); });
+      var size = function (name) {
+        var a = (rel.assets || []).find(function (x) { return x.name === name; });
+        return a ? ar(Math.round(a.size / 1e6)) + ' ميجا' : null;
+      };
+      var s1 = size('zad-alruh-arm64-v8a.apk'), s2 = size('zad-alruh-universal.apk');
+      var e1 = document.querySelector('[data-size="arm64"]'), e2 = document.querySelector('[data-size="universal"]');
+      if (s1 && e1) e1.textContent = 'الإصدار ' + ar(v) + '، ' + s1;
+      if (s2 && e2) e2.textContent = 'بتشتغل على أي موبايل، ' + s2;
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>
