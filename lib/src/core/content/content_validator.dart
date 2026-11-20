@@ -171,21 +171,21 @@ class ContentValidator {
 
   /// Canonical SHA-256 for KFQC page WebP digests catalog JSON asset
   static const String kExpectedKfqcDigestsSha256 =
-      'a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956';
+      '0de1ed287f6d353c04b719594ed2448e626eac33df8d5ecf9831174c895b3bfa';
 
   /// Expected count of Medina Mushaf pages
   static const int kExpectedPageCount = 604;
 
   /// Expected total byte sum of 604 WebP page files
-  static const int kExpectedTotalPageBytes = 91492288;
+  static const int kExpectedTotalPageBytes = 52941856;
 
   /// Pinned SHA-256 for sample page 1 WebP
   static const String kExpectedPage1Sha256 =
-      '1dd02b643c8b1dcb01aaeb3bb34fa240dfdd824898e402cbddfad01e2e470d87';
+      '824fa0a6465fc21224c3f6c2a54272d706f800c2dd32c2aa5b5a43b663c097a7';
 
   /// Pinned SHA-256 for sample page 604 WebP
   static const String kExpectedPage604Sha256 =
-      'f30b4aad9b322ce7c3d61c5d2bdedaa948eca8e76494eb21c4473dee68365689';
+      '3864384436253827f7beddeef5fa2b3c07eb53177e4d85000b99ce3c87939c58';
 
   /// Canonical set of unique voice IDs for bundled adhan recordings
   static const Set<String> kExpectedAdhanVoiceIds = {

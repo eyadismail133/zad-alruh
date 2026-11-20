@@ -97,3 +97,21 @@ offline by the native prayer alarm (full-adhan mode). They are **not** bundled i
 | nafees | أحمد النفيس | https://cdn.aladhan.com/audio/adhans/a1.mp3 |
 | ozcan | الحافظ مصطفى أوزجان | https://cdn.aladhan.com/audio/adhans/a2.mp3 |
 | zahrani | منصور الزهراني | https://cdn.aladhan.com/audio/adhans/a11-mansour-al-zahrani.mp3 |
+
+## Egyptian and Saudi muezzins (added 2026-11-20, v0.8.0)
+
+At the owner's request the downloadable list now also includes 20 Egyptian recordings (Abdul Basit
+Abdul Samad ×7, El-Minshawi, Al-Hussary, Mustafa Ismail, and others) and 19 Saudi recordings
+(Ali Mulla ×6, Farouk Hadrawi, Nayef Feda, Essam Bukhari, Nasser Al-Obaid, Masjid al-Haram and
+Masjid an-Nabawi recordings, and others).
+
+- Catalog pages: https://www.assabile.com/adhan-call-prayer/egypt, `/makkah`, `/madinah`,
+  `/saudi-arabia` (Arabic names as published on ar.assabile.com).
+- Files are downloaded on demand from `media.assabile.com`; nothing is bundled in the APK.
+- **Rights:** Assabile offers these as free downloads but does not document recording rights or
+  permission for use in apps. The owner accepted this on 2026-11-20. If Assabile or a rights holder
+  objects, remove the `eg_*` / `sa_*` entries from `OnlineAdhan.all`.
+- Several Makkah/Madinah files are low bitrate (~16 kbps). Nobody has listened to all of them yet;
+  a human listening pass (complete adhan, correct wording, no ads or intros) is still needed.
+- If Assabile changes its URLs, downloads fail with an error in the app; already downloaded files
+  keep working.

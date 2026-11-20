@@ -61,7 +61,10 @@ blocked). The source of truth for "does it compile" is the **GitHub Actions work
 
 ## 5. Mushaf page images — rules
 
-- `assets/content/quran/pages/001.webp … 604.webp` (1200×1913, lossless, KFQC via quran-ws/quran-svg).
+- `assets/content/quran/pages/001.webp … 604.webp` (1200×1913, KFQC via quran-ws/quran-svg),
+  stored as greyscale with 4 grey levels in lossless WebP (~53 MB total, was ~91 MB). This is
+  produced by `tool/compress_mushaf_pages.mjs`, which also rewrites every pinned digest. Lossy WebP
+  is *larger* for this content — don't switch to it.
 - Their SHA-256 values are pinned in `assets/content/quran/quran-pages-digests.json` and
   `assets/content/manifest.json`, and `ContentValidator` checks them. **If you replace page images
   you must regenerate the digests and update the manifest in the same commit.**
@@ -104,6 +107,18 @@ blocked). The source of truth for "does it compile" is the **GitHub Actions work
 - `docs/ANDROID-SIGNING.ar.md` — keystore + GitHub secrets + downloading the APK.
 - `docs/sources/*` — provenance and licenses of every bundled asset.
 - `docs/history/` — old milestone reports from previous agents. Historical only; do not treat as current state.
+
+## 9b. Landing page (https://eyadismail133.github.io/zad-alruh/)
+
+- Source: `site/index.html` (single file, plain ES5 JS so old Android browsers and in-app web
+  views run it). Built and pushed to the `gh-pages` branch by `.github/workflows/pages.yml`, which
+  also captures real screenshots (`screenshot_test/`) and converts them to WebP + a demo video.
+- Download buttons point at GitHub Release assets. Permanent version-less names are created by
+  `android-apk.yml`: `zad-alruh-arm64-v8a.apk`, `zad-alruh-armeabi-v7a.apk`, `zad-alruh-universal.apk`.
+  Keep those names stable — the page links to `/releases/latest/download/<name>`.
+- The page warns visitors inside Facebook/Instagram/Messenger in-app browsers (they block
+  downloads) and switches the main button to the 32-bit APK when the browser reveals a 32-bit system.
+- `github secrets/` (local only, git-ignored) holds the owner's copy of the signing secrets. Never commit or print it.
 
 ## 10. Definition of done for any change
 

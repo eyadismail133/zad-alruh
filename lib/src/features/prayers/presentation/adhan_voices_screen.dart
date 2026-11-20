@@ -153,7 +153,8 @@ class _AdhanVoicesScreenState extends ConsumerState<AdhanVoicesScreen> {
             ],
             const SizedBox(height: 8),
             Text(
-              'المصدر: ${OnlineAdhan.sourceName} — ${OnlineAdhan.sourcePage}',
+              'المصادر: ${OnlineAdhan.sourceName} — ${OnlineAdhan.sourcePage}\n'
+              'الأذان المصري والسعودي: ${OnlineAdhan.assabileName} — ${OnlineAdhan.assabilePage}',
               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],

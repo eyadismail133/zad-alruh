@@ -48,8 +48,12 @@ jobs:
           mkdir -p out/assets/screens
           if ls screenshot_test/out/*.png >/dev/null 2>&1; then
             for f in screenshot_test/out/*.png; do
-              # 1170x2532 -> 780px wide keeps text crisp and files light
-              ffmpeg -loglevel error -y -i "$f" -vf scale=780:-2 "out/assets/screens/$(basename "$f")"
+              # 1170x2532 -> 780px wide keeps text crisp and files light.
+              # PNG stays for og:image and the demo video; the page itself
+              # loads WebP (~70% lighter on mobile data).
+              n="$(basename "$f" .png)"
+              ffmpeg -loglevel error -y -i "$f" -vf scale=780:-2 "out/assets/screens/$n.png"
+              ffmpeg -loglevel error -y -i "$f" -vf scale=780:-2 -c:v libwebp -quality 80 "out/assets/screens/$n.webp"
             done
           fi
           ls -la out/assets/screens

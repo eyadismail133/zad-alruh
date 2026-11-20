@@ -128,7 +128,7 @@
       },
       "rendering_pipeline": {
         "svg_renderer": "resvg-js 2.6.2",
-        "image_encoder": "Pillow 12.3.0 / libwebp 1.6.0 method 6 lossless WebP",
+        "image_encoder": "Pillow 12.3.0 / libwebp 1.6.0 method 6 lossless WebP; then greyscale 4-level quantisation, libwebp lossless (tool/compress_mushaf_pages.mjs)",
         "width_px": 1200,
         "background": "#FFFFFF"
       },
@@ -139,7 +139,7 @@
       },
       "digests_file": {
         "path": "assets/content/quran/quran-pages-digests.json",
-        "sha256": "a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956"
+        "sha256": "0de1ed287f6d353c04b719594ed2448e626eac33df8d5ecf9831174c895b3bfa"
       }
     }
   },
@@ -147,7 +147,7 @@
     "quran_images": {
       "status": "bundled",
       "expected_count": 604,
-      "total_bytes": 91492288,
+      "total_bytes": 52941856,
       "mushaf_type": "Medina Mushaf (KFQC Hafs 1441 AH)",
       "source_reference": "King Fahd Glorious Quran Printing Complex via quran-ws/quran-svg",
       "rights_status": "public_use_approved_kfqc_tech_guide_p51",
@@ -159,11 +159,11 @@
       },
       "digests_file": {
         "path": "assets/content/quran/quran-pages-digests.json",
-        "sha256": "a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956"
+        "sha256": "0de1ed287f6d353c04b719594ed2448e626eac33df8d5ecf9831174c895b3bfa"
       },
       "sample_hashes": {
-        "page_1": "1dd02b643c8b1dcb01aaeb3bb34fa240dfdd824898e402cbddfad01e2e470d87",
-        "page_604": "f30b4aad9b322ce7c3d61c5d2bdedaa948eca8e76494eb21c4473dee68365689"
+        "page_1": "824fa0a6465fc21224c3f6c2a54272d706f800c2dd32c2aa5b5a43b663c097a7",
+        "page_604": "3864384436253827f7beddeef5fa2b3c07eb53177e4d85000b99ce3c87939c58"
       },
       "pages_directory": "assets/content/quran/pages"
     },

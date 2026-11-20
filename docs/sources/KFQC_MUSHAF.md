@@ -27,16 +27,22 @@ The source SVGs in `quran-ws/quran-svg` total 373MB and are not bundled directly
    - Dimensions: Rendered at fixed 1200px width (aspect-ratio preserved according to the original KFQC page sheet geometry).
    - Background: Pure solid white `#FFFFFF`.
    - Compression: Lossless WebP, compression effort/method `6`.
+   - Size reduction (2026-11-20, `tool/compress_mushaf_pages.mjs`): each page is converted to a
+     single grey channel (the renders carry no colour; max channel spread 4/255) and every pixel is
+     snapped to 4 evenly spaced levels between the page's ink level and white, then re-encoded as
+     lossless WebP method 6. Resolution, layout and glyph outlines are unchanged; only the
+     anti-aliasing ramp at glyph edges is coarser (mean absolute error < 1/255). Combined size went
+     from 91,492,288 to 52,941,856 bytes. Lossy WebP was measured and is larger for this content.
 3. **Artifact Summary:**
    - 604 WebP files located at `assets/content/quran/pages/001.webp` through `604.webp`.
-   - Combined size: exactly `91,492,288` bytes across all 604 files.
+   - Combined size: exactly `52,941,856` bytes across all 604 files.
    - Pinned digests catalog: `assets/content/quran/quran-pages-digests.json`
-     - File SHA-256: `a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956`
+     - File SHA-256: `0de1ed287f6d353c04b719594ed2448e626eac33df8d5ecf9831174c895b3bfa`
    - Pinned page boundaries: `assets/content/quran/kfqc-page-bounds.json`
      - File SHA-256: `95f609f8c56e811b8afed9695bee44a0e4766b47c01708a3abb7064b9bc42539`
    - Sample Page Hashes:
-     - Page 1 (`001.webp`): `1dd02b643c8b1dcb01aaeb3bb34fa240dfdd824898e402cbddfad01e2e470d87`
-     - Page 604 (`604.webp`): `f30b4aad9b322ce7c3d61c5d2bdedaa948eca8e76494eb21c4473dee68365689`
+     - Page 1 (`001.webp`): `824fa0a6465fc21224c3f6c2a54272d706f800c2dd32c2aa5b5a43b663c097a7`
+     - Page 604 (`604.webp`): `3864384436253827f7beddeef5fa2b3c07eb53177e4d85000b99ce3c87939c58`
 
 ## 4. Alignment with Canonical Quranic Text (Tanzil Uthmani)
 - Verbatim Tanzil Uthmani text (`assets/content/quran/quran-uthmani.txt`, SHA-256 `7f30c647...`) and Tanzil metadata XML (`assets/content/quran/quran-data.xml`, SHA-256 `8867c1d8...`) remain byte-for-byte unchanged.

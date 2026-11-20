@@ -26,11 +26,11 @@ class KfqcPageEntry {
 abstract final class KfqcMushafCatalog {
   static const int expectedPageCount = 604;
   static const int expectedTotalVerses = 6236;
-  static const int expectedTotalBytes = 91492288;
+  static const int expectedTotalBytes = 52941856;
   static const String expectedBoundsSha256 = '95f609f8c56e811b8afed9695bee44a0e4766b47c01708a3abb7064b9bc42539';
-  static const String expectedDigestsSha256 = 'a836ce22d62c5b61243b0e974fb7e6c80ecbcc99c5191a3d02f7ab2f3dec8956';
-  static const String page1WebpSha256 = '1dd02b643c8b1dcb01aaeb3bb34fa240dfdd824898e402cbddfad01e2e470d87';
-  static const String page604WebpSha256 = 'f30b4aad9b322ce7c3d61c5d2bdedaa948eca8e76494eb21c4473dee68365689';
+  static const String expectedDigestsSha256 = '0de1ed287f6d353c04b719594ed2448e626eac33df8d5ecf9831174c895b3bfa';
+  static const String page1WebpSha256 = '824fa0a6465fc21224c3f6c2a54272d706f800c2dd32c2aa5b5a43b663c097a7';
+  static const String page604WebpSha256 = '3864384436253827f7beddeef5fa2b3c07eb53177e4d85000b99ce3c87939c58';
   static const String sourceCommit = 'b4155f07e4aea087d2c458069acff9f7c7e749f6';
   static const String kfqcOriginalArchiveSha256 = '280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef';
 

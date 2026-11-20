@@ -93,6 +93,15 @@ android {
         }
     }
 
+    // The APK is sideloaded over mobile data, so download size matters more than
+    // install size. Compressing the native libraries (libflutter.so, libapp.so)
+    // makes the APK roughly 10 MB smaller; Android extracts them once at install.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = if (hasReleaseSigning) {

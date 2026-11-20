@@ -7,12 +7,16 @@
 <meta name="description" content="تطبيق أندرويد مجاني بدون إعلانات: مصحف المدينة كامل، مواقيت الصلاة والأذان، الأذكار والتذكيرات، واتجاه القبلة، ويعمل بدون إنترنت.">
 <meta property="og:title" content="زادُ الروح">
 <meta property="og:description" content="مصحف المدينة كامل، الأذان في وقته، الأذكار والتذكيرات، والقبلة، بدون إنترنت وبدون إعلانات.">
-<meta property="og:image" content="assets/screens/home.png">
+<meta property="og:image" content="https://eyadismail133.github.io/zad-alruh/assets/screens/home.png">
+<meta property="og:url" content="https://eyadismail133.github.io/zad-alruh/">
+<meta property="og:type" content="website">
 <meta name="theme-color" content="#0F5E55">
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Fonts load without blocking the first paint (slow mobile networks). -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap"></noscript>
 <style>
 :root{
   --paper:#F3F6F4;
@@ -123,6 +127,13 @@ h2{font-family:"Amiri",serif;font-weight:700;font-size:clamp(36px,5vw,54px);line
 .choice strong{display:block;font-size:18px}
 .choice span{display:block;font-size:14.5px;color:var(--ink-soft)}
 .meta{color:var(--ink-soft);font-size:15px;margin:16px 0 0}
+.choice small{display:block;font-size:13.5px;color:var(--ink-soft)}
+.inapp{display:none;margin:0 0 18px;padding:16px 18px;border-radius:var(--radius-s);background:#FFF6E3;border:1.5px solid var(--brass);color:var(--ink)}
+.inapp.show{display:block}
+.inapp b{display:block;margin-bottom:4px}
+.inapp .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.inapp .btn{padding:10px 18px;font-size:15px}
+.hint{margin:14px 0 0;padding:12px 16px;border-radius:var(--radius-s);background:rgba(15,94,85,.05);color:var(--ink-soft);font-size:15px}
 .steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:16px}
 .steps li{counter-increment:s;display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start}
 .steps li::before{content:counter(s,arabic-indic);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--teal);color:#fff;font-weight:700}
@@ -188,7 +199,7 @@ footer p{margin:0;max-width:70ch}
           <rect x="58" y="58" width="84" height="84"/>
           <rect x="58" y="58" width="84" height="84" transform="rotate(45 100 100)"/>
         </svg>
-        <div class="phone"><img src="assets/screens/mushaf_sepia.png" alt="صفحة من مصحف المدينة داخل التطبيق" width="390" height="844"></div>
+        <div class="phone"><img fetchpriority="high" src="assets/screens/mushaf_sepia.webp" alt="صفحة من مصحف المدينة داخل التطبيق" width="390" height="844"></div>
       </div>
     </div>
   </section>
@@ -196,7 +207,7 @@ footer p{margin:0;max-width:70ch}
   <section class="demo" id="demo">
     <div class="wrap">
       <div class="phone">
-        <video src="assets/demo.mp4" poster="assets/screens/home.png" autoplay muted loop playsinline controls aria-label="جولة سريعة في شاشات التطبيق"></video>
+        <video src="assets/demo.mp4" poster="assets/screens/home.webp" preload="none" muted loop playsinline controls aria-label="جولة سريعة في شاشات التطبيق"></video>
       </div>
       <div>
         <h2>جولة في دقيقة</h2>
@@ -223,8 +234,8 @@ footer p{margin:0;max-width:70ch}
           </ul>
         </div>
         <div class="pair">
-          <div class="shot"><img loading="lazy" src="assets/screens/mushaf_sepia.png" alt="صفحة المصحف بلون كريمي" width="390" height="844"></div>
-          <div class="shot"><img loading="lazy" src="assets/screens/mushaf_night.png" alt="صفحة المصحف بالوضع الليلي" width="390" height="844"></div>
+          <div class="shot"><img loading="lazy" src="assets/screens/mushaf_sepia.webp" alt="صفحة المصحف بلون كريمي" width="390" height="844"></div>
+          <div class="shot"><img loading="lazy" src="assets/screens/mushaf_night.webp" alt="صفحة المصحف بالوضع الليلي" width="390" height="844"></div>
         </div>
       </article>
 
@@ -234,12 +245,12 @@ footer p{margin:0;max-width:70ch}
           <p>مواقيت دقيقة لأكتر من ٣٤ ألف مدينة حول العالم محسوبة على الموبايل نفسه. الأذان بيشتغل في وقت الصلاة حتى لو التطبيق مقفول.</p>
           <ul>
             <li>أذان كامل بصوت تختاره، وأذان مختلف للفجر</li>
-            <li>مؤذنون تحمّلهم مرة: العفاسي، منصور الزهراني، أحمد النفيس وغيرهم</li>
+            <li>أكتر من ٤٥ مؤذن تحمّلهم مرة: عبد الباسط، المنشاوي، الحصري، علي ملا، الحرم المكي والمسجد النبوي، العفاسي وغيرهم</li>
             <li>زر "جرّب الأذان" عشان تتأكد إنه شغال على موبايلك</li>
             <li>طرق الحساب والمذهب والتعديل بالدقايق</li>
           </ul>
         </div>
-        <div class="shot"><img loading="lazy" src="assets/screens/prayers.png" alt="شاشة مواقيت الصلاة" width="390" height="844"></div>
+        <div class="shot"><img loading="lazy" src="assets/screens/prayers.webp" alt="شاشة مواقيت الصلاة" width="390" height="844"></div>
       </article>
 
       <article class="feature">
@@ -252,7 +263,7 @@ footer p{margin:0;max-width:70ch}
             <li>مسبحة إلكترونية بتحفظ جلساتك</li>
           </ul>
         </div>
-        <div class="shot"><img loading="lazy" src="assets/screens/adhkar.png" alt="شاشة الأذكار والأدعية" width="390" height="844"></div>
+        <div class="shot"><img loading="lazy" src="assets/screens/adhkar.webp" alt="شاشة الأذكار والأدعية" width="390" height="844"></div>
       </article>
 
       <article class="feature">
@@ -266,8 +277,8 @@ footer p{margin:0;max-width:70ch}
           </ul>
         </div>
         <div class="pair">
-          <div class="shot"><img loading="lazy" src="assets/screens/settings.png" alt="صفحة الإعدادات" width="390" height="844"></div>
-          <div class="shot"><img loading="lazy" src="assets/screens/home_dark.png" alt="الرئيسية بالوضع الليلي" width="390" height="844"></div>
+          <div class="shot"><img loading="lazy" src="assets/screens/settings.webp" alt="صفحة الإعدادات" width="390" height="844"></div>
+          <div class="shot"><img loading="lazy" src="assets/screens/home_dark.webp" alt="الرئيسية بالوضع الليلي" width="390" height="844"></div>
         </div>
       </article>
     </div>
@@ -300,17 +311,30 @@ footer p{margin:0;max-width:70ch}
     <div class="wrap dl-grid">
       <div>
         <h2>حمّل التطبيق</h2>
-        <p class="intro">التطبيق لأندرويد. اختار النسخة المناسبة. لو مش متأكد، الأولى بتنفع لأغلب الموبايلات.</p>
+        <p class="intro">التطبيق لأندرويد ٨ وأحدث. لو مش متأكد، الأولى بتنفع لأغلب الموبايلات.</p>
+        <div class="inapp" id="inapp" role="alert">
+          <b>افتح الصفحة في Chrome الأول</b>
+          إنت فاتح الصفحة من جوه فيسبوك أو إنستجرام أو ماسنجر، والمتصفح ده بيمنع تحميل الملفات أو بيقطعه في النص.
+          <div class="row">
+            <a class="btn btn-primary" id="open-chrome" href="#">افتح في Chrome</a>
+            <button class="btn btn-ghost" id="copy-link" type="button">انسخ الرابط</button>
+          </div>
+        </div>
         <div class="dl-choices">
           <a class="choice main" data-dl="arm64" href="https://github.com/eyadismail133/zad-alruh/releases/latest/download/zad-alruh-arm64-v8a.apk">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
-            <div><strong>لأغلب الموبايلات</strong><span data-size="arm64">نسخة arm64، حوالي ١٣٠ ميجا</span></div>
+            <div><strong>لأغلب الموبايلات</strong><span data-size="arm64">نسخة arm64</span></div>
+          </a>
+          <a class="choice" data-dl="armv7" href="https://github.com/eyadismail133/zad-alruh/releases/latest/download/zad-alruh-armeabi-v7a.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+            <div><strong>للموبايلات القديمة أو الاقتصادية</strong><span data-size="armv7">نسخة 32-bit (armeabi-v7a)</span><small>لو الأولى قالت "لم يتم تثبيت التطبيق"</small></div>
           </a>
           <a class="choice" data-dl="universal" href="https://github.com/eyadismail133/zad-alruh/releases/latest/download/zad-alruh-universal.apk">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
-            <div><strong>لو الأولى ما اتثبتتش</strong><span data-size="universal">نسخة شاملة بتشتغل على أي موبايل، أكبر شوية</span></div>
+            <div><strong>مش عارف موبايلك إيه؟</strong><span data-size="universal">نسخة شاملة بتشتغل على أي موبايل</span></div>
           </a>
         </div>
+        <p class="hint" id="slow-hint">نصيحة: الملف كبير، فالأفضل تحمّله على واي فاي ومن Chrome. لو التحميل وقف، اضغط عليه في التنزيلات وكمّله بدل ما تبدأ من الأول.</p>
         <p class="meta" data-version-long>كل النسخ موجودة على <a href="https://github.com/eyadismail133/zad-alruh/releases">صفحة الإصدارات</a>.</p>
       </div>
       <div>
@@ -333,6 +357,14 @@ footer p{margin:0;max-width:70ch}
         <p>التطبيق لسه في أول إصداراته وبيتوزع مباشرة من هنا. الملف موقّع بنفس المفتاح في كل نسخة، فالتحديثات بتتثبت فوق القديمة وبياناتك بتفضل زي ما هي.</p>
       </details>
       <details>
+        <summary>الموبايل قال "لم يتم تثبيت التطبيق"</summary>
+        <p>جرّب بالترتيب: (١) نزّل نسخة الموبايلات القديمة (32-bit)، أغلب الموبايلات الاقتصادية محتاجاها حتى لو جديدة. (٢) لو عندك نسخة قديمة من التطبيق متسطبة من مكان تاني امسحها الأول. (٣) اتأكد إن فيه مساحة فاضية ضعف حجم الملف على الأقل. (٤) التطبيق محتاج أندرويد ٨ أو أحدث.</p>
+      </details>
+      <details>
+        <summary>التحميل بطيء أو بيقف في النص</summary>
+        <p>افتح الصفحة في Chrome مش من جوه فيسبوك أو ماسنجر، وحمّل على واي فاي لو تقدر. لو التحميل وقف، كمّله من التنزيلات. ولو فشل خالص بعد وقت طويل، ارجع للصفحة واضغط التحميل تاني عشان رابط التحميل بيتجدد.</p>
+      </details>
+      <details>
         <summary>الأذان بيوصل كإشعار بس ومفيش صوت؟</summary>
         <p>افتح الإعدادات ← التنبيهات والأذان واضغط "جرّب الأذان". لو ظهر تحذير إن صوت المنبه صفر علّيه، ولو فيه تحذير توفير البطارية اضغط "السماح". الأذان بيشتغل على صوت المنبه.</p>
       </details>
@@ -350,7 +382,7 @@ footer p{margin:0;max-width:70ch}
       </details>
       <details>
         <summary>حجمه كبير ليه؟</summary>
-        <p>لأن صور المصحف الـ٦٠٤ جوه التطبيق عشان يشتغل من غير إنترنت، ودي لوحدها حوالي ٩٠ ميجا.</p>
+        <p>لأن صور المصحف الـ٦٠٤ جوه التطبيق بجودة كاملة عشان يشتغل من غير إنترنت، ودي لوحدها حوالي ٥٠ ميجا.</p>
       </details>
     </div>
   </section>
@@ -358,31 +390,87 @@ footer p{margin:0;max-width:70ch}
 
 <footer>
   <div class="wrap">
-    <p>صفحات المصحف: مجمع الملك فهد لطباعة المصحف الشريف. نص القرآن: Tanzil. الأذكار: حصن المسلم. الأحاديث: موسوعة الأحاديث النبوية HadeethEnc. التلاوات: MP3Quran. أصوات المؤذنين: AlAdhan.com. المدن: GeoNames.</p>
+    <p>صفحات المصحف: مجمع الملك فهد لطباعة المصحف الشريف. نص القرآن: Tanzil. الأذكار: حصن المسلم. الأحاديث: موسوعة الأحاديث النبوية HadeethEnc. التلاوات: MP3Quran. أصوات المؤذنين: AlAdhan.com وAssabile.com. المدن: GeoNames.</p>
     <p><a href="https://github.com/eyadismail133/zad-alruh">الكود على GitHub</a></p>
   </div>
 </footer>
 
 <script>
-// Show the current version and real file sizes from the latest GitHub release.
+// Plain ES5 on purpose: old Android browsers and in-app web views must run it.
 (function () {
+  var ua = navigator.userAgent || '';
   var ar = function (n) { return String(n).replace(/[0-9]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'[d]; }); };
-  fetch('https://api.github.com/repos/eyadismail133/zad-alruh/releases/latest')
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (rel) {
-      if (!rel) return;
-      var v = (rel.tag_name || '').replace(/^v/, '');
-      document.querySelectorAll('[data-version]').forEach(function (el) { el.textContent = 'الإصدار ' + ar(v); });
-      var size = function (name) {
-        var a = (rel.assets || []).find(function (x) { return x.name === name; });
-        return a ? ar(Math.round(a.size / 1e6)) + ' ميجا' : null;
-      };
-      var s1 = size('zad-alruh-arm64-v8a.apk'), s2 = size('zad-alruh-universal.apk');
-      var e1 = document.querySelector('[data-size="arm64"]'), e2 = document.querySelector('[data-size="universal"]');
-      if (s1 && e1) e1.textContent = 'الإصدار ' + ar(v) + '، ' + s1;
-      if (s2 && e2) e2.textContent = 'بتشتغل على أي موبايل، ' + s2;
-    })
-    .catch(function () {});
+  var each = function (sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); };
+
+  // 1) In-app browsers (Facebook, Instagram, Messenger, TikTok, Snapchat...) block
+  //    or silently drop file downloads. Tell the visitor and offer Chrome.
+  var inApp = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|musical_ly|TikTok|Snapchat|Line\/|MicroMessenger|; wv\)/i.test(ua);
+  if (inApp && /Android/i.test(ua)) {
+    var box = document.getElementById('inapp');
+    var here = location.href.replace(/#.*$/, '');
+    box.className += ' show';
+    document.getElementById('open-chrome').href =
+      'intent://' + here.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' +
+      encodeURIComponent(here) + ';end';
+    document.getElementById('copy-link').onclick = function () {
+      var done = function () { this.textContent = 'اتنسخ ✓'; }.bind(this);
+      if (navigator.clipboard) { navigator.clipboard.writeText(here).then(done, function () { prompt('انسخ الرابط:', here); }); }
+      else { prompt('انسخ الرابط:', here); }
+    };
+  }
+
+  // 2) A phone running a 32-bit Android cannot install the arm64 APK
+  //    ("App not installed"). When the browser reveals a 32-bit system,
+  //    make the 32-bit build the main download.
+  var plat = (navigator.platform || '') + ' ' + ua;
+  var is32 = /armv7|armv8l|arm_32/i.test(plat) && !/aarch64|arm64/i.test(plat);
+  if (is32) {
+    each('[data-dl="arm64"]', function (a) { a.setAttribute('data-dl', 'armv7'); a.href = a.href.replace('arm64-v8a', 'armeabi-v7a'); });
+  }
+
+  // 3) Fill in version and real sizes, and point the buttons straight at the
+  //    versioned file (one redirect less than /releases/latest/download/).
+  var names = { arm64: 'zad-alruh-arm64-v8a.apk', armv7: 'zad-alruh-armeabi-v7a.apk', universal: 'zad-alruh-universal.apk' };
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'https://api.github.com/repos/eyadismail133/zad-alruh/releases/latest');
+  xhr.timeout = 8000;
+  xhr.onload = function () {
+    if (xhr.status !== 200) return;
+    var rel; try { rel = JSON.parse(xhr.responseText); } catch (e) { return; }
+    var v = (rel.tag_name || '').replace(/^v/, '');
+    // Exact name first; older releases only have the versioned file
+    // (zad-alruh-0.7.3-armeabi-v7a.apk), so fall back to the suffix.
+    var find = function (name) {
+      var list = rel.assets || [], suffix = name && name.replace('zad-alruh', '');
+      for (var i = 0; i < list.length; i++) if (list[i].name === name) return list[i];
+      for (var j = 0; j < list.length; j++) {
+        var n = list[j].name;
+        if (suffix && n.slice(-suffix.length) === suffix) return list[j];
+      }
+      return null;
+    };
+    each('[data-version]', function (el) { el.textContent = 'الإصدار ' + ar(v); });
+    each('[data-dl]', function (a) {
+      var asset = find(names[a.getAttribute('data-dl')]);
+      if (asset && asset.browser_download_url) a.href = asset.browser_download_url;
+    });
+    each('[data-size]', function (el) {
+      var asset = find(names[el.getAttribute('data-size')]);
+      if (asset) el.textContent += '، الإصدار ' + ar(v) + '، ' + ar(Math.round(asset.size / 1e6)) + ' ميجا';
+    });
+  };
+  xhr.send();
+
+  // 4) The demo video only downloads when it is on screen and the connection
+  //    is fast; otherwise the poster stays and the visitor can press play.
+  var video = document.querySelector('.demo video');
+  var conn = navigator.connection || {};
+  var fast = !conn.saveData && !/(^|-)2g|3g/.test(conn.effectiveType || '');
+  if (video && fast && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries, obs) {
+      if (entries[0].isIntersecting) { obs.disconnect(); var p = video.play(); if (p && p.catch) p.catch(function () {}); }
+    }, { threshold: 0.4 }).observe(video);
+  }
 })();
 </script>
 </body>

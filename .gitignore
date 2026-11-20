@@ -27,3 +27,6 @@ dist/android/*.apk
 # Release signing (never commit)
 android/key.properties
 android/*.jks
+
+# Local copies of CI secrets (keystore base64, passwords) — never commit
+github secrets/

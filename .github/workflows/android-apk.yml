@@ -105,6 +105,7 @@ jobs:
           # Version-less copies give the landing page permanent links:
           # /releases/latest/download/zad-alruh-arm64-v8a.apk
           cp "out/zad-alruh-$v-arm64-v8a.apk" out/zad-alruh-arm64-v8a.apk
+          cp "out/zad-alruh-$v-armeabi-v7a.apk" out/zad-alruh-armeabi-v7a.apk
 
       - name: Build universal APK
         env:
